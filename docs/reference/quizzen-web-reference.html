@@ -1,0 +1,847 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Quizzen</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --primary:#EA7A31; --primary-container:#FCE1CB;
+    --on-primary:#FFFFFF; --on-primary-container:#7A3B0E;
+    --tone30:#B85E1E; --tone40:#EA7A31; --tone50:#F0964F; --tone60:#F4B178; --tone70:#F8CBA3;
+    --dark-on-light:#7A3B0E;
+    --surface:#FFFAF6; --surface-container:#FBEEE3; --surface-container-high:#F5E1CE;
+    --on-surface:#211710; --on-surface-variant:#5C4A3B;
+    font-size:16px;
+  }
+  @media (prefers-color-scheme: dark){
+    :root:not([data-theme="light"]){
+      --primary:#F4B178; --primary-container:#8A4212;
+      --on-primary:#4A2409; --on-primary-container:#FCE1CB;
+      --tone30:#F0964F; --tone40:#EE8D42; --tone50:#F2A464; --tone60:#F6BE8F; --tone70:#FAD5B8;
+      --dark-on-light:#4A2409;
+      --surface:#16110C; --surface-container:#241B14; --surface-container-high:#2F251B;
+      --on-surface:#F1E6DB; --on-surface-variant:#D3C2B3;
+    }
+  }
+  :root[data-theme="dark"]{
+    --primary:#F4B178; --primary-container:#8A4212;
+    --on-primary:#4A2409; --on-primary-container:#FCE1CB;
+    --tone30:#F0964F; --tone40:#EE8D42; --tone50:#F2A464; --tone60:#F6BE8F; --tone70:#FAD5B8;
+    --dark-on-light:#4A2409;
+    --surface:#16110C; --surface-container:#241B14; --surface-container-high:#2F251B;
+    --on-surface:#F1E6DB; --on-surface-variant:#D3C2B3;
+  }
+
+  *{box-sizing:border-box;}
+  html,body{ height:100%; margin:0; background:var(--surface); }
+  body{ font-family:"Plus Jakarta Sans","SF Pro Display",Roboto,Helvetica,Arial,sans-serif; color:var(--on-surface); -webkit-font-smoothing:antialiased; }
+
+  .screen{
+    max-width:440px; height:100vh; height:100dvh; margin:0 auto; position:relative; overflow:hidden;
+    background:var(--surface);
+    padding-top:env(safe-area-inset-top,0px);
+  }
+  .glow{ position:absolute; border-radius:50%; background:var(--primary-container); opacity:.35; filter:blur(10px); z-index:0; }
+  .glow.a{ width:280px; height:280px; top:-140px; right:-120px; }
+  .glow.b{ width:220px; height:220px; bottom:-110px; left:-100px; }
+
+  .content{ position:relative; z-index:1; height:100%; display:flex; flex-direction:column; }
+  .scroll-area{ flex:1 1 auto; overflow-y:auto; -webkit-overflow-scrolling:touch; padding:24px 18px calc(34px + env(safe-area-inset-bottom,0px)); }
+  .footer-bar{ flex:0 0 auto; padding:14px 18px calc(18px + env(safe-area-inset-bottom,0px)); background:var(--surface); box-shadow:0 -6px 18px -14px rgba(20,18,32,.18); position:relative; z-index:2; }
+
+  /* header */
+  .header{ display:flex; align-items:center; justify-content:space-between; margin-bottom:22px; }
+  .brand{ display:flex; align-items:center; gap:13px; }
+  .logo{ width:48px; height:48px; flex:0 0 48px; position:relative; }
+  .logo .shape{ position:absolute; inset:0; border-radius:34% 66% 60% 40% / 44% 36% 64% 56%;
+    background:linear-gradient(140deg, var(--primary), var(--tone30));
+    box-shadow:0 8px 16px -5px color-mix(in srgb, var(--tone30) 55%, transparent); }
+  .logo .letter{ position:relative; z-index:1; width:100%; height:100%; display:flex; align-items:center; justify-content:center; color:#fff; font-weight:800; font-size:1.3rem; }
+  .app-name{ font-size:1.55rem; font-weight:800; letter-spacing:-0.03em; }
+  .icon-btn{ width:44px; height:44px; border-radius:15px; border:none; background:var(--surface-container-high); color:var(--on-surface-variant); display:flex; align-items:center; justify-content:center; }
+  .icon-btn svg{ width:20px; height:20px; }
+
+  /* segmented control */
+  .segmented{ position:relative; display:flex; gap:4px; padding:5px; border-radius:999px; background:var(--surface-container-high); margin-bottom:22px; }
+  .segment-indicator{ position:absolute; top:5px; bottom:5px; left:5px; border-radius:999px; background:var(--primary); box-shadow:0 8px 16px -5px color-mix(in srgb, var(--primary) 60%, transparent); transition:transform .38s cubic-bezier(.22,1,.36,1), width .38s cubic-bezier(.22,1,.36,1); z-index:0; }
+  .segment{ position:relative; z-index:1; flex:1; display:flex; align-items:center; justify-content:center; gap:8px; padding:13px 10px; border:none; border-radius:999px; font-family:inherit; font-weight:600; font-size:1rem; background:transparent; color:var(--on-surface-variant); transition:color .3s ease; }
+  .segment svg{ width:19px; height:19px; }
+  .segment.selected{ color:var(--on-primary); font-weight:700; }
+
+  /* bento */
+  .bento{ display:flex; flex-direction:column; gap:14px; }
+
+  .tab-carousel{ overflow:hidden; touch-action:pan-y; }
+  .tab-track{ display:flex; width:200%; transition:transform .4s cubic-bezier(.22,1,.36,1); }
+  .tab-panel{ width:50%; flex:0 0 50%; min-width:0; }
+  .tab-panel:first-child{ padding-right:9px; }
+  .tab-panel:last-child{ padding-left:9px; }
+
+  .hero{
+    position:relative; overflow:hidden;
+    display:flex; align-items:center; gap:18px;
+    min-height:150px; border-radius:38px; padding:24px;
+    background:linear-gradient(135deg, var(--primary), var(--tone30));
+    box-shadow:0 18px 32px -14px color-mix(in srgb, var(--tone30) 65%, transparent);
+  }
+  .hero-blob{ position:absolute; width:180px; height:180px; right:-50px; bottom:-60px; border-radius:50%; background:rgba(255,255,255,.08); }
+  .hero-icon{
+    flex:0 0 78px; width:78px; height:78px; position:relative; z-index:1;
+    background:rgba(255,255,255,.18); border-radius:32% 68% 62% 38% / 46% 38% 62% 54%;
+    display:flex; align-items:center; justify-content:center;
+    color:#fff; font-weight:800; font-size:2.05rem;
+  }
+  .hero-text{ position:relative; z-index:1; flex:1; }
+  .hero-title{ color:#fff; font-weight:800; font-size:1.55rem; letter-spacing:-0.02em; line-height:1.1; }
+  .hero-trail{ position:relative; z-index:1; flex:0 0 48px; width:48px; height:48px; border-radius:50%; background:rgba(255,255,255,.22); border:none; display:flex; align-items:center; justify-content:center; color:#fff; }
+  .hero-trail svg{ width:20px; height:20px; }
+
+  .grid-row{ display:grid; grid-template-columns:1fr 1fr; gap:14px; }
+  .tile{
+    position:relative; aspect-ratio:1/0.98;
+    background:var(--surface-container); border-radius:30px; padding:18px;
+    display:flex; flex-direction:column; justify-content:space-between;
+    box-shadow:0 2px 6px rgba(20,18,32,.05);
+  }
+  .tile-icon{ width:52px; height:52px; position:relative; }
+  .tile-icon .shape{ position:absolute; inset:0; }
+  .tile-icon .letter{ position:relative; z-index:1; width:100%; height:100%; display:flex; align-items:center; justify-content:center; font-weight:700; font-size:1.2rem; }
+  .tile-title{ font-weight:700; font-size:1.06rem; line-height:1.18; letter-spacing:-0.01em; }
+  .tile-trail{ position:absolute; top:16px; right:16px; width:34px; height:34px; border-radius:50%; background:var(--surface-container-high); color:var(--on-surface-variant); border:none; display:flex; align-items:center; justify-content:center; }
+  .tile-trail svg{ width:14px; height:14px; }
+  .shape-a{ border-radius:38% 62% 55% 45% / 48% 40% 60% 52%; }
+  .shape-b{ border-radius:62% 38% 45% 55% / 40% 55% 45% 60%; }
+
+  /* multi-page + motion */
+  .page{ display:none; }
+  .page.active{ display:flex; flex-direction:column; height:100%; animation:pageIn .38s cubic-bezier(.22,1,.36,1); }
+  @keyframes pageIn{ from{ opacity:0; transform:translateY(16px); } to{ opacity:1; transform:translateY(0); } }
+
+  button, .chip, .hero, .tile, .segment{ transition:transform .15s ease, box-shadow .15s ease; }
+  button:active, .chip:active, .hero:active, .tile:active, .segment:active{ transform:scale(.96); }
+  .hero{ cursor:pointer; }
+  .tile-trail:active, .hero-trail:active, .icon-btn:active{ transform:scale(.88); }
+
+  /* Multiply config screen */
+  .m-header{ display:flex; align-items:center; gap:14px; margin-bottom:24px; }
+  .m-title{ font-size:1.5rem; font-weight:800; letter-spacing:-0.02em; }
+  .section-label{ color:var(--on-surface-variant); font-size:1.05rem; margin-bottom:20px; }
+  .section-title{ font-size:1.2rem; font-weight:800; letter-spacing:-0.01em; margin:0 0 14px; }
+  .chip-group{ display:flex; flex-wrap:wrap; gap:10px; margin-bottom:28px; }
+  .chip{ padding:16px 22px; border-radius:20px; border:none; background:var(--surface-container); color:var(--on-surface); font-family:inherit; font-weight:700; font-size:1.02rem; }
+  .chip.selected{ background:var(--primary); color:var(--on-primary); box-shadow:0 8px 16px -6px color-mix(in srgb, var(--primary) 55%, transparent); }
+
+  .timer-card{ display:flex; align-items:center; gap:16px; background:var(--surface-container); border-radius:28px; padding:16px 18px; margin-bottom:18px; }
+  .timer-icon{ flex:0 0 52px; width:52px; height:52px; position:relative; display:flex; align-items:center; justify-content:center; }
+  .timer-icon .shape{ position:absolute; inset:0; background:linear-gradient(140deg, var(--primary), var(--tone30)); }
+  .timer-icon svg{ position:relative; z-index:1; width:24px; height:24px; color:#fff; }
+  .timer-info{ flex:1; }
+  .timer-title{ font-weight:700; font-size:1.1rem; }
+  .timer-value{ flex:0 0 auto; min-width:64px; text-align:center; background:var(--surface-container-high); border-radius:18px; padding:10px 16px; display:flex; flex-direction:column; align-items:center; line-height:1.1; }
+  .timer-value-input{ width:48px; border:none; background:transparent; text-align:center; font-family:inherit; font-weight:800; font-size:1.25rem; color:var(--on-surface); outline:none; padding:0; -moz-appearance:textfield; }
+  .timer-value-input::-webkit-outer-spin-button, .timer-value-input::-webkit-inner-spin-button{ -webkit-appearance:none; margin:0; }
+  .timer-value-unit{ font-size:.66rem; font-weight:700; letter-spacing:.05em; text-transform:uppercase; color:var(--on-surface-variant); margin-top:2px; }
+  .timer-value.error{ box-shadow:0 0 0 2px #E14C4C; }
+  .timer-error{ display:none; color:#E14C4C; font-size:.85rem; font-weight:600; margin:-6px 0 16px 2px; }
+  .timer-error.show{ display:block; }
+
+  .start-btn{ width:100%; border:none; border-radius:999px; padding:19px; background:var(--primary); color:var(--on-primary); font-family:inherit; font-weight:800; font-size:1.1rem; box-shadow:0 14px 26px -12px color-mix(in srgb, var(--primary) 60%, transparent); }
+
+  /* Tables screen */
+  .select-all-btn{ display:inline-flex; align-items:center; gap:8px; padding:12px 20px; border-radius:18px; background:var(--surface-container); color:var(--on-surface); font-family:inherit; font-weight:700; font-size:.98rem; border:none; }
+  .select-all-btn svg{ width:18px; height:18px; }
+  .select-all-btn.active{ background:var(--primary); color:var(--on-primary); }
+  .num-grid{ display:grid; grid-template-columns:repeat(4,1fr); gap:12px; margin:20px 0 24px; }
+  .num-cell{ aspect-ratio:1/0.95; border-radius:22px; border:none; background:var(--surface-container); display:flex; align-items:center; justify-content:center; font-family:inherit; font-weight:800; font-size:1.35rem; color:var(--on-surface); }
+  .num-cell.selected{ background:var(--primary); color:var(--on-primary); box-shadow:0 8px 16px -8px color-mix(in srgb, var(--primary) 55%, transparent); }
+
+  .question{ text-align:center; font-size:3.1rem; font-weight:800; letter-spacing:-0.02em; margin:70px 0 46px; white-space:nowrap; overflow:hidden; }
+  .question .op{ color:var(--primary); }
+
+  .timer-chip{ margin-left:auto; padding:9px 15px; border-radius:999px; background:var(--surface-container-high); color:var(--on-surface-variant); font-weight:800; font-size:.95rem; transition:transform .2s ease; }
+  .timer-chip.low{ animation:pulseChip 1s ease-in-out infinite; }
+  @keyframes pulseChip{ 0%,100%{ transform:scale(1); } 50%{ transform:scale(1.1); } }
+
+  .answer-field{
+    width:100%; border:none; background:var(--surface-container); border-radius:28px; padding:22px;
+    text-align:center; font-family:inherit; font-weight:800; font-size:1.4rem; color:var(--on-surface);
+    outline:none; box-shadow:0 2px 8px rgba(20,18,32,.05); transition:box-shadow .2s ease, background .2s ease, transform .1s ease;
+  }
+  .answer-field::placeholder{ color:var(--on-surface-variant); opacity:.55; font-weight:700; }
+  .answer-field:focus{ background:var(--surface); box-shadow:0 0 0 4px color-mix(in srgb, var(--primary) 20%, transparent), 0 10px 20px -10px color-mix(in srgb, var(--primary) 40%, transparent); }
+  .answer-field.shake{ animation:shakeX .4s ease; }
+  @keyframes shakeX{ 10%,90%{ transform:translateX(-3px); } 20%,80%{ transform:translateX(5px); } 30%,50%,70%{ transform:translateX(-9px); } 40%,60%{ transform:translateX(9px); } }
+
+  .check-btn{ margin-top:18px; }
+
+  /* feedback — bottom sheet */
+  .feedback-sheet{
+    position:fixed; left:50%; bottom:0; width:100%; max-width:440px;
+    transform:translate(-50%,112%);
+    border-radius:32px 32px 0 0; color:#fff; z-index:10;
+    padding:22px 22px calc(22px + env(safe-area-inset-bottom,0px));
+    display:flex; align-items:center; gap:16px;
+    box-shadow:0 -14px 32px -12px rgba(0,0,0,.28);
+    transition:transform .35s cubic-bezier(.22,1,.36,1);
+  }
+  .feedback-sheet.show{ transform:translate(-50%,0); }
+  .feedback-sheet.correct{ background:#1FAE6A; }
+  .feedback-sheet.incorrect{ background:#E14C4C; }
+  .feedback-sheet.timeout{ background:#F2924B; }
+  .feedback-icon-wrap{ flex:0 0 52px; width:52px; height:52px; border-radius:50%; background:rgba(255,255,255,.22); display:flex; align-items:center; justify-content:center; }
+  .feedback-icon-wrap svg{ width:26px; height:26px; }
+  .feedback-copy{ flex:1; }
+  .feedback-title{ font-weight:800; font-size:1.15rem; }
+  .feedback-sub{ font-size:.88rem; opacity:.9; margin-top:2px; }
+
+  /* settings bottom sheet */
+  .scrim{ position:fixed; inset:0; background:rgba(10,8,24,.45); opacity:0; pointer-events:none; z-index:19; transition:opacity .25s ease; }
+  .scrim.show{ opacity:1; pointer-events:auto; }
+
+  .sheet{
+    position:fixed; left:50%; bottom:0; width:100%; max-width:440px; background:var(--surface);
+    border-radius:32px 32px 0 0; z-index:20; transform:translate(-50%,100%);
+    transition:transform .35s cubic-bezier(.22,1,.36,1);
+    padding:14px 20px calc(26px + env(safe-area-inset-bottom,0px));
+    box-shadow:0 -20px 50px -20px rgba(0,0,0,.3);
+  }
+  .sheet.show{ transform:translate(-50%,0); }
+  .sheet-handle{ width:40px; height:5px; border-radius:999px; background:var(--surface-container-high); margin:6px auto 18px; }
+  .sheet-title{ font-size:1.3rem; font-weight:800; letter-spacing:-0.02em; margin-bottom:16px; }
+
+  .sheet-row{ display:flex; align-items:center; gap:16px; padding:14px 2px; }
+  .sheet-row + .sheet-row{ border-top:1px solid var(--surface-container-high); }
+  .sheet-row.clickable{ cursor:pointer; }
+  .sheet-row-icon{ flex:0 0 44px; width:44px; height:44px; border-radius:16px; background:var(--surface-container); color:var(--primary); display:flex; align-items:center; justify-content:center; }
+  .sheet-row-icon svg{ width:22px; height:22px; }
+  .sheet-row-label{ flex:1; font-weight:600; font-size:1.04rem; }
+  .sheet-row .chev{ flex:0 0 20px; color:var(--on-surface-variant); display:flex; align-items:center; justify-content:center; }
+  .sheet-row .chev svg{ width:18px; height:18px; }
+
+  .switch{ flex:0 0 auto; width:50px; height:30px; border-radius:999px; background:var(--surface-container-high); position:relative; border:none; padding:3px; transition:background .2s ease; }
+  .switch .thumb{ width:24px; height:24px; border-radius:50%; background:#fff; box-shadow:0 2px 5px rgba(0,0,0,.2); transition:transform .2s ease; }
+  .switch.on{ background:var(--primary); }
+  .switch.on .thumb{ transform:translateX(20px); }
+</style>
+</head>
+<body>
+  <div class="screen">
+    <div class="glow a"></div>
+    <div class="glow b"></div>
+
+    <div class="content page active" id="page-home">
+      <div class="scroll-area">
+
+      <div class="header">
+        <div class="brand">
+          <div class="logo"><div class="shape"></div><div class="letter">Q</div></div>
+          <div class="app-name">Quizzen</div>
+        </div>
+        <button class="icon-btn" aria-label="Settings" onclick="openSettings()">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <circle cx="12" cy="12" r="3"></circle>
+            <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.6a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"></path>
+          </svg>
+        </button>
+      </div>
+
+      <div class="segmented" id="segmented">
+        <div class="segment-indicator" id="segment-indicator"></div>
+        <button class="segment selected" data-tab="math" onclick="selectTab(this)">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <rect x="5" y="3" width="14" height="18" rx="3"></rect>
+            <line x1="8" y1="7" x2="16" y2="7"></line>
+            <circle cx="8.5" cy="12" r="1"></circle>
+            <circle cx="12" cy="12" r="1"></circle>
+            <circle cx="15.5" cy="12" r="1"></circle>
+            <circle cx="8.5" cy="16" r="1"></circle>
+            <circle cx="12" cy="16" r="1"></circle>
+            <circle cx="15.5" cy="16" r="1"></circle>
+          </svg>
+          Math
+        </button>
+        <button class="segment" data-tab="language" onclick="selectTab(this)">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <circle cx="12" cy="12" r="9"></circle>
+            <line x1="3" y1="12" x2="21" y2="12"></line>
+            <path d="M12 3c2.5 2.5 4 5.5 4 9s-1.5 6.5-4 9c-2.5-2.5-4-5.5-4-9s1.5-6.5 4-9z"></path>
+          </svg>
+          Language
+        </button>
+      </div>
+
+      <div class="tab-carousel" id="tab-carousel">
+      <div class="tab-track" id="tab-track">
+
+      <div class="tab-panel">
+      <div class="bento">
+
+        <div class="hero" onclick="showPage('page-multiply')">
+          <div class="hero-blob"></div>
+          <div class="hero-icon">M</div>
+          <div class="hero-text"><div class="hero-title">Multiply</div></div>
+          <button class="hero-trail" aria-label="Open Multiply">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 6 15 12 9 18"></polyline></svg>
+          </button>
+        </div>
+
+        <div class="grid-row">
+          <div class="tile" onclick="showPage('page-tables')">
+            <div class="tile-icon">
+              <div class="shape shape-a" style="background:linear-gradient(140deg, var(--primary), var(--tone30));"></div>
+              <div class="letter" style="color:#fff;">T</div>
+            </div>
+            <div class="tile-title">Tables Practice</div>
+            <button class="tile-trail" aria-label="Open Tables Practice">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 6 15 12 9 18"></polyline></svg>
+            </button>
+          </div>
+          <div class="tile">
+            <div class="tile-icon">
+              <div class="shape shape-b" style="background:linear-gradient(140deg, var(--primary), var(--tone30));"></div>
+              <div class="letter" style="color:#fff;">P</div>
+            </div>
+            <div class="tile-title">Powers &amp; Roots</div>
+            <button class="tile-trail" aria-label="Open Powers and Roots">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 6 15 12 9 18"></polyline></svg>
+            </button>
+          </div>
+        </div>
+
+        <div class="grid-row">
+          <div class="tile">
+            <div class="tile-icon">
+              <div class="shape shape-b" style="background:linear-gradient(140deg, var(--primary), var(--tone30));"></div>
+              <div class="letter" style="color:#fff;">F</div>
+            </div>
+            <div class="tile-title">Fraction &amp; Percentage</div>
+            <button class="tile-trail" aria-label="Open Fraction and Percentage">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 6 15 12 9 18"></polyline></svg>
+            </button>
+          </div>
+          <div class="tile">
+            <div class="tile-icon">
+              <div class="shape shape-a" style="background:linear-gradient(140deg, var(--primary), var(--tone30));"></div>
+              <div class="letter" style="color:#fff;">A</div>
+            </div>
+            <div class="tile-title">Alphabet Reasoning</div>
+            <button class="tile-trail" aria-label="Open Alphabet Reasoning">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 6 15 12 9 18"></polyline></svg>
+            </button>
+          </div>
+        </div>
+
+      </div>
+      </div>
+
+      <div class="tab-panel">
+      <div class="bento">
+
+        <div class="hero">
+          <div class="hero-blob"></div>
+          <div class="hero-icon">V</div>
+          <div class="hero-text"><div class="hero-title">Vocabulary</div></div>
+          <button class="hero-trail" aria-label="Open Vocabulary">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 6 15 12 9 18"></polyline></svg>
+          </button>
+        </div>
+
+        <div class="grid-row">
+          <div class="tile">
+            <div class="tile-icon">
+              <div class="shape shape-a" style="background:linear-gradient(140deg, var(--primary), var(--tone30));"></div>
+              <div class="letter" style="color:#fff;">F</div>
+            </div>
+            <div class="tile-title">Fixed Preposition</div>
+            <button class="tile-trail" aria-label="Open Fixed Preposition">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 6 15 12 9 18"></polyline></svg>
+            </button>
+          </div>
+          <div class="tile">
+            <div class="tile-icon">
+              <div class="shape shape-b" style="background:linear-gradient(140deg, var(--primary), var(--tone30));"></div>
+              <div class="letter" style="color:#fff;">P</div>
+            </div>
+            <div class="tile-title">Phrasal Verb</div>
+            <button class="tile-trail" aria-label="Open Phrasal Verb">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 6 15 12 9 18"></polyline></svg>
+            </button>
+          </div>
+        </div>
+
+      </div>
+      </div>
+
+      </div>
+      </div>
+      </div>
+    </div>
+
+    <div class="content page" id="page-multiply">
+      <div class="scroll-area">
+
+      <div class="m-header">
+        <button class="icon-btn" aria-label="Back" onclick="showPage('page-home')">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 6 9 12 15 18"></polyline></svg>
+        </button>
+        <div class="m-title">Multiply</div>
+      </div>
+
+      <div class="section-label">Configure your challenge</div>
+
+      <div class="section-title">Digits in 1st Number</div>
+      <div class="chip-group">
+        <button class="chip">2 Digits</button>
+        <button class="chip selected">3 Digits</button>
+        <button class="chip">4 Digits</button>
+        <button class="chip">5 Digits</button>
+      </div>
+
+      <div class="section-title">Digits in 2nd Number</div>
+      <div class="chip-group">
+        <button class="chip selected">2 Digits</button>
+        <button class="chip">3 Digits</button>
+        <button class="chip">4 Digits</button>
+        <button class="chip">5 Digits</button>
+      </div>
+
+      </div>
+
+      <div class="footer-bar">
+      <div class="timer-card">
+        <div class="timer-icon">
+          <div class="shape shape-a"></div>
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <circle cx="12" cy="13" r="8"></circle>
+            <line x1="12" y1="9" x2="12" y2="13"></line>
+            <line x1="10" y1="2" x2="14" y2="2"></line>
+          </svg>
+        </div>
+        <div class="timer-info">
+          <div class="timer-title">Timer</div>
+        </div>
+        <div class="timer-value">
+          <input class="timer-value-input" id="timer-value" type="number" inputmode="numeric" min="0" max="180" value="20">
+          <span class="timer-value-unit">sec</span>
+        </div>
+      </div>
+      <div class="timer-error" id="timer-error">Max allowed timer is 180 seconds</div>
+
+      <button class="start-btn" onclick="generateQuestion(); showPage('page-practice')">Start</button>
+      </div>
+
+    </div>
+
+    <div class="content page" id="page-tables">
+      <div class="scroll-area">
+
+      <div class="m-header">
+        <button class="icon-btn" aria-label="Back" onclick="showPage('page-home')">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 6 9 12 15 18"></polyline></svg>
+        </button>
+        <div class="m-title">Tables</div>
+      </div>
+
+      <div class="section-label">Select numbers to practice</div>
+      <div style="display:flex; justify-content:flex-end;">
+        <button class="select-all-btn" id="select-all-btn" onclick="toggleSelectAll()">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><polyline points="2 12 6 16 12 8"></polyline><polyline points="10 12 14 16 22 6"></polyline></svg>
+          Select All
+        </button>
+      </div>
+
+      <div class="num-grid" id="num-grid">
+        <button class="num-cell">2</button>
+        <button class="num-cell">3</button>
+        <button class="num-cell">4</button>
+        <button class="num-cell">5</button>
+        <button class="num-cell">6</button>
+        <button class="num-cell">7</button>
+        <button class="num-cell">8</button>
+        <button class="num-cell">9</button>
+        <button class="num-cell">10</button>
+        <button class="num-cell">11</button>
+        <button class="num-cell">12</button>
+        <button class="num-cell">13</button>
+        <button class="num-cell">14</button>
+        <button class="num-cell">15</button>
+        <button class="num-cell">16</button>
+        <button class="num-cell">17</button>
+        <button class="num-cell">18</button>
+        <button class="num-cell">19</button>
+        <button class="num-cell">20</button>
+        <button class="num-cell">21</button>
+        <button class="num-cell">22</button>
+        <button class="num-cell">23</button>
+        <button class="num-cell">24</button>
+        <button class="num-cell">25</button>
+        <button class="num-cell">26</button>
+        <button class="num-cell">27</button>
+        <button class="num-cell">28</button>
+        <button class="num-cell">29</button>
+        <button class="num-cell">30</button>
+        <button class="num-cell">31</button>
+      </div>
+
+      </div>
+
+      <div class="footer-bar">
+      <div class="timer-card">
+        <div class="timer-icon">
+          <div class="shape shape-a"></div>
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <circle cx="12" cy="13" r="8"></circle>
+            <line x1="12" y1="9" x2="12" y2="13"></line>
+            <line x1="10" y1="2" x2="14" y2="2"></line>
+          </svg>
+        </div>
+        <div class="timer-info">
+          <div class="timer-title">Timer</div>
+        </div>
+        <div class="timer-value">
+          <input class="timer-value-input" id="timer-value-tables" type="number" inputmode="numeric" min="0" max="180" value="10">
+          <span class="timer-value-unit">sec</span>
+        </div>
+      </div>
+      <div class="timer-error" id="timer-error-tables">Max allowed timer is 180 seconds</div>
+
+      <button class="start-btn" onclick="showPage('page-practice')">Start</button>
+      </div>
+
+    </div>
+
+    <div class="content page" id="page-practice">
+      <div class="scroll-area">
+
+      <div class="m-header">
+        <button class="icon-btn" aria-label="Back" onclick="showPage('page-multiply')">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 6 9 12 15 18"></polyline></svg>
+        </button>
+        <div class="m-title">Practice</div>
+        <div class="timer-chip" id="practice-timer">20s</div>
+      </div>
+
+      <div class="question" id="question-text"><span id="q-num1">63</span> <span class="op">&times;</span> <span id="q-num2">69</span></div>
+
+      <input class="answer-field" id="answer-input" type="number" inputmode="numeric" placeholder="Answer">
+
+      <button class="start-btn check-btn" id="check-btn">Check</button>
+
+      </div>
+
+      <div class="feedback-sheet" id="feedback">
+        <div class="feedback-icon-wrap" id="feedback-icon"></div>
+        <div class="feedback-copy">
+          <div class="feedback-title" id="feedback-title"></div>
+          <div class="feedback-sub" id="feedback-sub"></div>
+        </div>
+      </div>
+
+    </div>
+
+    <div class="scrim" id="scrim" onclick="closeSettings()"></div>
+    <div class="sheet" id="settings-sheet">
+      <div class="sheet-handle"></div>
+      <div class="sheet-title">Settings</div>
+
+      <div class="sheet-row">
+        <div class="sheet-row-icon">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <rect x="8" y="4" width="8" height="16" rx="2"></rect>
+            <line x1="4" y1="9" x2="4" y2="15"></line>
+            <line x1="20" y1="9" x2="20" y2="15"></line>
+            <line x1="1" y1="10" x2="1" y2="14"></line>
+            <line x1="23" y1="10" x2="23" y2="14"></line>
+          </svg>
+        </div>
+        <div class="sheet-row-label">Haptic Feedback</div>
+        <button class="switch on" id="haptic-switch" onclick="toggleHaptic()"><div class="thumb"></div></button>
+      </div>
+
+      <div class="sheet-row clickable">
+        <div class="sheet-row-icon">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <ellipse cx="12" cy="5" rx="8" ry="3"></ellipse>
+            <path d="M4 5v6c0 1.7 3.6 3 8 3s8-1.3 8-3V5"></path>
+            <path d="M4 11v6c0 1.7 3.6 3 8 3s8-1.3 8-3v-6"></path>
+          </svg>
+        </div>
+        <div class="sheet-row-label">Database Manager</div>
+        <div class="chev">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 6 15 12 9 18"></polyline></svg>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    function openSettings(){
+      document.getElementById('scrim').classList.add('show');
+      document.getElementById('settings-sheet').classList.add('show');
+    }    function closeSettings(){
+      document.getElementById('scrim').classList.remove('show');
+      document.getElementById('settings-sheet').classList.remove('show');
+    }
+    function toggleHaptic(){
+      document.getElementById('haptic-switch').classList.toggle('on');
+    }
+
+    function clampTimerInput(inp, errorEl){
+      var max = parseInt(inp.getAttribute('max'), 10) || 180;
+      var raw = inp.value;
+      var val = parseInt(raw, 10);
+      if(isNaN(val)) val = 0;
+
+      if(val > max){
+        inp.value = max;
+        inp.closest('.timer-value').classList.add('error');
+        if(errorEl){
+          errorEl.classList.add('show');
+          clearTimeout(errorEl._hideTimer);
+          errorEl._hideTimer = setTimeout(function(){
+            errorEl.classList.remove('show');
+            inp.closest('.timer-value').classList.remove('error');
+          }, 2500);
+        }
+        return;
+      }
+
+      val = Math.max(0, val);
+      inp.value = val;
+      inp.closest('.timer-value').classList.remove('error');
+      if(errorEl){ errorEl.classList.remove('show'); }
+    }
+    document.querySelectorAll('.timer-value-input').forEach(function(inp){
+      var errorEl = inp.id === 'timer-value' ? document.getElementById('timer-error') : document.getElementById('timer-error-tables');
+      inp.addEventListener('input', function(){ clampTimerInput(inp, errorEl); });
+      inp.addEventListener('blur', function(){ clampTimerInput(inp, errorEl); });
+    });
+
+    function toggleSelectAll(){
+      var cells = document.querySelectorAll('#num-grid .num-cell');
+      var btn = document.getElementById('select-all-btn');
+      var allSelected = Array.prototype.every.call(cells, function(c){ return c.classList.contains('selected'); });
+      cells.forEach(function(c){
+        if(allSelected){ c.classList.remove('selected'); } else { c.classList.add('selected'); }
+      });
+      btn.classList.toggle('active', !allSelected);
+    }
+
+    document.querySelectorAll('.num-cell').forEach(function(cell){
+      cell.addEventListener('click', function(){
+        cell.classList.toggle('selected');
+        var cells = document.querySelectorAll('#num-grid .num-cell');
+        var allSelected = Array.prototype.every.call(cells, function(c){ return c.classList.contains('selected'); });
+        document.getElementById('select-all-btn').classList.toggle('active', allSelected);
+      });
+    });
+
+    var countdownInterval = null;
+    var countdownValue = 20;
+    var currentAnswer = 0;
+
+    function randomWithDigits(digits){
+      if(digits <= 1){ return Math.floor(Math.random() * 9) + 1; }
+      var min = Math.pow(10, digits - 1);
+      var max = Math.pow(10, digits) - 1;
+      return Math.floor(Math.random() * (max - min + 1)) + min;
+    }
+
+    function getSelectedDigits(group){
+      var sel = group.querySelector('.chip.selected') || group.querySelector('.chip');
+      return parseInt(sel.textContent, 10) || 2;
+    }
+
+    function fitQuestionText(){
+      var q = document.getElementById('question-text');
+      if(!q) return;
+      var maxSize = 3.1, minSize = 1.5, step = 0.1;
+      var size = maxSize;
+      q.style.fontSize = size + 'rem';
+      var available = q.clientWidth;
+      while(q.scrollWidth > available && size > minSize){
+        size -= step;
+        q.style.fontSize = size.toFixed(1) + 'rem';
+      }
+    }
+
+    function generateQuestion(){
+      var groups = document.querySelectorAll('#page-multiply .chip-group');
+      var d1 = getSelectedDigits(groups[0]);
+      var d2 = getSelectedDigits(groups[1]);
+      var n1 = randomWithDigits(d1);
+      var n2 = randomWithDigits(d2);
+      currentAnswer = n1 * n2;
+      document.getElementById('q-num1').textContent = n1;
+      document.getElementById('q-num2').textContent = n2;
+      fitQuestionText();
+    }
+    generateQuestion();
+    window.addEventListener('resize', fitQuestionText);
+
+    function showPage(id){
+      document.querySelectorAll('.page').forEach(function(p){ p.classList.remove('active'); });
+      document.getElementById(id).classList.add('active');
+      window.scrollTo(0,0);
+      clearInterval(countdownInterval);
+      if(id === 'page-practice'){ startCountdown(); }
+    }
+
+    function startCountdown(){
+      clearInterval(countdownInterval);
+      var base = parseInt(document.getElementById('timer-value').value, 10) || 20;
+      countdownValue = base;
+      var chip = document.getElementById('practice-timer');
+      chip.classList.remove('low');
+      chip.textContent = countdownValue + 's';
+      countdownInterval = setInterval(function(){
+        countdownValue--;
+        chip.textContent = countdownValue + 's';
+        if(countdownValue <= 5){ chip.classList.add('low'); }
+        if(countdownValue <= 0){
+          clearInterval(countdownInterval);
+          showFeedback('timeout');
+        }
+      }, 1000);
+    }
+
+    function showFeedback(type){
+      clearInterval(countdownInterval);
+      var el = document.getElementById('feedback');
+      var icon = document.getElementById('feedback-icon');
+      var title = document.getElementById('feedback-title');
+      var sub = document.getElementById('feedback-sub');
+      var input = document.getElementById('answer-input');
+      el.classList.remove('correct','incorrect','timeout');
+
+      if(type === 'correct'){
+        el.classList.add('correct');
+        icon.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>';
+        title.textContent = 'Correct!';
+        sub.textContent = 'Nice work — next question loading';
+      } else if(type === 'incorrect'){
+        el.classList.add('incorrect');
+        icon.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>';
+        title.textContent = 'Incorrect';
+        sub.textContent = 'The correct answer was ' + currentAnswer;
+        input.classList.add('shake');
+        setTimeout(function(){ input.classList.remove('shake'); }, 400);
+      } else {
+        el.classList.add('timeout');
+        icon.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="13" r="8"></circle><line x1="12" y1="9" x2="12" y2="13"></line><line x1="10" y1="2" x2="14" y2="2"></line></svg>';
+        title.textContent = "Time's Up";
+        sub.textContent = 'The answer was ' + currentAnswer + ' — here\'s a fresh one';
+      }
+
+      el.classList.add('show');
+      setTimeout(function(){
+        el.classList.remove('show');
+        setTimeout(function(){
+          input.value = '';
+          generateQuestion();
+          startCountdown();
+        }, 250);
+      }, 1700);
+    }
+
+    document.getElementById('check-btn').addEventListener('click', function(){
+      var input = document.getElementById('answer-input');
+      var val = parseInt(input.value, 10);
+      if(isNaN(val)){ showFeedback('incorrect'); return; }
+      showFeedback(val === currentAnswer ? 'correct' : 'incorrect');
+    });
+
+    document.querySelectorAll('.chip-group').forEach(function(group){
+      group.querySelectorAll('.chip').forEach(function(chip){
+        chip.addEventListener('click', function(){
+          group.querySelectorAll('.chip').forEach(function(c){ c.classList.remove('selected'); });
+          chip.classList.add('selected');
+        });
+      });
+    });
+
+    function positionIndicator(btn, animate){
+      var indicator = document.getElementById('segment-indicator');
+      var container = document.getElementById('segmented');
+      var cRect = container.getBoundingClientRect();
+      var bRect = btn.getBoundingClientRect();
+      if(!animate){ indicator.style.transition = 'none'; }
+      indicator.style.width = bRect.width + 'px';
+      indicator.style.transform = 'translateX(' + (bRect.left - cRect.left - 5) + 'px)';
+      if(!animate){
+        indicator.offsetHeight;
+        indicator.style.transition = '';
+      }
+    }
+
+    var currentTab = 'math';
+
+    function setTrack(percent, animate){
+      var track = document.getElementById('tab-track');
+      if(!animate){ track.style.transition = 'none'; }
+      track.style.transform = 'translateX(' + percent + '%)';
+      if(!animate){
+        track.offsetHeight;
+        track.style.transition = '';
+      }
+    }
+
+    function selectTab(btn){
+      document.querySelectorAll('.segment').forEach(function(s){ s.classList.remove('selected'); });
+      btn.classList.add('selected');
+      positionIndicator(btn, true);
+      currentTab = btn.dataset.tab;
+      setTrack(currentTab === 'language' ? -50 : 0, true);
+    }
+
+    positionIndicator(document.querySelector('.segment.selected'), false);
+    window.addEventListener('resize', function(){
+      positionIndicator(document.querySelector('.segment.selected'), false);
+    });
+
+    /* swipe between Math and Language */
+    (function(){
+      var carousel = document.getElementById('tab-carousel');
+      var track = document.getElementById('tab-track');
+      var startX = 0, deltaX = 0, dragging = false, carouselWidth = 1;
+
+      function onDown(e){
+        dragging = true;
+        startX = e.clientX;
+        carouselWidth = carousel.offsetWidth || 1;
+        track.style.transition = 'none';
+      }
+      function onMove(e){
+        if(!dragging) return;
+        deltaX = e.clientX - startX;
+        var basePercent = currentTab === 'language' ? -50 : 0;
+        var movePercent = (deltaX / carouselWidth) * 50;
+        var next = Math.max(-50, Math.min(0, basePercent + movePercent));
+        track.style.transform = 'translateX(' + next + '%)';
+      }
+      function onUp(){
+        if(!dragging) return;
+        dragging = false;
+        track.style.transition = '';
+        var threshold = carouselWidth * 0.18;
+        var target = currentTab;
+        if(deltaX < -threshold){ target = 'language'; }
+        else if(deltaX > threshold){ target = 'math'; }
+        deltaX = 0;
+        var btn = document.querySelector('.segment[data-tab="' + target + '"]');
+        selectTab(btn);
+      }
+
+      carousel.addEventListener('pointerdown', onDown);
+      carousel.addEventListener('pointermove', onMove);
+      carousel.addEventListener('pointerup', onUp);
+      carousel.addEventListener('pointerleave', onUp);
+      carousel.addEventListener('pointercancel', onUp);
+    })();
+  </script>
+</body>
+</html>
