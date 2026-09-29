@@ -15,7 +15,6 @@ import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.unit.Dp
-import androidx.compose.ui.unit.dp
 import com.ravibhaiya.quizzen.ui.theme.primaryGradient
 import com.ravibhaiya.quizzen.ui.theme.quizzen
 
@@ -27,19 +26,11 @@ fun BlobLetter(
     size: Dp,
     textStyle: TextStyle,
     modifier: Modifier = Modifier,
-    elevated: Boolean = false,
 ) {
     val gradient = primaryGradient(MaterialTheme.colorScheme.primary, MaterialTheme.quizzen.tone30)
     Box(
         modifier = modifier
             .size(size)
-            .cssShadow(
-                color = if (elevated) MaterialTheme.quizzen.tone30.copy(alpha = 0.55f) else Color.Transparent,
-                offsetY = 8.dp,
-                blur = 16.dp,
-                spread = (-5).dp,
-                shape = shape,
-            )
             .background(gradient, shape),
         contentAlignment = Alignment.Center,
     ) {

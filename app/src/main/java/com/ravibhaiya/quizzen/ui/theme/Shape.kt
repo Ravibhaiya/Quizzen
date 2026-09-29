@@ -38,9 +38,6 @@ class BlobShape(
 }
 
 object QuizzenShapes {
-    /** Logo: 34% 66% 60% 40% / 44% 36% 64% 56% */
-    val Logo = BlobShape(.34f, .66f, .60f, .40f, .44f, .36f, .64f, .56f)
-
     /** Hero icon: 32% 68% 62% 38% / 46% 38% 62% 54% */
     val Hero = BlobShape(.32f, .68f, .62f, .38f, .46f, .38f, .62f, .54f)
 

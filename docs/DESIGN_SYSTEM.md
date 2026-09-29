@@ -39,7 +39,7 @@ Signature gradient: `linear-gradient(140deg, primary, tone30)` = `primaryGradien
 |---|---|---|---|---|
 | displayLarge | 49.6 sp (3.1rem) | 800 | -0.02em | Practice question (auto-shrinks to 24 sp in 1.6 sp steps) |
 | headlineLarge | 24.8 sp | 800 | -0.02em | App name (-0.03em), hero title, screen titles (24 sp) |
-| headlineMedium | 20.8 sp | 800 | -0.02em | Settings title, logo letter |
+| headlineMedium | 20.8 sp | 800 | -0.02em | Settings title |
 | titleLarge | 19.2 sp | 800 | -0.01em | Section titles, tile letters (700), table cells (21.6 sp) |
 | titleMedium | 17.6 sp | 800 | 0 | Primary button label, "Timer" (700) |
 | titleSmall | 16.96 sp | 700 | -0.01em | Tile titles (line height 20 sp) |
@@ -62,7 +62,7 @@ Signature gradient: `linear-gradient(140deg, primary, tone30)` = `primaryGradien
 | Segmented control, primary button, timer chip | pill |
 
 Organic blobs (`QuizzenShapes`, four elliptical corners = CSS `border-radius` with `/`):
-Logo `34% 66% 60% 40% / 44% 36% 64% 56%`, Hero `32% 68% 62% 38% / 46% 38% 62% 54%`,
+Hero `32% 68% 62% 38% / 46% 38% 62% 54%`,
 BlobA `38% 62% 55% 45% / 48% 40% 60% 52%`, BlobB `62% 38% 45% 55% / 40% 55% 45% 60%`.
 
 ## Elevation / shadow
@@ -74,7 +74,7 @@ mask (needs API 28+; below that it degrades to a plain elevation shadow, or noth
 | Element | CSS `box-shadow` (offsetY blur spread color) |
 |---|---|
 | Hero card | `18 32 -14` tone30 @ 65% |
-| Logo | `8 16 -5` tone30 @ 55% |
+| Header logo | `8 16 -5` tone30 @ 55% (rounded 23%) |
 | Segmented indicator | `8 16 -5` primary @ 60% |
 | Primary button | `14 26 -12` primary @ 60% |
 | Selected chip | `8 16 -6` primary @ 55% (animated 150 ms) |
@@ -98,6 +98,16 @@ glow circles (280 dp top-right, 220 dp bottom-left, primaryContainer @ 35%, edge
 - Timer chip pulses 1.0 -> 1.1 (1 s cycle) when <= 5 s remain.
 - Wrong answer: 400 ms horizontal shake, keyframes -3, 5, -9, 9, -9, 9, -9, 5, -3, 0 dp.
 - Answer field focus: fills with `surface`, 4 dp primary@20% ring.
+
+## Logo, launcher icon and splash
+
+Single source: `design/quizzen-logo.svg` (rounded-square orange-to-red gradient, white "Quizzen" wordmark, yellow dot and Q
+tail, bottom swoosh). `python3 tools/generate_logo_drawables.py` turns it into vector drawables (generated, never edited by
+hand): `ic_logo` (header, 48 dp), `ic_splash_icon` (art at 136 dp centred in the 288 dp splash canvas, which keeps it inside
+the splash icon's circular safe zone), `ic_launcher_background` / `ic_launcher_foreground` (wordmark 64 dp wide inside the 66 dp
+adaptive-icon safe zone) and `ic_launcher_monochrome` (Android 13+ themed icons).
+The generated art matches the SVG exactly except for the soft blurred drop shadow under the letters: `VectorDrawable` has no
+blur filter, so it is omitted. The splash background is `window_background` (the app surface colour) for a seamless hand-off.
 
 ## Icons
 

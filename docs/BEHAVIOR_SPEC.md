@@ -2,11 +2,16 @@
 
 Normative description of the app. "Web" = the prototype in `docs/reference/quizzen-web-reference.html`.
 
+## Launch
+- System splash screen (Android 12+) / compat splash (older): the logo centred on the app background colour, then the app.
+- Launcher icon is an adaptive icon (wordmark on the logo gradient, plus a monochrome layer for themed icons).
+
 ## Theme
 - Light only. The system dark-mode setting is ignored (status/navigation bar icons stay dark; OEM force-dark is opted out).
 
 ## Home
-- Header: logo blob "Q" + "Quizzen" title, Settings icon button (opens settings sheet).
+- Header: the Quizzen logo (`ic_logo`, 48 dp) + "Quizzen" title, Settings icon button (opens settings sheet).
+- Hero-card titles ("Multiply", "Vocabulary") are always a single line: the text shrinks (24.8 sp down to 14 sp) instead of wrapping.
 - Segmented control: **Math** | **Language**. Tap animates the pager; swiping the pager moves the indicator with the finger.
 - **Math** page: hero "Multiply" (-> Multiply config); tiles "Tables Practice" (-> Tables config), "Powers & Roots",
   "Fraction & Percentage", "Alphabet Reasoning" (placeholders).
@@ -70,6 +75,8 @@ Normative description of the app. "Web" = the prototype in `docs/reference/quizz
 | Feedback could be re-triggered while visible | Input locked while visible | Avoids stacked timeouts (web bug). |
 | Timer kept running in a hidden tab | Pauses in background | Native lifecycle. |
 | No auto-focus | Answer field auto-focused | Faster practice with the number pad. |
+| Header logo was a gradient blob with a "Q" | The owner's `quizzen-logo.svg` (header, launcher icon, splash) | Owner request. |
+| Hero titles could wrap ("Vocabula/ry" on narrow phones) | Title shrinks to stay on one line | Owner request; same idea as the practice question auto-fit. |
 | Followed `prefers-color-scheme` (light + dark) | Light only | Product decision: the app is light-only. |
 | Haptics toggle was not persisted or connected | Persisted (DataStore) and applied everywhere, with a distinct effect per action | Real feature. |
 | Option chips had 22 px side padding | 18 dp side padding | On 360 dp phones three chips need 326 dp but only 324 dp are available, so "4 Digits" wrapped and left a gap on the right. With 18 dp, three chips fit per row (2, 3, 4 Digits, then 5 Digits). |

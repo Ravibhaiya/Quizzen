@@ -18,6 +18,8 @@ import androidx.compose.ui.unit.sp
 /**
  * Single-line text that shrinks from [maxFontSize] toward [minFontSize] in [step] increments until it fits
  * the available width (port of `fitQuestionText()` in the web original). Hidden until fitted to avoid flicker.
+ * Used for the practice question (centered) and the hero-card titles (start aligned), so long words such as
+ * "Vocabulary" never wrap.
  */
 @Composable
 fun FitText(
@@ -27,6 +29,7 @@ fun FitText(
     minFontSize: TextUnit,
     step: TextUnit,
     modifier: Modifier = Modifier,
+    textAlign: TextAlign = TextAlign.Center,
 ) {
     var fontSize by remember(text) { mutableStateOf(maxFontSize) }
     var ready by remember(text) { mutableStateOf(false) }
@@ -38,7 +41,7 @@ fun FitText(
             .drawWithContent { if (ready) drawContent() },
         style = style,
         fontSize = fontSize,
-        textAlign = TextAlign.Center,
+        textAlign = textAlign,
         maxLines = 1,
         softWrap = false,
         onTextLayout = { result ->
