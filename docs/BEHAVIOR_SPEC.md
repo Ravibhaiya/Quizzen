@@ -43,7 +43,17 @@ Normative description of the app. "Web" = the prototype in `docs/reference/quizz
 - Countdown reaching 0 = **Time's Up**.
 - Feedback bottom sheet (green / red / orange) for 1.7 s, then slides away; 250 ms later a new question appears, the input is
   cleared, and the timer restarts from the configured value. Input and Check are ignored while the sheet is showing.
-- Haptics (if enabled): confirm on correct, reject on incorrect/timeout, tick on selection changes and tab taps.
+- Haptics (only when the Haptic Feedback setting is on; played through the device vibrator, so it does not depend on the
+  system "touch vibration" toggle). Every kind of action has its own sensation:
+
+  | Effect | When |
+  |---|---|
+  | Tick (light) | selecting a digit option or table number, switching Math/Language, turning haptics off, "Coming soon" taps |
+  | Click (medium) | opening Multiply/Tables/Settings, Back, Select All, turning haptics on |
+  | Heavy click (firm thump) | Start |
+  | Success (two rising taps) | correct answer |
+  | Error (three hard buzzes) | wrong answer |
+  | Timeout (one long softer buzz) | time is up |
 - Timer pauses while the app is in the background and resumes without resetting.
 - Back returns to the configuration screen.
 
@@ -61,4 +71,5 @@ Normative description of the app. "Web" = the prototype in `docs/reference/quizz
 | Timer kept running in a hidden tab | Pauses in background | Native lifecycle. |
 | No auto-focus | Answer field auto-focused | Faster practice with the number pad. |
 | Followed `prefers-color-scheme` (light + dark) | Light only | Product decision: the app is light-only. |
-| Haptics toggle was not persisted or connected | Persisted (DataStore) and applied everywhere | Real feature. |
+| Haptics toggle was not persisted or connected | Persisted (DataStore) and applied everywhere, with a distinct effect per action | Real feature. |
+| Option chips had 22 px side padding | 18 dp side padding | On 360 dp phones three chips need 326 dp but only 324 dp are available, so "4 Digits" wrapped and left a gap on the right. With 18 dp, three chips fit per row (2, 3, 4 Digits, then 5 Digits). |

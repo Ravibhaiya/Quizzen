@@ -51,7 +51,10 @@ fun TablesConfigScreen(
                     .verticalScroll(rememberScrollState())
                     .padding(start = 18.dp, end = 18.dp, top = 24.dp, bottom = 34.dp),
             ) {
-                ScreenHeader(title = stringResource(R.string.tables_title), onBack = onBack)
+                ScreenHeader(
+                    title = stringResource(R.string.tables_title),
+                    onBack = { haptics.click(); onBack() },
+                )
 
                 Text(
                     text = stringResource(R.string.select_numbers_to_practice),
@@ -64,7 +67,7 @@ fun TablesConfigScreen(
                     SelectAllButton(
                         label = stringResource(R.string.select_all),
                         active = state.allSelected,
-                        onClick = { haptics.tick(); viewModel.toggleAll() },
+                        onClick = { haptics.click(); viewModel.toggleAll() },
                     )
                 }
 
@@ -95,7 +98,7 @@ fun TablesConfigScreen(
                 onTimerChange = viewModel.timer::onTextChanged,
                 onTimerFocusLost = viewModel.timer::onFocusLost,
                 startEnabled = state.selected.isNotEmpty(),
-                onStart = { onStart(viewModel.buildConfig()) },
+                onStart = { haptics.heavyClick(); onStart(viewModel.buildConfig()) },
             )
         }
     }

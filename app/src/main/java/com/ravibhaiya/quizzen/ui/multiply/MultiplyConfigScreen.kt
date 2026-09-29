@@ -46,7 +46,10 @@ fun MultiplyConfigScreen(
                     .verticalScroll(rememberScrollState())
                     .padding(start = 18.dp, end = 18.dp, top = 24.dp, bottom = 34.dp),
             ) {
-                ScreenHeader(title = stringResource(R.string.multiply_title), onBack = onBack)
+                ScreenHeader(
+                    title = stringResource(R.string.multiply_title),
+                    onBack = { haptics.click(); onBack() },
+                )
 
                 Text(
                     text = stringResource(R.string.configure_challenge),
@@ -72,7 +75,7 @@ fun MultiplyConfigScreen(
                 onTimerChange = viewModel.timer::onTextChanged,
                 onTimerFocusLost = viewModel.timer::onFocusLost,
                 startEnabled = true,
-                onStart = { onStart(viewModel.buildConfig()) },
+                onStart = { haptics.heavyClick(); onStart(viewModel.buildConfig()) },
             )
         }
     }

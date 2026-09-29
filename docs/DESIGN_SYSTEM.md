@@ -44,7 +44,7 @@ Signature gradient: `linear-gradient(140deg, primary, tone30)` = `primaryGradien
 | titleMedium | 17.6 sp | 800 | 0 | Primary button label, "Timer" (700) |
 | titleSmall | 16.96 sp | 700 | -0.01em | Tile titles (line height 20 sp) |
 | bodyLarge | 16.8 sp | 400 | 0 | Section label; segmented labels use 16 sp |
-| bodyMedium | 16.3 sp | 600 | 0 | Chips (16.32 sp / 700), settings rows (16.64 sp) |
+| bodyMedium | 16.3 sp | 600 | 0 | Chips (16.32 sp / 700, 18 dp side padding), settings rows (16.64 sp) |
 | labelLarge | 15.2 sp | 800 | 0 | Timer chip |
 | labelSmall | 10.56 sp | 700 | +0.05em | "SEC" unit |
 
@@ -88,7 +88,7 @@ mask (needs API 28+; below that it degrades to a plain elevation shadow, or noth
 ## Layout
 
 Screen padding 18 dp horizontal, 24 dp top; bento gap 14 dp; page spacing 18 dp; content max width 440 dp; two decorative
-glow circles (280 dp top-right, 220 dp bottom-left, primaryContainer @ 35%, blurred 10 dp on API 31+).
+glow circles (280 dp top-right, 220 dp bottom-left, primaryContainer @ 35%, edge softened like CSS `blur(10px)` with a radial gradient, identical on every API level).
 
 ## Motion
 

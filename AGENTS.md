@@ -36,21 +36,24 @@ conservative; do not claim verification you did not do.
    (extra tokens), `MaterialTheme.typography`, and `QuizzenShapes`. New tokens go in `ui/theme/` AND `docs/DESIGN_SYSTEM.md`.
 2. **Light theme only.** Never add a dark palette, `values-night`, `isSystemInDarkTheme()` or a theme switch unless the
    owner explicitly changes this decision (then update all docs).
-3. **Shadows** use `Modifier.cssShadow(...)` with the values in `docs/DESIGN_SYSTEM.md`; never `Modifier.shadow`.
+3. **Haptics** go through `Haptics` (`rememberHaptics(enabled)`) with a semantic `HapticEffect`; never call
+   `View.performHapticFeedback` or `Vibrator` directly. Give each new kind of action its own effect and update the table in
+   `docs/BEHAVIOR_SPEC.md`. Backgrounds/decoration must look the same on every API level (no `Modifier.blur`).
+4. **Shadows** use `Modifier.cssShadow(...)` with the values in `docs/DESIGN_SYSTEM.md`; never `Modifier.shadow`.
    All Material color roles are set in `ui/theme/Color.kt`; never introduce a default/baseline role or a literal color.
-4. **User-visible strings** go in `res/values/strings.xml`. Never inline literals in composables (the single-letter
+5. **User-visible strings** go in `res/values/strings.xml`. Never inline literals in composables (the single-letter
    badges "M", "T", "P", "F", "A", "V" are decoration, not copy).
-5. **Interactions**: tappable surfaces use `bouncyClickable` / `pressScale` (scale to 0.96, 0.88 for small icon buttons)
+6. **Interactions**: tappable surfaces use `bouncyClickable` / `pressScale` (scale to 0.96, 0.88 for small icon buttons)
    plus the default ripple. Buttons must have a >= 48 dp touch target or a visually larger container.
-6. **Motion** uses `EmphasizedEasing` (cubic-bezier .22, 1, .36, 1). Standard durations: 380 ms screen enter, 350 ms
+7. **Motion** uses `EmphasizedEasing` (cubic-bezier .22, 1, .36, 1). Standard durations: 380 ms screen enter, 350 ms
    sheets, 200 ms color/selection changes, 150 ms outgoing screens.
-7. **Accessibility**: every icon-only control needs a `contentDescription` from strings; toggles/selection expose
+8. **Accessibility**: every icon-only control needs a `contentDescription` from strings; toggles/selection expose
    `Role` + `selected` semantics; feedback sheet is an assertive live region. Layouts must survive 200% font scale
    (use `FlowRow`, scrolling containers, `FitText`; avoid fixed heights on text).
-8. **Insets**: screens are edge-to-edge. Use `statusBarsPadding()` at the top, `navigationBars` insets at the bottom, and
+9. **Insets**: screens are edge-to-edge. Use `statusBarsPadding()` at the top, `navigationBars` insets at the bottom, and
    `imePadding()` on screens with text input. Content is capped at `ContentMaxWidth` (440 dp) via `QuizzenScreen`.
-9. **Every screen root is wrapped in `QuizzenScreen`** (surface background + glow circles + max width).
-10. **No experimental Material 3 Expressive APIs** are used; the expressive look is built from custom shapes/motion so the
+10. **Every screen root is wrapped in `QuizzenScreen`** (surface background + glow circles + max width).
+11. **No experimental Material 3 Expressive APIs** are used; the expressive look is built from custom shapes/motion so the
    app compiles against stable Material 3. If you adopt official expressive components later, do it in one commit and
    update `docs/DESIGN_SYSTEM.md`.
 
