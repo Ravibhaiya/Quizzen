@@ -14,10 +14,11 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.BlurredEdgeTreatment
-import androidx.compose.ui.draw.blur
 import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.unit.dp
 
 /** Max content width. Mirrors the web original's 440px column, keeping tablets/foldables tidy. */
@@ -56,11 +57,34 @@ fun QuizzenScreen(
 @Composable
 private fun GlowBackground() {
     val color = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.35f)
-    // CSS `filter: blur(10px)`; RenderEffect blur is available on API 31+, older devices get crisp circles.
-    Canvas(Modifier.fillMaxSize().blur(10.dp, BlurredEdgeTreatment.Unbounded)) {
-        // .glow.a: 280px circle at top:-140 right:-120
-        drawCircle(color, radius = 140.dp.toPx(), center = Offset(size.width + 120.dp.toPx() - 140.dp.toPx(), 0f))
-        // .glow.b: 220px circle at bottom:-110 left:-100
-        drawCircle(color, radius = 110.dp.toPx(), center = Offset(-100.dp.toPx() + 110.dp.toPx(), size.height))
+    Canvas(Modifier.fillMaxSize()) {
+        // .glow.a: 280px circle at top:-140 right:-120 -> centre 20dp inside the right edge, on the top edge
+        drawSoftDisc(color, radius = 140.dp.toPx(), center = Offset(size.width - 20.dp.toPx(), 0f))
+        // .glow.b: 220px circle at bottom:-110 left:-100 -> centre 10dp inside the left edge, on the bottom edge
+        drawSoftDisc(color, radius = 110.dp.toPx(), center = Offset(10.dp.toPx(), size.height))
     }
+}
+
+/**
+ * Disc with the soft edge of CSS `filter: blur(10px)` (Gaussian sigma 10). Drawn as a radial gradient following the
+ * Gaussian edge profile, so it looks the same on every API level (`Modifier.blur` only exists on API 31+, and older
+ * phones showed a crisp, much more visible circle).
+ */
+private fun DrawScope.drawSoftDisc(color: Color, radius: Float, center: Offset) {
+    val sigma = 10.dp.toPx()
+    val outer = radius + 2f * sigma
+    // Alpha of a Gaussian-blurred edge at -2s, -1s, 0, +1s from the original edge: 97.7%, 84.1%, 50%, 15.9%, then 0.
+    val brush = Brush.radialGradient(
+        colorStops = arrayOf(
+            0f to color,
+            (radius - 2f * sigma) / outer to color.copy(alpha = color.alpha * 0.977f),
+            (radius - sigma) / outer to color.copy(alpha = color.alpha * 0.841f),
+            radius / outer to color.copy(alpha = color.alpha * 0.5f),
+            (radius + sigma) / outer to color.copy(alpha = color.alpha * 0.159f),
+            1f to color.copy(alpha = 0f),
+        ),
+        center = center,
+        radius = outer,
+    )
+    drawCircle(brush = brush, radius = outer, center = center)
 }

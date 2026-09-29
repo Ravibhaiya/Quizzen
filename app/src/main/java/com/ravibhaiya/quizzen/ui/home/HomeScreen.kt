@@ -62,6 +62,7 @@ fun HomeScreen(
     val confirmHaptics = rememberHaptics(true)
     val comingSoon = stringResource(R.string.coming_soon)
     val notify: () -> Unit = {
+        haptics.tick()
         scope.launch {
             snackbarHostState.currentSnackbarData?.dismiss()
             snackbarHostState.showSnackbar(comingSoon)
@@ -76,7 +77,7 @@ fun HomeScreen(
     QuizzenScreen {
         Column(Modifier.fillMaxSize().statusBarsPadding()) {
             Column(Modifier.padding(start = 18.dp, end = 18.dp, top = 24.dp)) {
-                HomeHeader(onSettings = { showSettings = true })
+                HomeHeader(onSettings = { haptics.click(); showSettings = true })
                 Spacer(Modifier.height(22.dp))
                 SegmentedControl(
                     items = tabs,
@@ -108,7 +109,11 @@ fun HomeScreen(
                     verticalArrangement = Arrangement.spacedBy(14.dp),
                 ) {
                     if (page == 0) {
-                        MathPage(onOpenMultiply, onOpenTables, notify)
+                        MathPage(
+                            onOpenMultiply = { haptics.click(); onOpenMultiply() },
+                            onOpenTables = { haptics.click(); onOpenTables() },
+                            onComingSoon = notify,
+                        )
                     } else {
                         LanguagePage(notify)
                     }
@@ -129,7 +134,7 @@ fun HomeScreen(
             hapticEnabled = hapticEnabled,
             onHapticChange = { enabled ->
                 onHapticChange(enabled)
-                if (enabled) confirmHaptics.confirm()
+                if (enabled) confirmHaptics.click() else haptics.tick()
             },
             onDatabaseManager = {
                 showSettings = false

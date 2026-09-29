@@ -66,7 +66,7 @@ fun OptionChip(
                 onClick = onClick,
             )
             .semantics { this.selected = selected }
-            .padding(horizontal = 22.dp, vertical = 16.dp),
+            .padding(horizontal = 18.dp, vertical = 16.dp),
         contentAlignment = Alignment.Center,
     ) {
         Text(

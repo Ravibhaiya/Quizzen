@@ -86,8 +86,9 @@ fun PracticeScreen(
     // Haptic on result.
     LaunchedEffect(state.feedback) {
         when (state.feedback?.type) {
-            FeedbackType.Correct -> haptics.confirm()
-            FeedbackType.Incorrect, FeedbackType.Timeout -> haptics.reject()
+            FeedbackType.Correct -> haptics.success()
+            FeedbackType.Incorrect -> haptics.error()
+            FeedbackType.Timeout -> haptics.timeout()
             null -> Unit
         }
     }
@@ -132,7 +133,7 @@ fun PracticeScreen(
             ) {
                 ScreenHeader(
                     title = stringResource(R.string.practice_title),
-                    onBack = onBack,
+                    onBack = { haptics.click(); onBack() },
                     trailing = { TimerChip(seconds = state.remainingSeconds, low = state.isTimerLow) },
                 )
 
