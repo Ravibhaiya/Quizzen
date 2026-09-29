@@ -13,9 +13,9 @@ jobs:
   build:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
-      - uses: actions/setup-java@v4
+      - uses: actions/setup-java@v5
         with:
           distribution: temurin
           java-version: 17
@@ -23,7 +23,18 @@ jobs:
       - uses: gradle/actions/setup-gradle@v4
 
       - name: Unit tests, lint and debug build
-        run: ./gradlew testDebugUnitTest lintDebug assembleDebug --stacktrace
+        run: ./gradlew testDebugUnitTest lintDebug assembleDebug --stacktrace --console=plain 2>&1 | tee build.log
+
+      - name: Surface build errors as annotations
+        if: failure()
+        run: |
+          python3 - <<'PY'
+          import re
+          lines = open('build.log').read().splitlines()
+          keep = [l for l in lines if re.search(r'^e: |^\S+\.kt:\d+|FAILED|What went wrong|Execution failed|Lint found|error:|^> ', l)]
+          msg = "\n".join(keep[:80]).replace('%', '%25').replace('\r', '%0D').replace('\n', '%0A')
+          print("::error title=Gradle::" + msg)
+          PY
 
       - name: Upload debug APK
         uses: actions/upload-artifact@v4
