@@ -1,6 +1,7 @@
 package com.ravibhaiya.quizzen.ui.theme
 
 import androidx.compose.material3.Typography
+import androidx.compose.ui.text.ExperimentalTextApi
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.Font
 import androidx.compose.ui.text.font.FontFamily
@@ -11,6 +12,7 @@ import androidx.compose.ui.unit.sp
 import com.ravibhaiya.quizzen.R
 
 /** Plus Jakarta Sans variable font (weight axis). Requires API 26+, which is our minSdk. */
+@OptIn(ExperimentalTextApi::class)
 val PlusJakartaSans = FontFamily(
     listOf(
         FontWeight.Normal,

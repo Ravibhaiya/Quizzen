@@ -13,7 +13,6 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 
@@ -40,7 +39,7 @@ fun QuizzenSwitch(checked: Boolean, modifier: Modifier = Modifier) {
             modifier = Modifier
                 .offset(x = thumbOffset)
                 .size(24.dp)
-                .shadow(2.dp, CircleShape)
+                .cssShadow(Color.Black.copy(alpha = 0.2f), offsetY = 2.dp, blur = 5.dp, spread = 0.dp, shape = CircleShape)
                 .background(Color.White, CircleShape),
         )
     }

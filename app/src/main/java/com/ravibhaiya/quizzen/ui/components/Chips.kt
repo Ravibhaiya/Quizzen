@@ -19,7 +19,6 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.selected
 import androidx.compose.ui.semantics.semantics
@@ -48,13 +47,16 @@ fun OptionChip(
         animationSpec = tween(200),
         label = "chipContent",
     )
+    val chipShadow by animateColorAsState(
+        targetValue = primary.copy(alpha = if (selected) 0.55f else 0f),
+        animationSpec = tween(150),
+        label = "chipShadow",
+    )
     val source = remember { MutableInteractionSource() }
     Box(
         modifier = modifier
             .pressScale(source)
-            .then(
-                if (selected) Modifier.shadow(6.dp, shape, ambientColor = primary, spotColor = primary) else Modifier,
-            )
+            .cssShadow(chipShadow, offsetY = 8.dp, blur = 16.dp, spread = (-6).dp, shape = shape)
             .clip(shape)
             .background(container)
             .clickable(
@@ -95,15 +97,18 @@ fun NumberCell(
         animationSpec = tween(150),
         label = "cellContent",
     )
+    val cellShadow by animateColorAsState(
+        targetValue = primary.copy(alpha = if (selected) 0.55f else 0f),
+        animationSpec = tween(150),
+        label = "cellShadow",
+    )
     val source = remember { MutableInteractionSource() }
     Box(
         modifier = modifier
             .fillMaxWidth()
             .aspectRatio(1f / 0.95f)
             .pressScale(source)
-            .then(
-                if (selected) Modifier.shadow(5.dp, shape, ambientColor = primary, spotColor = primary) else Modifier,
-            )
+            .cssShadow(cellShadow, offsetY = 8.dp, blur = 16.dp, spread = (-8).dp, shape = shape)
             .clip(shape)
             .background(container)
             .clickable(

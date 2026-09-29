@@ -36,7 +36,6 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.drawBehind
-import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.geometry.CornerRadius
@@ -63,9 +62,11 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import com.ravibhaiya.quizzen.R
 import com.ravibhaiya.quizzen.domain.FeedbackType
 import com.ravibhaiya.quizzen.ui.components.FitText
+import com.ravibhaiya.quizzen.ui.components.NeutralShadowColor
 import com.ravibhaiya.quizzen.ui.components.PrimaryButton
 import com.ravibhaiya.quizzen.ui.components.QuizzenScreen
 import com.ravibhaiya.quizzen.ui.components.ScreenHeader
+import com.ravibhaiya.quizzen.ui.components.cssShadow
 import com.ravibhaiya.quizzen.ui.components.rememberHaptics
 
 @Composable
@@ -255,7 +256,8 @@ private fun AnswerField(
                     )
                 }
             }
-            .shadow(2.dp, shape)
+            .cssShadow(NeutralShadowColor.copy(alpha = 0.05f), offsetY = 2.dp, blur = 8.dp, spread = 0.dp, shape = shape)
+            .cssShadow(primary.copy(alpha = 0.4f * ringAlpha), offsetY = 10.dp, blur = 20.dp, spread = (-10).dp, shape = shape)
             .background(container, shape),
         decorationBox = { inner ->
             Box(Modifier.fillMaxWidth().padding(22.dp), contentAlignment = Alignment.Center) {

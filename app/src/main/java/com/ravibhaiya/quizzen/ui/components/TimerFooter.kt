@@ -35,6 +35,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.RectangleShape
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.res.stringResource
@@ -63,9 +64,16 @@ fun TimerFooter(
     modifier: Modifier = Modifier,
 ) {
     Surface(
-        modifier = modifier.fillMaxWidth(),
+        modifier = modifier
+            .fillMaxWidth()
+            .cssShadow(
+                NeutralShadowColor.copy(alpha = 0.18f),
+                offsetY = (-6).dp,
+                blur = 18.dp,
+                spread = (-14).dp,
+                shape = RectangleShape,
+            ),
         color = MaterialTheme.colorScheme.surface,
-        shadowElevation = 8.dp,
     ) {
         Column(
             modifier = Modifier

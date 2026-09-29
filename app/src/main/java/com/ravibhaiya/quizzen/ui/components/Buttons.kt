@@ -24,7 +24,6 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.font.FontWeight
@@ -47,7 +46,7 @@ fun PrimaryButton(
             .fillMaxWidth()
             .alpha(if (enabled) 1f else 0.45f)
             .pressScale(source)
-            .shadow(10.dp, CircleShape, ambientColor = primary, spotColor = primary)
+            .cssShadow(primary.copy(alpha = 0.6f), offsetY = 14.dp, blur = 26.dp, spread = (-12).dp, shape = CircleShape)
             .clip(CircleShape)
             .background(primary)
             .clickable(

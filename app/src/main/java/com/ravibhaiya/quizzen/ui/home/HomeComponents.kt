@@ -25,7 +25,6 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawBehind
-import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.stringResource
@@ -35,7 +34,9 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.ravibhaiya.quizzen.R
 import com.ravibhaiya.quizzen.ui.components.BlobLetter
+import com.ravibhaiya.quizzen.ui.components.NeutralShadowColor
 import com.ravibhaiya.quizzen.ui.components.QuizzenIcons
+import com.ravibhaiya.quizzen.ui.components.cssShadow
 import com.ravibhaiya.quizzen.ui.components.pressScale
 import com.ravibhaiya.quizzen.ui.theme.BlobShape
 import com.ravibhaiya.quizzen.ui.theme.QuizzenShapes
@@ -57,7 +58,7 @@ fun HeroCard(
         modifier = modifier
             .fillMaxWidth()
             .pressScale(source)
-            .shadow(14.dp, shape, ambientColor = tone30, spotColor = tone30)
+            .cssShadow(tone30.copy(alpha = 0.65f), offsetY = 18.dp, blur = 32.dp, spread = (-14).dp, shape = shape)
             .clip(shape)
             .background(heroGradient(MaterialTheme.colorScheme.primary, tone30))
             .drawBehind {
@@ -124,7 +125,7 @@ fun FeatureTile(
         modifier = modifier
             .aspectRatio(1f / 0.98f)
             .pressScale(source)
-            .shadow(2.dp, shape)
+            .cssShadow(NeutralShadowColor.copy(alpha = 0.05f), offsetY = 2.dp, blur = 6.dp, spread = 0.dp, shape = shape)
             .clip(shape)
             .background(MaterialTheme.colorScheme.surfaceContainer)
             .clickable(

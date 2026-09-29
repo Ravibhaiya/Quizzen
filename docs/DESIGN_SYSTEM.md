@@ -16,8 +16,14 @@ Ported 1:1 from the CSS custom properties of the web prototype. `rem` values ass
 | onSurface | `#211710` | `#F1E6DB` |
 | onSurfaceVariant | `#5C4A3B` | `#D3C2B3` |
 | quizzen.tone30 (gradient end) | `#B85E1E` | `#F0964F` |
-| quizzen.tone40 / 50 / 60 / 70 | `#EA7A31 #F0964F #F4B178 #F8CBA3` | `#EE8D42 #F2A464 #F6BE8F #FAD5B8` |
 | quizzen.success / error / warning | `#1FAE6A / #E14C4C / #F2924B` (same in both themes) | |
+
+The web CSS also defines tone40-70 and dark-on-light, but no rule uses them, so they are intentionally not ported.
+All 14 tokens above were verified against the CSS of `docs/reference/quizzen-web-reference.html`.
+
+Material roles the web design never defines (secondary, tertiary, inverse*, outline*, extra surface containers) reuse these
+same tokens (see `ui/theme/Color.kt`) so no component can fall back to the baseline purple palette.
+`QuizzenScreen` sets `LocalContentColor` to `onSurface`.
 
 Signature gradient: `linear-gradient(140deg, primary, tone30)` = `primaryGradient()`; hero card uses 135deg = `heroGradient()`.
 `cssLinearGradient()` reproduces CSS angle semantics exactly.
@@ -56,14 +62,28 @@ BlobA `38% 62% 55% 45% / 48% 40% 60% 52%`, BlobB `62% 38% 45% 55% / 40% 55% 45% 
 
 ## Elevation / shadow
 
-Colored shadows use `Modifier.shadow(..., ambientColor, spotColor)` (colored on API 28+, neutral on 26-27):
-hero (tone30, 14 dp), logo (tone30, 6 dp), selected chip/cell/segment indicator/primary button (primary, 5-10 dp),
-tiles (2 dp neutral), footer bar (8 dp upward), feedback sheet (14 dp).
+Shadows are CSS-accurate: `Modifier.cssShadow(color, offsetY, blur, spread, shape)` blurs the element outline with a Gaussian
+mask (needs API 28+; below that it degrades to a plain elevation shadow, or nothing for upward shadows). Never use
+`Modifier.shadow`, it cannot offset, spread, soften or tint a shadow the way the web design does.
+
+| Element | CSS `box-shadow` (offsetY blur spread color) |
+|---|---|
+| Hero card | `18 32 -14` tone30 @ 65% |
+| Logo | `8 16 -5` tone30 @ 55% |
+| Segmented indicator | `8 16 -5` primary @ 60% |
+| Primary button | `14 26 -12` primary @ 60% |
+| Selected chip | `8 16 -6` primary @ 55% (animated 150 ms) |
+| Selected number cell | `8 16 -8` primary @ 55% (animated 150 ms) |
+| Feature tile | `2 6 0` `rgba(20,18,32,.05)` |
+| Answer field | `2 8 0` `rgba(20,18,32,.05)`; focused adds `10 20 -10` primary @ 40% + 4 dp ring primary @ 20% |
+| Footer bar | `-6 18 -14` `rgba(20,18,32,.18)` |
+| Feedback sheet | `-14 32 -12` black @ 28% |
+| Switch thumb | `2 5 0` black @ 20% |
 
 ## Layout
 
 Screen padding 18 dp horizontal, 24 dp top; bento gap 14 dp; page spacing 18 dp; content max width 440 dp; two decorative
-glow circles (280 dp top-right, 220 dp bottom-left, primaryContainer @ 35%).
+glow circles (280 dp top-right, 220 dp bottom-left, primaryContainer @ 35%, blurred 10 dp on API 31+).
 
 ## Motion
 
