@@ -57,6 +57,15 @@ conservative; do not claim verification you did not do.
    app compiles against stable Material 3. If you adopt official expressive components later, do it in one commit and
    update `docs/DESIGN_SYSTEM.md`.
 
+## Branding assets
+
+- The logo source of truth is `design/quizzen-logo.svg`. To change the logo, replace that file and run
+  `python3 tools/generate_logo_drawables.py`; commit the regenerated `ic_logo`, `ic_splash_icon`, `ic_launcher_*` drawables.
+  Never hand-edit those generated files.
+- Header logo = `R.drawable.ic_logo`. Launch screen = `Theme.Quizzen.Splash` + `installSplashScreen()` in `MainActivity`
+  (keep `installSplashScreen()` before `super.onCreate`).
+- Hero-card titles use `FitText` so they never wrap; reuse it for any single-line heading that must not wrap.
+
 ## Behavior rules
 
 - `docs/BEHAVIOR_SPEC.md` is normative. If you change behavior, update the spec in the same change.

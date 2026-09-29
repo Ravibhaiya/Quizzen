@@ -2,5 +2,4 @@
 <resources>
     <!-- Window background shown before Compose draws (matches `surface`). -->
     <color name="window_background">#FFFAF6</color>
-    <color name="ic_launcher_background">#EA7A31</color>
 </resources>

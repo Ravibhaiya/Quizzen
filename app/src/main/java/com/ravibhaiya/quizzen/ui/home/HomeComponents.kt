@@ -29,11 +29,14 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.ravibhaiya.quizzen.R
 import com.ravibhaiya.quizzen.ui.components.BlobLetter
+import com.ravibhaiya.quizzen.ui.components.FitText
 import com.ravibhaiya.quizzen.ui.components.NeutralShadowColor
 import com.ravibhaiya.quizzen.ui.components.QuizzenIcons
 import com.ravibhaiya.quizzen.ui.components.cssShadow
@@ -93,10 +96,13 @@ fun HeroCard(
                 color = Color.White,
             )
         }
-        Text(
-            text = title,
-            style = MaterialTheme.typography.headlineLarge.copy(lineHeight = 27.sp),
-            color = Color.White,
+        FitText(
+            text = AnnotatedString(title),
+            style = MaterialTheme.typography.headlineLarge.copy(color = Color.White),
+            maxFontSize = 24.8.sp,
+            minFontSize = 14.sp,
+            step = 0.5.sp,
+            textAlign = TextAlign.Start,
             modifier = Modifier.weight(1f),
         )
         Box(

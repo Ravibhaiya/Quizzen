@@ -45,6 +45,8 @@ app/src/main/java/com/ravibhaiya/quizzen/
   ui/components/           reusable Compose building blocks (buttons, chips, segmented control, timer footer, ...)
   ui/home | multiply | tables | practice | settings     one package per feature (Screen + ViewModel)
   ui/navigation/           routes, argument codec, NavHost + transitions
+design/                    quizzen-logo.svg (logo source of truth)
+tools/                     generate_logo_drawables.py (SVG -> Android vector drawables)
 docs/                      ARCHITECTURE, DESIGN_SYSTEM, BEHAVIOR_SPEC, reference web prototype
 AGENTS.md                  rules for AI coding assistants (start here when changing code)
 ```

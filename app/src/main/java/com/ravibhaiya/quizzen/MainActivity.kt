@@ -7,6 +7,7 @@ import androidx.activity.SystemBarStyle
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.compose.runtime.getValue
+import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.ravibhaiya.quizzen.ui.navigation.QuizzenNavHost
@@ -15,6 +16,7 @@ import com.ravibhaiya.quizzen.ui.theme.QuizzenTheme
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
+        installSplashScreen() // must run before super.onCreate; swaps the launch theme for Theme.Quizzen
         // Light-only app: always use dark status/navigation bar icons, even when the system is in dark mode.
         enableEdgeToEdge(
             statusBarStyle = SystemBarStyle.light(Color.TRANSPARENT, Color.TRANSPARENT),

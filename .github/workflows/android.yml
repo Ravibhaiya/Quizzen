@@ -23,6 +23,11 @@ jobs:
 
       - uses: gradle/actions/setup-gradle@v4
 
+      - name: Check generated logo drawables are in sync with design/quizzen-logo.svg
+        run: |
+          python3 tools/generate_logo_drawables.py
+          git diff --exit-code -- app/src/main/res/drawable
+
       - name: Unit tests, lint and debug build
         run: ./gradlew testDebugUnitTest lintDebug assembleDebug --stacktrace
 
