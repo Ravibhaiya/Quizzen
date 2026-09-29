@@ -8,10 +8,14 @@ import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.widthIn
+import androidx.compose.material3.LocalContentColor
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.BlurredEdgeTreatment
+import androidx.compose.ui.draw.blur
 import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.unit.dp
@@ -28,21 +32,23 @@ fun QuizzenScreen(
     modifier: Modifier = Modifier,
     content: @Composable BoxScope.() -> Unit,
 ) {
-    Box(
-        modifier = modifier
-            .fillMaxSize()
-            .background(MaterialTheme.colorScheme.surface),
-        contentAlignment = Alignment.TopCenter,
-    ) {
+    CompositionLocalProvider(LocalContentColor provides MaterialTheme.colorScheme.onSurface) {
         Box(
-            modifier = Modifier
-                .fillMaxHeight()
-                .fillMaxWidth()
-                .widthIn(max = ContentMaxWidth)
-                .clipToBounds(),
+            modifier = modifier
+                .fillMaxSize()
+                .background(MaterialTheme.colorScheme.surface),
+            contentAlignment = Alignment.TopCenter,
         ) {
-            GlowBackground()
-            content()
+            Box(
+                modifier = Modifier
+                    .fillMaxHeight()
+                    .fillMaxWidth()
+                    .widthIn(max = ContentMaxWidth)
+                    .clipToBounds(),
+            ) {
+                GlowBackground()
+                content()
+            }
         }
     }
 }
@@ -50,7 +56,8 @@ fun QuizzenScreen(
 @Composable
 private fun GlowBackground() {
     val color = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.35f)
-    Canvas(Modifier.fillMaxSize()) {
+    // CSS `filter: blur(10px)`; RenderEffect blur is available on API 31+, older devices get crisp circles.
+    Canvas(Modifier.fillMaxSize().blur(10.dp, BlurredEdgeTreatment.Unbounded)) {
         // .glow.a: 280px circle at top:-140 right:-120
         drawCircle(color, radius = 140.dp.toPx(), center = Offset(size.width + 120.dp.toPx() - 140.dp.toPx(), 0f))
         // .glow.b: 220px circle at bottom:-110 left:-100

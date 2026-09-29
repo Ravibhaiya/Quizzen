@@ -23,7 +23,6 @@ import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.selected
@@ -72,7 +71,7 @@ fun SegmentedControl(
                         val step = with(density) { (segmentWidth + gap).toPx() }
                         IntOffset((position() * step).roundToInt(), 0)
                     }
-                    .shadow(6.dp, CircleShape, ambientColor = primary, spotColor = primary)
+                    .cssShadow(primary.copy(alpha = 0.6f), offsetY = 8.dp, blur = 16.dp, spread = (-5).dp, shape = CircleShape)
                     .background(primary, CircleShape),
             )
         }

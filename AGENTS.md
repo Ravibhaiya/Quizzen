@@ -34,19 +34,21 @@ conservative; do not claim verification you did not do.
 
 1. **Never hard-code colors, text sizes, or shapes** in screens. Use `MaterialTheme.colorScheme`, `MaterialTheme.quizzen`
    (extra tokens), `MaterialTheme.typography`, and `QuizzenShapes`. New tokens go in `ui/theme/` AND `docs/DESIGN_SYSTEM.md`.
-2. **User-visible strings** go in `res/values/strings.xml`. Never inline literals in composables (the single-letter
+2. **Shadows** use `Modifier.cssShadow(...)` with the values in `docs/DESIGN_SYSTEM.md`; never `Modifier.shadow`.
+   All Material color roles are set in `ui/theme/Color.kt`; never introduce a default/baseline role or a literal color.
+3. **User-visible strings** go in `res/values/strings.xml`. Never inline literals in composables (the single-letter
    badges "M", "T", "P", "F", "A", "V" are decoration, not copy).
-3. **Interactions**: tappable surfaces use `bouncyClickable` / `pressScale` (scale to 0.96, 0.88 for small icon buttons)
+4. **Interactions**: tappable surfaces use `bouncyClickable` / `pressScale` (scale to 0.96, 0.88 for small icon buttons)
    plus the default ripple. Buttons must have a >= 48 dp touch target or a visually larger container.
-4. **Motion** uses `EmphasizedEasing` (cubic-bezier .22, 1, .36, 1). Standard durations: 380 ms screen enter, 350 ms
+5. **Motion** uses `EmphasizedEasing` (cubic-bezier .22, 1, .36, 1). Standard durations: 380 ms screen enter, 350 ms
    sheets, 200 ms color/selection changes, 150 ms outgoing screens.
-5. **Accessibility**: every icon-only control needs a `contentDescription` from strings; toggles/selection expose
+6. **Accessibility**: every icon-only control needs a `contentDescription` from strings; toggles/selection expose
    `Role` + `selected` semantics; feedback sheet is an assertive live region. Layouts must survive 200% font scale
    (use `FlowRow`, scrolling containers, `FitText`; avoid fixed heights on text).
-6. **Insets**: screens are edge-to-edge. Use `statusBarsPadding()` at the top, `navigationBars` insets at the bottom, and
+7. **Insets**: screens are edge-to-edge. Use `statusBarsPadding()` at the top, `navigationBars` insets at the bottom, and
    `imePadding()` on screens with text input. Content is capped at `ContentMaxWidth` (440 dp) via `QuizzenScreen`.
-7. **Every screen root is wrapped in `QuizzenScreen`** (surface background + glow circles + max width).
-8. **No experimental Material 3 Expressive APIs** are used; the expressive look is built from custom shapes/motion so the
+8. **Every screen root is wrapped in `QuizzenScreen`** (surface background + glow circles + max width).
+9. **No experimental Material 3 Expressive APIs** are used; the expressive look is built from custom shapes/motion so the
    app compiles against stable Material 3. If you adopt official expressive components later, do it in one commit and
    update `docs/DESIGN_SYSTEM.md`.
 
