@@ -79,6 +79,7 @@ class PracticeViewModelTest {
         assertEquals(13L, vm.state.value.question.left)
         assertEquals("", vm.state.value.answer)
         assertEquals(20, vm.state.value.remainingSeconds)
+        vm.onPause() // stop the endless tick loop, otherwise runTest never becomes idle
     }
 
     @Test
@@ -109,6 +110,7 @@ class PracticeViewModelTest {
         advanceTimeBy(3_100)
         assertEquals(0, vm.state.value.remainingSeconds)
         assertEquals(FeedbackType.Timeout, vm.state.value.feedback?.type)
+        vm.onPause() // don't let the pending feedback job restart the tick loop
     }
 
     @Test
