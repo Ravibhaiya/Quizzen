@@ -2,6 +2,9 @@
 
 Normative description of the app. "Web" = the prototype in `docs/reference/quizzen-web-reference.html`.
 
+## Theme
+- Light only. The system dark-mode setting is ignored (status/navigation bar icons stay dark; OEM force-dark is opted out).
+
 ## Home
 - Header: logo blob "Q" + "Quizzen" title, Settings icon button (opens settings sheet).
 - Segmented control: **Math** | **Language**. Tap animates the pager; swiping the pager moves the indicator with the finger.
@@ -57,4 +60,5 @@ Normative description of the app. "Web" = the prototype in `docs/reference/quizz
 | Feedback could be re-triggered while visible | Input locked while visible | Avoids stacked timeouts (web bug). |
 | Timer kept running in a hidden tab | Pauses in background | Native lifecycle. |
 | No auto-focus | Answer field auto-focused | Faster practice with the number pad. |
+| Followed `prefers-color-scheme` (light + dark) | Light only | Product decision: the app is light-only. |
 | Haptics toggle was not persisted or connected | Persisted (DataStore) and applied everywhere | Real feature. |

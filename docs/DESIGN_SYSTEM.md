@@ -4,22 +4,27 @@ Ported 1:1 from the CSS custom properties of the web prototype. `rem` values ass
 
 ## Color
 
-| Token (Material role) | Light | Dark |
-|---|---|---|
-| primary | `#EA7A31` | `#F4B178` |
-| onPrimary | `#FFFFFF` | `#4A2409` |
-| primaryContainer | `#FCE1CB` | `#8A4212` |
-| onPrimaryContainer | `#7A3B0E` | `#FCE1CB` |
-| surface / background | `#FFFAF6` | `#16110C` |
-| surfaceContainer | `#FBEEE3` | `#241B14` |
-| surfaceContainerHigh | `#F5E1CE` | `#2F251B` |
-| onSurface | `#211710` | `#F1E6DB` |
-| onSurfaceVariant | `#5C4A3B` | `#D3C2B3` |
-| quizzen.tone30 (gradient end) | `#B85E1E` | `#F0964F` |
-| quizzen.success / error / warning | `#1FAE6A / #E14C4C / #F2924B` (same in both themes) | |
+The app is **light-only by design**: it ignores the system dark-mode setting, forces dark status/navigation bar icons and
+opts out of OEM "force dark". There is no dark palette, no `values-night` resources and no theme switch. (The web reference
+has a dark palette; it was intentionally not ported.)
+
+| Token (Material role) | Value |
+|---|---|
+| primary | `#EA7A31` |
+| onPrimary | `#FFFFFF` |
+| primaryContainer | `#FCE1CB` |
+| onPrimaryContainer | `#7A3B0E` |
+| surface / background | `#FFFAF6` |
+| surfaceContainer | `#FBEEE3` |
+| surfaceContainerHigh | `#F5E1CE` |
+| onSurface | `#211710` |
+| onSurfaceVariant | `#5C4A3B` |
+| quizzen.tone30 (gradient end) | `#B85E1E` |
+| quizzen.success / error / warning | `#1FAE6A / #E14C4C / #F2924B` |
 
 The web CSS also defines tone40-70 and dark-on-light, but no rule uses them, so they are intentionally not ported.
-All 14 tokens above were verified against the CSS of `docs/reference/quizzen-web-reference.html`.
+All tokens above were verified against the CSS of `docs/reference/quizzen-web-reference.html`, and the rendered light-theme
+web screenshots match them pixel for pixel.
 
 Material roles the web design never defines (secondary, tertiary, inverse*, outline*, extra surface containers) reuse these
 same tokens (see `ui/theme/Color.kt`) so no component can fall back to the baseline purple palette.

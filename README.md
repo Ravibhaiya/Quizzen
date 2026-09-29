@@ -13,7 +13,7 @@ springy press animations. It is a native re-implementation of the original singl
 - **Practice**: live countdown chip (pulses in the last 5 s), numeric answer field, animated feedback
   bottom sheet (Correct / Incorrect / Time's Up), shake on wrong answers, auto-advance to a fresh question.
 - **Settings** bottom sheet with a persisted Haptic Feedback switch.
-- Light / dark theme following the system, edge-to-edge, IME-aware layouts, 440 dp max content width on large screens.
+- Light theme only (by design, regardless of the system dark-mode setting), edge-to-edge, IME-aware layouts, 440 dp max content width on large screens.
 - Other tiles (Powers & Roots, Fraction & Percentage, Alphabet Reasoning, Vocabulary, Fixed Preposition,
   Phrasal Verb) and Database Manager are placeholders, exactly as in the prototype (they show "Coming soon").
 
