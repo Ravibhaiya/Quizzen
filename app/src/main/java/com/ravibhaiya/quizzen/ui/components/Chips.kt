@@ -27,13 +27,17 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 
-/** Single-choice pill (e.g. "3 Digits"). Radius 20, selected = primary fill with soft colored shadow. */
+/**
+ * Choice pill (e.g. "3 Digits"). Radius 20, selected = primary fill with soft colored shadow.
+ * Pass `role = Role.Checkbox` for multi-select groups so screen readers announce it correctly.
+ */
 @Composable
 fun OptionChip(
     label: String,
     selected: Boolean,
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
+    role: Role = Role.RadioButton,
 ) {
     val primary = MaterialTheme.colorScheme.primary
     val shape = RoundedCornerShape(20.dp)
@@ -62,7 +66,7 @@ fun OptionChip(
             .clickable(
                 interactionSource = source,
                 indication = LocalIndication.current,
-                role = Role.RadioButton,
+                role = role,
                 onClick = onClick,
             )
             .semantics { this.selected = selected }

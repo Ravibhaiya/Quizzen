@@ -83,6 +83,8 @@ object QuizzenIcons {
         strokeIcon("TimerBold", 3f, "M4 13a8 8 0 1 0 16 0a8 8 0 1 0-16 0", "M12 9v4", "M10 2h4")
     }
 
+    val ArrowRight: ImageVector by lazy { strokeIcon("ArrowRight", 2.2f, "M5 12h14", "M13 6l6 6-6 6") }
+
     val CheckBold: ImageVector by lazy { strokeIcon("CheckBold", 3f, "M20 6L9 17l-5-5") }
     val CloseBold: ImageVector by lazy { strokeIcon("CloseBold", 3f, "M18 6L6 18", "M6 6l12 12") }
 

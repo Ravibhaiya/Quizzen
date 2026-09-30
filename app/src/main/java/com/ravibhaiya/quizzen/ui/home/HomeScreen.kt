@@ -52,6 +52,7 @@ fun HomeScreen(
     onHapticChange: (Boolean) -> Unit,
     onOpenMultiply: () -> Unit,
     onOpenTables: () -> Unit,
+    onOpenPowers: () -> Unit,
 ) {
     var showSettings by rememberSaveable { mutableStateOf(false) }
     val pagerState = rememberPagerState { 2 }
@@ -111,6 +112,7 @@ fun HomeScreen(
                         MathPage(
                             onOpenMultiply = { haptics.click(); onOpenMultiply() },
                             onOpenTables = { haptics.click(); onOpenTables() },
+                            onOpenPowers = { haptics.click(); onOpenPowers() },
                             onComingSoon = notify,
                         )
                     } else {
@@ -165,7 +167,12 @@ private fun HomeHeader(onSettings: () -> Unit) {
 }
 
 @Composable
-private fun MathPage(onOpenMultiply: () -> Unit, onOpenTables: () -> Unit, onComingSoon: () -> Unit) {
+private fun MathPage(
+    onOpenMultiply: () -> Unit,
+    onOpenTables: () -> Unit,
+    onOpenPowers: () -> Unit,
+    onComingSoon: () -> Unit,
+) {
     HeroCard(
         letter = "M",
         title = stringResource(R.string.feature_multiply),
@@ -173,7 +180,7 @@ private fun MathPage(onOpenMultiply: () -> Unit, onOpenTables: () -> Unit, onCom
     )
     TileRow {
         FeatureTile("T", stringResource(R.string.feature_tables), QuizzenShapes.BlobA, onOpenTables, Modifier.weight(1f))
-        FeatureTile("P", stringResource(R.string.feature_powers_roots), QuizzenShapes.BlobB, onComingSoon, Modifier.weight(1f))
+        FeatureTile("P", stringResource(R.string.feature_powers_roots), QuizzenShapes.BlobB, onOpenPowers, Modifier.weight(1f))
     }
     TileRow {
         FeatureTile("F", stringResource(R.string.feature_fraction_percentage), QuizzenShapes.BlobB, onComingSoon, Modifier.weight(1f))
