@@ -57,6 +57,12 @@ conservative; do not claim verification you did not do.
    app compiles against stable Material 3. If you adopt official expressive components later, do it in one commit and
    update `docs/DESIGN_SYSTEM.md`.
 
+## Fonts
+
+- Plus Jakarta Sans ships as **static** files (`res/font/plus_jakarta_sans_<weight>.ttf`), never as a variable font: the variable
+  font crashed the app on some devices ("Could not load font"). Every `Font(...)` uses `FontLoadingStrategy.OptionalLocal` so a
+  bad font file falls back to the system font instead of crashing. Only use weights that exist (400/500/600/700/800).
+
 ## Branding assets
 
 - The logo source of truth is `design/quizzen-logo.svg`. To change the logo, replace that file and run

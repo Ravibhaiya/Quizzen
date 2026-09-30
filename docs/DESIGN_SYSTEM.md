@@ -33,7 +33,7 @@ same tokens (see `ui/theme/Color.kt`) so no component can fall back to the basel
 Signature gradient: `linear-gradient(140deg, primary, tone30)` = `primaryGradient()`; hero card uses 135deg = `heroGradient()`.
 `cssLinearGradient()` reproduces CSS angle semantics exactly.
 
-## Typography (Plus Jakarta Sans, variable weight axis)
+## Typography (Plus Jakarta Sans, static weights 400/500/600/700/800)
 
 | Role | Size | Weight | Tracking | Used for |
 |---|---|---|---|---|
