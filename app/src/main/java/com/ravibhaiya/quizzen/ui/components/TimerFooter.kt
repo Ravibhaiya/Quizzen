@@ -136,8 +136,8 @@ private fun TimerCard(
         Column(
             modifier = Modifier
                 .widthIn(min = 64.dp)
-                .border(2.dp, borderColor, RoundedCornerShape(18.dp))
                 .background(MaterialTheme.colorScheme.surfaceContainerHigh, RoundedCornerShape(18.dp))
+                .border(2.dp, borderColor, RoundedCornerShape(18.dp))
                 .padding(horizontal = 16.dp, vertical = 10.dp),
             horizontalAlignment = Alignment.CenterHorizontally,
         ) {

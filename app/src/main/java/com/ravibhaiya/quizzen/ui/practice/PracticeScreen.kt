@@ -45,14 +45,12 @@ import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.text.AnnotatedString
-import androidx.compose.ui.text.SpanStyle
-import androidx.compose.ui.text.buildAnnotatedString
+import androidx.compose.ui.semantics.clearAndSetSemantics
+import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextAlign
-import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.Lifecycle
@@ -137,13 +135,16 @@ fun PracticeScreen(
                     trailing = { TimerChip(seconds = state.remainingSeconds, low = state.isTimerLow) },
                 )
 
+                val spoken = spokenQuestion(state.question)
                 FitText(
-                    text = buildQuestionText(state.question.left, state.question.right),
+                    text = questionText(state.question),
                     style = MaterialTheme.typography.displayLarge.copy(color = MaterialTheme.colorScheme.onSurface),
                     maxFontSize = 49.6.sp,
                     minFontSize = 24.sp,
                     step = 1.6.sp,
-                    modifier = Modifier.padding(top = 46.dp, bottom = 46.dp),
+                    modifier = Modifier
+                        .padding(top = 46.dp, bottom = 46.dp)
+                        .clearAndSetSemantics { contentDescription = spoken },
                 )
 
                 AnswerField(
@@ -168,18 +169,6 @@ fun PracticeScreen(
                 modifier = Modifier.align(Alignment.BottomCenter),
             )
         }
-    }
-}
-
-@Composable
-private fun buildQuestionText(left: Long, right: Long): AnnotatedString {
-    val operatorColor = MaterialTheme.colorScheme.primary
-    return buildAnnotatedString {
-        append(left.toString())
-        append(" ")
-        withStyle(SpanStyle(color = operatorColor)) { append("\u00D7") }
-        append(" ")
-        append(right.toString())
     }
 }
 

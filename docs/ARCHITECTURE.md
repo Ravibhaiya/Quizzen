@@ -13,7 +13,7 @@ Single Gradle module `:app`, single Activity, Compose UI, MVVM with unidirection
 
 | Layer | Package | Rules |
 |-------|---------|-------|
-| domain | `domain/` | Pure Kotlin. `Question`, `Feedback`, `PracticeConfig` (Multiply / Tables), `QuestionGenerator`, `TimerInput`. No Android imports. |
+| domain | `domain/` | Pure Kotlin. `Question` (sealed: `ProductQuestion`, `PowerQuestion`, `RootQuestion`), `Feedback`, `PracticeConfig` (Multiply / Tables / PowersRoots), `QuestionGenerator`, `TimerInput`, `PowersRootsRules` (limits 30 / 20, validation). No Android imports. |
 | data | `data/` | `SettingsRepository` interface + `DataStoreSettingsRepository` (`haptic_enabled`, default `true`). |
 | ui | `ui/*` | Feature packages with `Screen` + `ViewModel`. `components/` shared widgets. `theme/` design tokens. `navigation/` routes + NavHost. |
 
@@ -24,6 +24,7 @@ Single Gradle module `:app`, single Activity, Compose UI, MVVM with unidirection
 | Home | none (local UI state) | pager position, settings sheet visibility | Pager page = tab. Haptic value comes from `SettingsViewModel`. |
 | Multiply config | `MultiplyConfigViewModel` | `firstDigits`, `secondDigits`, `TimerFieldState` | `buildConfig()` -> `PracticeConfig.Multiply`. |
 | Tables config | `TablesConfigViewModel` | `selected: Set<Int>`, `TimerFieldState` | Start disabled until >= 1 number selected. |
+| Powers & Roots config | `PowersRootsConfigViewModel` | selected `PowerRootType`s, min/max text, `TimerFieldState` | Rules and limits live in `domain/PowersRoots.kt`; Start needs a type and a valid range. |
 | Practice | `PracticeViewModel` | `PracticeUiState` (question, remainingSeconds, answer, feedback, isLocked, shakeCount) | Created with `PracticeViewModel.Factory` reading nav args via `SavedStateHandle`. |
 | App-wide | `SettingsViewModel` (Activity scoped) | `hapticEnabled` | Passed down as a plain `Boolean` + callback. |
 

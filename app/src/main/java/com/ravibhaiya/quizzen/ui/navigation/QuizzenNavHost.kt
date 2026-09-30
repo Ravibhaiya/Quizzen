@@ -14,9 +14,11 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
+import com.ravibhaiya.quizzen.domain.PowersRootsRules
 import com.ravibhaiya.quizzen.ui.components.EmphasizedEasing
 import com.ravibhaiya.quizzen.ui.home.HomeScreen
 import com.ravibhaiya.quizzen.ui.multiply.MultiplyConfigScreen
+import com.ravibhaiya.quizzen.ui.powers.PowersRootsConfigScreen
 import com.ravibhaiya.quizzen.ui.practice.PracticeScreen
 import com.ravibhaiya.quizzen.ui.tables.TablesConfigScreen
 import androidx.compose.foundation.layout.fillMaxSize
@@ -55,6 +57,7 @@ fun QuizzenNavHost(
                 onHapticChange = onHapticChange,
                 onOpenMultiply = { navController.navigate(Routes.MULTIPLY) },
                 onOpenTables = { navController.navigate(Routes.TABLES) },
+                onOpenPowers = { navController.navigate(Routes.POWERS) },
             )
         }
         composable(Routes.MULTIPLY) {
@@ -71,6 +74,13 @@ fun QuizzenNavHost(
                 onStart = { config -> navController.navigate(Routes.practice(config)) },
             )
         }
+        composable(Routes.POWERS) {
+            PowersRootsConfigScreen(
+                hapticEnabled = hapticEnabled,
+                onBack = { navController.popBackStack() },
+                onStart = { config -> navController.navigate(Routes.practice(config)) },
+            )
+        }
         composable(
             route = Routes.PRACTICE,
             arguments = listOf(
@@ -79,6 +89,9 @@ fun QuizzenNavHost(
                 navArgument(Routes.ARG_D2) { type = NavType.IntType; defaultValue = 2 },
                 navArgument(Routes.ARG_NUMBERS) { type = NavType.StringType; defaultValue = "" },
                 navArgument(Routes.ARG_SECONDS) { type = NavType.IntType; defaultValue = 20 },
+                navArgument(Routes.ARG_TYPES) { type = NavType.StringType; defaultValue = "" },
+                navArgument(Routes.ARG_MIN) { type = NavType.IntType; defaultValue = PowersRootsRules.DEFAULT_MIN },
+                navArgument(Routes.ARG_MAX) { type = NavType.IntType; defaultValue = PowersRootsRules.DEFAULT_MAX },
             ),
         ) {
             PracticeScreen(

@@ -95,6 +95,13 @@ conservative; do not claim verification you did not do.
 - Prefer small files with a single responsibility; mirror the existing package structure.
 - Commit messages: imperative mood, one logical change per commit.
 
+## Question types
+
+`Question` is a sealed type (`ProductQuestion`, `PowerQuestion`, `RootQuestion`). A new kind of question needs: a subtype in
+`domain/Question.kt`, a branch in `ui/practice/QuestionText.kt` (`toDisplayText` **and** `spokenQuestion`), and a generator
+branch. Practice-number limits for Powers & Roots (30 for squares and square roots, 20 for cubes and cube roots) live only in
+`PowersRootsRules` / `PowerRootType.limit`; never repeat those numbers elsewhere.
+
 ## Adding a new practice mode (checklist)
 
 1. Add a `PracticeConfig` subtype and generator branch in `domain/`; add tests.

@@ -99,6 +99,12 @@ glow circles (280 dp top-right, 220 dp bottom-left, primaryContainer @ 35%, edge
 - Wrong answer: 400 ms horizontal shake, keyframes -3, 5, -9, 9, -9, 9, -9, 5, -3, 0 dp.
 - Answer field focus: fills with `surface`, 4 dp primary@20% ring.
 
+## Number field (Powers & Roots range)
+
+`NumberField`: label above (bodyMedium, onSurfaceVariant), then a 24 dp-radius surfaceContainer box with a centred 26 sp
+ExtraBold number, `2 8 0` neutral shadow at 5%, and a 2 dp outline that is transparent, primary when focused, or red
+(`quizzen.error`) on error. Multi-select chips reuse `OptionChip` with `role = Role.Checkbox`.
+
 ## Logo, launcher icon and splash
 
 Single source: `design/quizzen-logo.svg` (rounded-square orange-to-red gradient, white "Quizzen" wordmark, yellow dot and Q

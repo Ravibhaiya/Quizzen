@@ -21,4 +21,12 @@ sealed interface PracticeConfig {
             val AVAILABLE_NUMBERS: List<Int> = (2..31).toList()
         }
     }
+
+    /** Squares, cubes, square roots and cube roots for base numbers in `min..max` (see [PowersRootsRules]). */
+    data class PowersRoots(
+        val types: Set<PowerRootType>,
+        val min: Int,
+        val max: Int,
+        override val timerSeconds: Int,
+    ) : PracticeConfig
 }

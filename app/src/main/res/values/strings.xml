@@ -37,10 +37,34 @@
     <string name="timer_max_error">Max allowed timer is %1$d seconds</string>
     <string name="start">Start</string>
 
+    <!-- Powers & Roots configuration -->
+    <string name="powers_subtitle">Squares, cubes, and more</string>
+    <string name="practice_types">Practice Types</string>
+    <string name="type_squares">Squares (x²)</string>
+    <string name="type_cubes">Cubes (x³)</string>
+    <string name="type_square_roots">Square Roots (√x)</string>
+    <string name="type_cube_roots">Cube Roots (³√x)</string>
+    <string name="number_range">Number Range</string>
+    <string name="min_number">Min Number</string>
+    <string name="max_number">Max Number</string>
+    <string name="range_limits_hint">Squares and square roots go up to %1$d, cubes and cube roots up to %2$d</string>
+    <string name="range_summary_squares">Squares &amp; roots: %1$d–%2$d</string>
+    <string name="range_summary_cubes">Cubes &amp; roots: %1$d–%2$d</string>
+    <string name="range_summary_cubes_none">Cubes &amp; roots: none (limit is %1$d)</string>
+    <string name="range_error_limit">Numbers can\'t be above %1$d</string>
+    <string name="range_error_invalid">Enter numbers from %1$d to %2$d</string>
+    <string name="range_error_min_above_max">Min can\'t be greater than Max</string>
+    <string name="range_error_cube_limit">Cubes and cube roots only go up to %1$d</string>
+
     <!-- Practice -->
     <string name="practice_title">Practice</string>
     <string name="seconds_short">%1$ds</string>
     <string name="answer_hint">Answer</string>
+    <string name="question_spoken_product">%1$d times %2$d</string>
+    <string name="question_spoken_square">%1$d squared</string>
+    <string name="question_spoken_cube">%1$d cubed</string>
+    <string name="question_spoken_square_root">square root of %1$d</string>
+    <string name="question_spoken_cube_root">cube root of %1$d</string>
     <string name="check">Check</string>
     <string name="feedback_correct_title">Correct!</string>
     <string name="feedback_correct_sub">Nice work — next question loading</string>
