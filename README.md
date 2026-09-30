@@ -21,7 +21,7 @@ springy press animations. It is a native re-implementation of the original singl
 
 Kotlin 2.0, Jetpack Compose (BOM 2024.12.01) + Material 3, Navigation Compose, Lifecycle ViewModel + StateFlow,
 DataStore Preferences, Kotlin Coroutines. `minSdk 26`, `targetSdk/compileSdk 35`, JDK 17.
-Plus Jakarta Sans (variable font, SIL OFL) is bundled in `res/font`.
+Plus Jakarta Sans (five static weights, SIL OFL) is bundled in `res/font`.
 
 ## Build & run
 

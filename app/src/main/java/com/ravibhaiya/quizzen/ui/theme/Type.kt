@@ -1,32 +1,28 @@
 package com.ravibhaiya.quizzen.ui.theme
 
 import androidx.compose.material3.Typography
-import androidx.compose.ui.text.ExperimentalTextApi
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.Font
 import androidx.compose.ui.text.font.FontFamily
-import androidx.compose.ui.text.font.FontVariation
+import androidx.compose.ui.text.font.FontLoadingStrategy
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.em
 import androidx.compose.ui.unit.sp
 import com.ravibhaiya.quizzen.R
 
-/** Plus Jakarta Sans variable font (weight axis). Requires API 26+, which is our minSdk. */
-@OptIn(ExperimentalTextApi::class)
+/**
+ * Plus Jakarta Sans as five static fonts (one file per weight).
+ *
+ * Static files are used instead of the single variable font because loading the variable font crashed the app on some
+ * devices/emulators ("Font$Builder ... maybe invalid font data"). `OptionalLocal` is a safety net: if a file ever fails to
+ * load, Compose falls back to the system font instead of throwing and killing the app.
+ */
 val PlusJakartaSans = FontFamily(
-    listOf(
-        FontWeight.Normal,
-        FontWeight.Medium,
-        FontWeight.SemiBold,
-        FontWeight.Bold,
-        FontWeight.ExtraBold,
-    ).map { weight ->
-        Font(
-            resId = R.font.plus_jakarta_sans,
-            weight = weight,
-            variationSettings = FontVariation.Settings(FontVariation.weight(weight.weight)),
-        )
-    },
+    Font(R.font.plus_jakarta_sans_regular, FontWeight.Normal, loadingStrategy = FontLoadingStrategy.OptionalLocal),
+    Font(R.font.plus_jakarta_sans_medium, FontWeight.Medium, loadingStrategy = FontLoadingStrategy.OptionalLocal),
+    Font(R.font.plus_jakarta_sans_semibold, FontWeight.SemiBold, loadingStrategy = FontLoadingStrategy.OptionalLocal),
+    Font(R.font.plus_jakarta_sans_bold, FontWeight.Bold, loadingStrategy = FontLoadingStrategy.OptionalLocal),
+    Font(R.font.plus_jakarta_sans_extrabold, FontWeight.ExtraBold, loadingStrategy = FontLoadingStrategy.OptionalLocal),
 )
 
 /**
@@ -35,7 +31,7 @@ val PlusJakartaSans = FontFamily(
  * Role -> usage:
  *  displayLarge   49.6sp  practice question
  *  headlineLarge  24.8sp  app name, hero title, screen titles
- *  headlineMedium 20.8sp  settings sheet title, logo letter
+ *  headlineMedium 20.8sp  settings sheet title
  *  titleLarge     19.2sp  section titles
  *  titleMedium    17.6sp  primary button label, "Timer" label
  *  titleSmall     16.96sp tile title
