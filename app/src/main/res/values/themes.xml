@@ -8,14 +8,15 @@
         <item name="android:forceDarkAllowed" tools:targetApi="q">false</item>
     </style>
 
-    <!-- Launch theme: system splash (Android 12+) / compat splash (older) showing the logo on the app background.
+    <!-- Launch theme: a plain splash in the logo's orange (no icon). The full-screen logo itself is drawn by
+         SplashArt in the first frame, because the system splash can only show an icon inside a circle.
          MainActivity switches to Theme.Quizzen once the first frame is ready. -->
     <style name="Theme.Quizzen.Splash" parent="Theme.SplashScreen">
-        <item name="windowSplashScreenBackground">@color/window_background</item>
-        <item name="windowSplashScreenAnimatedIcon">@drawable/ic_splash_icon</item>
+        <item name="windowSplashScreenBackground">@color/splash_background</item>
+        <item name="windowSplashScreenAnimatedIcon">@android:color/transparent</item>
         <item name="postSplashScreenTheme">@style/Theme.Quizzen</item>
-        <item name="android:windowLightStatusBar">true</item>
-        <item name="android:windowLightNavigationBar" tools:targetApi="o_mr1">true</item>
+        <item name="android:windowLightStatusBar">false</item>
+        <item name="android:windowLightNavigationBar" tools:targetApi="o_mr1">false</item>
         <item name="android:forceDarkAllowed" tools:targetApi="q">false</item>
     </style>
 </resources>

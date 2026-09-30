@@ -60,10 +60,13 @@ conservative; do not claim verification you did not do.
 ## Branding assets
 
 - The logo source of truth is `design/quizzen-logo.svg`. To change the logo, replace that file and run
-  `python3 tools/generate_logo_drawables.py`; commit the regenerated `ic_logo`, `ic_splash_icon`, `ic_launcher_*` drawables.
+  `python3 tools/generate_logo_drawables.py`; commit the regenerated `ic_launcher_*`, `ic_wordmark` drawables and
+  `values/logo_colors.xml`.
   Never hand-edit those generated files.
-- Header logo = `R.drawable.ic_logo`. Launch screen = `Theme.Quizzen.Splash` + `installSplashScreen()` in `MainActivity`
-  (keep `installSplashScreen()` before `super.onCreate`).
+- The Home header has **no logo** (only the "Quizzen" title); do not add one back without the owner asking.
+- Launch: `Theme.Quizzen.Splash` (plain logo-orange system splash, no icon) + `installSplashScreen()` in `MainActivity`
+  (keep it before `super.onCreate`), then `SplashArt` draws the logo **full screen** for ~1.1 s and fades out. The system
+  splash cannot show a full-screen image (it clips the icon to a circle), which is why `SplashArt` exists.
 - Hero-card titles use `FitText` so they never wrap; reuse it for any single-line heading that must not wrap.
 
 ## Behavior rules
