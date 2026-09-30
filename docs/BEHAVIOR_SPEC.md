@@ -3,14 +3,16 @@
 Normative description of the app. "Web" = the prototype in `docs/reference/quizzen-web-reference.html`.
 
 ## Launch
-- System splash screen (Android 12+) / compat splash (older): the logo centred on the app background colour, then the app.
+- Cold start: a plain logo-orange system splash, immediately followed by the logo shown **full screen** (gradient and swoosh fill
+  the whole screen, wordmark centred at 72% of the width, fades/scales in). After 1.1 s it fades out (350 ms) into Home; touches
+  are ignored meanwhile. Status/navigation bar icons are white during the logo and dark afterwards. Rotation does not replay it.
 - Launcher icon is an adaptive icon (wordmark on the logo gradient, plus a monochrome layer for themed icons).
 
 ## Theme
 - Light only. The system dark-mode setting is ignored (status/navigation bar icons stay dark; OEM force-dark is opted out).
 
 ## Home
-- Header: the Quizzen logo (`ic_logo`, 48 dp) + "Quizzen" title, Settings icon button (opens settings sheet).
+- Header: "Quizzen" title (no logo) and the Settings icon button (opens the settings sheet).
 - Hero-card titles ("Multiply", "Vocabulary") are always a single line: the text shrinks (24.8 sp down to 14 sp) instead of wrapping.
 - Segmented control: **Math** | **Language**. Tap animates the pager; swiping the pager moves the indicator with the finger.
 - **Math** page: hero "Multiply" (-> Multiply config); tiles "Tables Practice" (-> Tables config), "Powers & Roots",
@@ -75,7 +77,8 @@ Normative description of the app. "Web" = the prototype in `docs/reference/quizz
 | Feedback could be re-triggered while visible | Input locked while visible | Avoids stacked timeouts (web bug). |
 | Timer kept running in a hidden tab | Pauses in background | Native lifecycle. |
 | No auto-focus | Answer field auto-focused | Faster practice with the number pad. |
-| Header logo was a gradient blob with a "Q" | The owner's `quizzen-logo.svg` (header, launcher icon, splash) | Owner request. |
+| Header showed a gradient blob logo with a "Q" | No logo in the header | Owner request. |
+| No splash / launcher icon design | Launcher icon and full-screen splash use the owner's `quizzen-logo.svg` | Owner request. |
 | Hero titles could wrap ("Vocabula/ry" on narrow phones) | Title shrinks to stay on one line | Owner request; same idea as the practice question auto-fit. |
 | Followed `prefers-color-scheme` (light + dark) | Light only | Product decision: the app is light-only. |
 | Haptics toggle was not persisted or connected | Persisted (DataStore) and applied everywhere, with a distinct effect per action | Real feature. |

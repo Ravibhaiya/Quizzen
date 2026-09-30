@@ -26,7 +26,7 @@ jobs:
       - name: Check generated logo drawables are in sync with design/quizzen-logo.svg
         run: |
           python3 tools/generate_logo_drawables.py
-          git diff --exit-code -- app/src/main/res/drawable
+          git diff --exit-code -- app/src/main/res/drawable app/src/main/res/values/logo_colors.xml
 
       - name: Unit tests, lint and debug build
         run: ./gradlew testDebugUnitTest lintDebug assembleDebug --stacktrace

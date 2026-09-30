@@ -102,12 +102,19 @@ glow circles (280 dp top-right, 220 dp bottom-left, primaryContainer @ 35%, edge
 ## Logo, launcher icon and splash
 
 Single source: `design/quizzen-logo.svg` (rounded-square orange-to-red gradient, white "Quizzen" wordmark, yellow dot and Q
-tail, bottom swoosh). `python3 tools/generate_logo_drawables.py` turns it into vector drawables (generated, never edited by
-hand): `ic_logo` (header, 48 dp), `ic_splash_icon` (art at 136 dp centred in the 288 dp splash canvas, which keeps it inside
-the splash icon's circular safe zone), `ic_launcher_background` / `ic_launcher_foreground` (wordmark 64 dp wide inside the 66 dp
-adaptive-icon safe zone) and `ic_launcher_monochrome` (Android 13+ themed icons).
+tail, bottom swoosh). `python3 tools/generate_logo_drawables.py` turns it into generated resources (never edited by hand):
+`ic_launcher_background` (gradient + swoosh, full bleed: adaptive icon background **and** the full-screen splash backdrop),
+`ic_launcher_foreground` (wordmark 64 dp wide inside the 66 dp adaptive-icon safe zone), `ic_launcher_monochrome`
+(Android 13+ themed icons), `ic_wordmark` (tightly cropped wordmark for the splash) and `values/logo_colors.xml`
+(`splash_background`, the midpoint of the logo gradient).
+
+Splash = two steps: the system splash (`Theme.Quizzen.Splash`, solid `splash_background`, transparent icon) then `SplashArt`,
+which draws `ic_launcher_background` with `ContentScale.Crop` over the whole screen and `ic_wordmark` centred at 72% of the
+screen width. This is needed because the system splash can only show an icon clipped to a circle, never a full-screen image.
+The Home header carries no logo.
+
 The generated art matches the SVG exactly except for the soft blurred drop shadow under the letters: `VectorDrawable` has no
-blur filter, so it is omitted. The splash background is `window_background` (the app surface colour) for a seamless hand-off.
+blur filter, so it is omitted.
 
 ## Icons
 
