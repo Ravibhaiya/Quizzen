@@ -14,6 +14,10 @@ android {
         targetSdk = 35
         versionCode = 1
         versionName = "1.0.0"
+
+        // The app is English only; drop the translations that Material and AndroidX libraries bundle (smaller APK).
+        // Add a language here when the app gets translated. (AGP 8.8+ renames this to `androidResources.localeFilters`.)
+        resourceConfigurations += listOf("en")
     }
 
     buildTypes {
@@ -24,6 +28,12 @@ android {
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro",
             )
+            // For on-device performance checks only: `-PsignReleaseWithDebugKey` signs the optimized release build with
+            // the debug key so it can be installed directly. Without the flag the release build stays unsigned; Play Store
+            // builds must use the real upload key instead.
+            if (providers.gradleProperty("signReleaseWithDebugKey").isPresent) {
+                signingConfig = signingConfigs.getByName("debug")
+            }
         }
     }
 
@@ -50,6 +60,7 @@ kotlin {
 dependencies {
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.core.splashscreen)
+    implementation(libs.androidx.profileinstaller)
     implementation(libs.androidx.activity.compose)
     implementation(libs.androidx.lifecycle.runtime.compose)
     implementation(libs.androidx.lifecycle.viewmodel.compose)

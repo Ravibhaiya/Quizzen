@@ -31,9 +31,19 @@ jobs:
       - name: Unit tests, lint and debug build
         run: ./gradlew testDebugUnitTest lintDebug assembleDebug --stacktrace
 
+      - name: Optimized release build (R8, baseline profile), debug-signed for installing
+        run: ./gradlew assembleRelease -PsignReleaseWithDebugKey --stacktrace
+
       - name: Upload debug APK
         uses: actions/upload-artifact@v4
         with:
           name: quizzen-debug-apk
           path: app/build/outputs/apk/debug/*.apk
+          if-no-files-found: error
+
+      - name: Upload release APK (use this one to judge speed)
+        uses: actions/upload-artifact@v4
+        with:
+          name: quizzen-release-apk
+          path: app/build/outputs/apk/release/*.apk
           if-no-files-found: error
