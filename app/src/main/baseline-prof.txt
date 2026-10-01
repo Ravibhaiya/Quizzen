@@ -1,0 +1,7 @@
+# Baseline profile for Quizzen: tells ART which code to compile ahead of time at install, so the first launch, the
+# splash -> Home hand-off and the first screen transitions run as compiled code instead of being interpreted
+# (a large win on low-end phones and on Android 11). The app is small, so every app class and method is included;
+# libraries (Compose, Material 3, Navigation...) ship their own profiles, which the build merges in automatically.
+# Regenerate with a Macrobenchmark `BaselineProfileGenerator` if the app grows a lot.
+HSPLcom/ravibhaiya/quizzen/**;->**(**)**
+Lcom/ravibhaiya/quizzen/**;

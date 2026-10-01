@@ -27,6 +27,9 @@ Plus Jakarta Sans (five static weights, SIL OFL) is bundled in `res/font`.
 
 ## Build & run
 
+CI uploads two APKs per run (Actions tab): `quizzen-debug-apk` and `quizzen-release-apk`. **Use the release one to judge speed**
+(see [docs/PERFORMANCE.md](docs/PERFORMANCE.md)); debug builds of Compose apps are much slower.
+
 Requirements: Android Studio Ladybug (2024.2) or newer, or JDK 17 + Android SDK 35 on the command line.
 
 ```bash
@@ -57,6 +60,7 @@ AGENTS.md                  rules for AI coding assistants (start here when chang
 
 - [AGENTS.md](AGENTS.md) - conventions and checklists for AI assistants and contributors
 - [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) - layers, data flow, state, navigation
+- [docs/PERFORMANCE.md](docs/PERFORMANCE.md) - low-end phone / Android 11 measures, rules and measuring tips
 - [docs/DESIGN_SYSTEM.md](docs/DESIGN_SYSTEM.md) - tokens (color, type, shape, motion) mapped from the web original
 - [docs/BEHAVIOR_SPEC.md](docs/BEHAVIOR_SPEC.md) - screen-by-screen behavior, plus every deliberate deviation from the prototype
 - [docs/THIRD_PARTY_NOTICES.md](docs/THIRD_PARTY_NOTICES.md)

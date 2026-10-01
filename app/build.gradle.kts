@@ -24,7 +24,19 @@ android {
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro",
             )
+            // For on-device performance checks only: `-PsignReleaseWithDebugKey` signs the optimized release build with
+            // the debug key so it can be installed directly. Without the flag the release build stays unsigned; Play Store
+            // builds must use the real upload key instead.
+            if (providers.gradleProperty("signReleaseWithDebugKey").isPresent) {
+                signingConfig = signingConfigs.getByName("debug")
+            }
         }
+    }
+
+    androidResources {
+        // The app is English only; drop the translations that Material and AndroidX libraries bundle (smaller APK).
+        // Add a language here when the app gets translated.
+        localeFilters += listOf("en")
     }
 
     compileOptions {
@@ -50,6 +62,7 @@ kotlin {
 dependencies {
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.core.splashscreen)
+    implementation(libs.androidx.profileinstaller)
     implementation(libs.androidx.activity.compose)
     implementation(libs.androidx.lifecycle.runtime.compose)
     implementation(libs.androidx.lifecycle.viewmodel.compose)

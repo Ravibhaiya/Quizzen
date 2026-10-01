@@ -2,6 +2,10 @@
 
 Normative description of the app. "Web" = the prototype in `docs/reference/quizzen-web-reference.html`.
 
+## Screen transitions
+- Forward: the new screen fades in and rises 16 dp (380 ms). Back: the leaving screen fades out (200 ms) over the screen underneath.
+  Only one screen animates at a time (see docs/PERFORMANCE.md).
+
 ## Launch
 - Cold start: a plain logo-orange system splash, immediately followed by the logo shown **full screen** (gradient and swoosh fill
   the whole screen, wordmark centred at 72% of the width, fades/scales in). After 1.1 s it fades out (350 ms) into Home; touches

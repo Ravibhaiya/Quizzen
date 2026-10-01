@@ -1,5 +1,7 @@
 package com.ravibhaiya.quizzen.ui.navigation
 
+import androidx.compose.animation.EnterTransition
+import androidx.compose.animation.ExitTransition
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
@@ -33,23 +35,23 @@ fun QuizzenNavHost(
     val navController = rememberNavController()
     val slidePx = with(LocalDensity.current) { 16.dp.roundToPx() }
 
-    // Web `pageIn`: fade + 16px rise over 380ms with the emphasized ease. Outgoing screen just fades quickly.
+    // Enter = the web `pageIn`: fade + 16px rise over 380ms with the emphasized ease.
     NavHost(
         navController = navController,
         startDestination = Routes.HOME,
         modifier = modifier
             .fillMaxSize()
             .background(MaterialTheme.colorScheme.surface),
+        // Light transitions for low-end phones: only ONE screen animates at a time (a cross-fade makes the GPU blend two
+        // full screens, with their shadows, into offscreen buffers). Forward: the new screen fades/rises in over the old
+        // one. Back: the leaving screen fades out over the one underneath, like the system back animation.
         enterTransition = {
             fadeIn(tween(380, easing = EmphasizedEasing)) +
                 slideInVertically(tween(380, easing = EmphasizedEasing)) { slidePx }
         },
-        exitTransition = { fadeOut(tween(150)) },
-        popEnterTransition = {
-            fadeIn(tween(380, easing = EmphasizedEasing)) +
-                slideInVertically(tween(380, easing = EmphasizedEasing)) { slidePx }
-        },
-        popExitTransition = { fadeOut(tween(150)) },
+        exitTransition = { ExitTransition.None },
+        popEnterTransition = { EnterTransition.None },
+        popExitTransition = { fadeOut(tween(200)) },
     ) {
         composable(Routes.HOME) {
             HomeScreen(

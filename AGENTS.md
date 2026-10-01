@@ -57,6 +57,12 @@ conservative; do not claim verification you did not do.
    app compiles against stable Material 3. If you adopt official expressive components later, do it in one commit and
    update `docs/DESIGN_SYSTEM.md`.
 
+## Performance
+
+Full rules in `docs/PERFORMANCE.md`. The short version: nothing may animate or redraw while idle (no endless transitions), animated
+values are read inside `graphicsLayer`/`offset`/`drawBehind` lambdas, text is never fitted by relayout loops (`FitText`), no
+`Modifier.blur`, and speed is judged on the release APK (`quizzen-release-apk` from CI), never on a debug build.
+
 ## Fonts
 
 - Plus Jakarta Sans ships as **static** files (`res/font/plus_jakarta_sans_<weight>.ttf`), never as a variable font: the variable

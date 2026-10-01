@@ -3,11 +3,9 @@ package com.ravibhaiya.quizzen.ui.practice
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.LinearEasing
 import androidx.compose.animation.core.RepeatMode
-import androidx.compose.animation.core.animateFloat
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.infiniteRepeatable
 import androidx.compose.animation.core.keyframes
-import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.foundation.background
@@ -132,7 +130,7 @@ fun PracticeScreen(
                 ScreenHeader(
                     title = stringResource(R.string.practice_title),
                     onBack = { haptics.click(); onBack() },
-                    trailing = { TimerChip(seconds = state.remainingSeconds, low = state.isTimerLow) },
+                    trailing = { TimerChip(seconds = state.remainingSeconds, pulsing = state.isTimerLow && !state.isLocked) },
                 )
 
                 val spoken = spokenQuestion(state.question)
@@ -172,24 +170,29 @@ fun PracticeScreen(
     }
 }
 
+/**
+ * Countdown chip. While [pulsing] it breathes between 100% and 110%; otherwise nothing animates, so an idle Practice screen
+ * schedules no frames at all (an always-running infinite transition kept redrawing every frame, draining battery and
+ * stealing time from slow phones). The scale is read inside `graphicsLayer`, so pulsing never recomposes the chip.
+ */
 @Composable
-private fun TimerChip(seconds: Int, low: Boolean) {
-    val pulse = rememberInfiniteTransition(label = "timerPulse")
-    val pulseScale by pulse.animateFloat(
-        initialValue = 1f,
-        targetValue = 1.1f,
-        animationSpec = infiniteRepeatable(tween(500, easing = LinearEasing), RepeatMode.Reverse),
-        label = "timerPulseScale",
-    )
-    val scale = if (low) pulseScale else 1f
+private fun TimerChip(seconds: Int, pulsing: Boolean) {
+    val pulse = remember { Animatable(1f) }
+    LaunchedEffect(pulsing) {
+        if (pulsing) {
+            pulse.animateTo(1.1f, infiniteRepeatable(tween(500, easing = LinearEasing), RepeatMode.Reverse))
+        } else {
+            pulse.snapTo(1f)
+        }
+    }
     Text(
         text = stringResource(R.string.seconds_short, seconds),
         style = MaterialTheme.typography.labelLarge,
         color = MaterialTheme.colorScheme.onSurfaceVariant,
         modifier = Modifier
             .graphicsLayer {
-                scaleX = scale
-                scaleY = scale
+                scaleX = pulse.value
+                scaleY = pulse.value
             }
             .background(MaterialTheme.colorScheme.surfaceContainerHigh, CircleShape)
             .padding(horizontal = 15.dp, vertical = 9.dp),
