@@ -29,7 +29,19 @@ jobs:
           git diff --exit-code -- app/src/main/res/drawable app/src/main/res/values/logo_colors.xml
 
       - name: Unit tests, lint and debug build
-        run: ./gradlew testDebugUnitTest lintDebug assembleDebug --stacktrace
+        shell: bash
+        run: ./gradlew testDebugUnitTest lintDebug assembleDebug --stacktrace --console=plain 2>&1 | tee build.log
+
+      - name: TEMP surface build errors
+        if: failure()
+        run: |
+          python3 - <<'PY'
+          import re
+          lines = open('build.log').read().splitlines()
+          keep = [l for l in lines if re.search(r'^e: |^\S+\.kt:\d+|FAILED|What went wrong|Execution failed|Lint found|error:|^> |Test.*>', l)]
+          msg = "\n".join(keep[:80]).replace('%', '%25').replace('\r', '%0D').replace('\n', '%0A')
+          print("::error title=Gradle::" + msg)
+          PY
 
       - name: Optimized release build (R8, baseline profile), debug-signed for installing
         run: ./gradlew assembleRelease -PsignReleaseWithDebugKey --stacktrace
