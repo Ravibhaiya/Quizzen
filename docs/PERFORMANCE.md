@@ -22,7 +22,7 @@ the real upload key instead (the flag is off by default, so a plain `assembleRel
 | Shadows | `cssShadow` draws one cached Gaussian-blurred outline; Skia renders blurred rounded rects/rects with a cheap analytic shader on the GPU. Alpha-0 shadows are skipped. API 26-27 fall back to a plain elevation shadow. |
 | Glow | A radial-gradient disc (no `Modifier.blur`, which only exists on API 31+ and is expensive). |
 | Haptics | Vibrator waveforms from precomputed patterns; no allocation per tap beyond the effect. |
-| Size / memory | R8 + resource shrinking, English-only resources (`localeFilters`), five static font files loaded lazily, vector art instead of bitmaps. |
+| Size / memory | R8 + resource shrinking, English-only resources (`resourceConfigurations`), five static font files loaded lazily, vector art instead of bitmaps. |
 | Fonts | Static files with `OptionalLocal`, so a font failure falls back to the system font instead of crashing. |
 
 ## Rules for new code

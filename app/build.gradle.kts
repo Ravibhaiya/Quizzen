@@ -14,6 +14,10 @@ android {
         targetSdk = 35
         versionCode = 1
         versionName = "1.0.0"
+
+        // The app is English only; drop the translations that Material and AndroidX libraries bundle (smaller APK).
+        // Add a language here when the app gets translated. (AGP 8.8+ renames this to `androidResources.localeFilters`.)
+        resourceConfigurations += listOf("en")
     }
 
     buildTypes {
@@ -31,12 +35,6 @@ android {
                 signingConfig = signingConfigs.getByName("debug")
             }
         }
-    }
-
-    androidResources {
-        // The app is English only; drop the translations that Material and AndroidX libraries bundle (smaller APK).
-        // Add a language here when the app gets translated.
-        localeFilters += listOf("en")
     }
 
     compileOptions {
