@@ -67,6 +67,17 @@ Normative description of the app. "Web" = the prototype in `docs/reference/quizz
   - Tables: `table number x random(1..10)`, table number drawn uniformly from the selection.
 - Numeric answer field (digits only, max 12) and **Check** button; the IME "Done" action also checks. The field is focused
   automatically for each question.
+- **Mistakes and slow answers come back** (Tables and Powers & Roots only; Multiply stays fully random). Inside one quiz:
+  - A wrong answer or a time-up brings the same question back **3 times** among the next 10 questions.
+  - A correct but **slow** answer brings it back **2 times** among the next 10. Slow = answered with **less than 40% of the
+    timer left** on the countdown (timer 10 s: 4 s left is still fast, 3 s left is slow; a wrong answer is never "slow", it is wrong).
+  - Comebacks never land on the very next question, never two in a row, and a new question is never the same as the one just
+    before it. Where exactly they land in the 10 is random each time.
+  - A comeback answered wrong/slow again starts a fresh set (3 or 2) counted from that moment; the old unused ones are dropped.
+    A comeback answered fast keeps the rest of its set.
+  - If many mistakes pile up so the 10 slots are full, the leftover comebacks come right after the window instead of being lost.
+  - Nothing is saved: closing the quiz, or starting a new one, begins from nothing.
+  - With only one or two possible questions (e.g. Min = Max) there is nothing else to show, so immediate repeats cannot be avoided.
 - Check: exact integer match = **Correct**; otherwise (including blank) = **Incorrect** (shake).
 - Countdown reaching 0 = **Time's Up**.
 - Feedback bottom sheet (green / red / orange) for 1.7 s, then slides away; 250 ms later a new question appears, the input is

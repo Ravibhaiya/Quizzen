@@ -6,9 +6,11 @@ import androidx.lifecycle.createSavedStateHandle
 import androidx.lifecycle.viewModelScope
 import androidx.lifecycle.viewmodel.initializer
 import androidx.lifecycle.viewmodel.viewModelFactory
+import com.ravibhaiya.quizzen.domain.AnswerOutcome
 import com.ravibhaiya.quizzen.domain.Feedback
 import com.ravibhaiya.quizzen.domain.FeedbackType
 import com.ravibhaiya.quizzen.domain.PracticeConfig
+import com.ravibhaiya.quizzen.domain.PracticeSession
 import com.ravibhaiya.quizzen.domain.Question
 import com.ravibhaiya.quizzen.domain.QuestionGenerator
 import com.ravibhaiya.quizzen.domain.RandomQuestionGenerator
@@ -20,6 +22,7 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import kotlin.random.Random
 
 data class PracticeUiState(
     val question: Question,
@@ -41,11 +44,15 @@ data class PracticeUiState(
 
 class PracticeViewModel(
     private val config: PracticeConfig,
-    private val generator: QuestionGenerator = RandomQuestionGenerator(),
+    generator: QuestionGenerator = RandomQuestionGenerator(),
+    random: Random = Random.Default,
 ) : ViewModel() {
 
+    /** Picks the questions and brings mistakes back. Lives and dies with this ViewModel, so every new quiz starts empty. */
+    private val session = PracticeSession(generator, config, random)
+
     private val _state = MutableStateFlow(
-        PracticeUiState(question = generator.next(config), remainingSeconds = config.timerSeconds),
+        PracticeUiState(question = session.next(), remainingSeconds = config.timerSeconds),
     )
     val state: StateFlow<PracticeUiState> = _state.asStateFlow()
 
@@ -93,6 +100,15 @@ class PracticeViewModel(
     }
 
     private fun showFeedback(type: FeedbackType) {
+        val shown = _state.value
+        session.report(
+            question = shown.question,
+            outcome = AnswerOutcome.classify(
+                correct = type == FeedbackType.Correct,
+                remainingSeconds = shown.remainingSeconds,
+                totalSeconds = config.timerSeconds,
+            ),
+        )
         tickJob?.cancel()
         feedbackJob?.cancel()
         _state.update {
@@ -108,7 +124,7 @@ class PracticeViewModel(
             delay(SHEET_EXIT_MS)
             _state.update {
                 it.copy(
-                    question = generator.next(config),
+                    question = session.next(),
                     answer = "",
                     remainingSeconds = config.timerSeconds,
                     isLocked = false,

@@ -28,6 +28,14 @@ Single Gradle module `:app`, single Activity, Compose UI, MVVM with unidirection
 | Practice | `PracticeViewModel` | `PracticeUiState` (question, remainingSeconds, answer, feedback, isLocked, shakeCount) | Created with `PracticeViewModel.Factory` reading nav args via `SavedStateHandle`. |
 | App-wide | `SettingsViewModel` (Activity scoped) | `hapticEnabled` | Passed down as a plain `Boolean` + callback. |
 
+### Choosing the next question
+
+`PracticeSession` (domain, pure Kotlin) sits between `PracticeViewModel` and the `QuestionGenerator`. The ViewModel reports each
+answer (`AnswerOutcome.classify(correct, remainingSeconds, totalSeconds)`: Fast / Slow / Wrong) and asks for the next question.
+For limited-question quizzes (`PracticeConfig.repeatsMistakes`) the session schedules comebacks (3 for Wrong, 2 for Slow, inside
+the next 10, never next, never adjacent) and otherwise draws a fresh question that is not the previous one. The session is owned
+by the ViewModel, which is created per quiz start, so it is empty at the start of every quiz and discarded when the quiz is left.
+
 ### Practice loop
 
 ```
