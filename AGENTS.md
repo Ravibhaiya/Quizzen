@@ -108,6 +108,14 @@ values are read inside `graphicsLayer`/`offset`/`drawBehind` lambdas, text is ne
 branch. Practice-number limits for Powers & Roots (30 for squares and square roots, 20 for cubes and cube roots) live only in
 `PowersRootsRules` / `PowerRootType.limit`; never repeat those numbers elsewhere.
 
+## Mistake repeats
+
+How wrong/slow answers come back lives only in `domain/PracticeSession.kt` and `domain/AnswerOutcome.kt` (constants:
+`WRONG_REPEATS = 3`, `SLOW_REPEATS = 2`, `WINDOW = 10`, slow = under 40% of the timer left). Keep it pure Kotlin with an injected
+`Random`, keep its state inside the object (no static/global state, no persistence: every quiz must start from nothing), and
+change `docs/BEHAVIOR_SPEC.md` and `PracticeSessionTest` together with any rule. A new practice mode opts in with
+`repeatsMistakes = true` only if its set of questions is small enough for repeats to make sense.
+
 ## Adding a new practice mode (checklist)
 
 1. Add a `PracticeConfig` subtype and generator branch in `domain/`; add tests.
