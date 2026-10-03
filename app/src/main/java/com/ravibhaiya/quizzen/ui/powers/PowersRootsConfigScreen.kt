@@ -182,11 +182,9 @@ private fun NumberRange(
             modifier = Modifier.padding(start = 4.dp, top = 12.dp),
         )
     }
-    Text(
-        text = rangeSummary(state),
-        style = MaterialTheme.typography.bodyMedium.copy(fontSize = 13.6.sp),
-        color = MaterialTheme.colorScheme.onSurfaceVariant,
-        modifier = Modifier.padding(start = 4.dp, top = 12.dp),
+    LimitCards(
+        models = limitCardModels(state.types, state.min, state.max),
+        modifier = Modifier.padding(top = 16.dp),
     )
 }
 
@@ -201,31 +199,6 @@ private fun rangeError(state: PowersRootsConfigUiState): String? = when {
         PowersRootsRules.Issue.BeyondCubeLimit -> stringResource(R.string.range_error_cube_limit, PowersRootsRules.CUBE_LIMIT)
         PowersRootsRules.Issue.None -> null
     }
-}
-
-/** Shows the limits before anything is chosen, then the range each selected kind will actually use. */
-@Composable
-private fun rangeSummary(state: PowersRootsConfigUiState): String {
-    val min = state.min
-    val max = state.max
-    if (state.types.isEmpty() || min == null || max == null || min > max) {
-        return stringResource(R.string.range_limits_hint, PowersRootsRules.SQUARE_LIMIT, PowersRootsRules.CUBE_LIMIT)
-    }
-    val parts = buildList {
-        state.types.map { it.family }.distinct().sorted().forEach { family ->
-            val type = if (family == PowerRootType.Family.Square) PowerRootType.Squares else PowerRootType.Cubes
-            val range = PowersRootsRules.effectiveRange(type, min, max)
-            add(
-                when {
-                    family == PowerRootType.Family.Square ->
-                        stringResource(R.string.range_summary_squares, range?.first ?: min, range?.last ?: max)
-                    range != null -> stringResource(R.string.range_summary_cubes, range.first, range.last)
-                    else -> stringResource(R.string.range_summary_cubes_none, PowersRootsRules.CUBE_LIMIT)
-                },
-            )
-        }
-    }
-    return parts.joinToString(separator = "  ·  ")
 }
 
 @StringRes

@@ -56,7 +56,7 @@ Transitions: incoming = fade + 16 px rise (380 ms, emphasized easing); outgoing 
 ## Theming
 
 `QuizzenTheme` wraps `MaterialTheme` with a custom `ColorScheme`, `Typography` (Plus Jakarta Sans, five static font files) and an
-extra `QuizzenColors` set (tone30, success, error, warning) via `MaterialTheme.quizzen`. The app is light-only: no dark
+extra `QuizzenColors` set (tone30, success, error, timeout) via `MaterialTheme.quizzen`. The app is light-only: no dark
 palette, no `values-night`, system bars forced to light style in `MainActivity`.
 
 ## Testing strategy

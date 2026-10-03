@@ -1,0 +1,56 @@
+name: Build APK
+
+# Builds an APK only when asked: open the Actions tab, pick "Build APK", press "Run workflow", then download the artifact from
+# the finished run. Also runs for version tags (v1.0.0 ...). Artifacts are kept for 14 days to save storage.
+on:
+  workflow_dispatch:
+    inputs:
+      include_debug:
+        description: Also build the debug APK (larger and slower to run; only for debugging)
+        type: boolean
+        default: false
+  push:
+    tags: ['v*']
+
+permissions:
+  contents: read
+
+jobs:
+  apk:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: 17
+
+      - uses: gradle/actions/setup-gradle@v4
+        with:
+          cache-read-only: false
+
+      - name: Optimized APK (R8 + baseline profile), debug-signed so it can be installed for testing
+        run: ./gradlew assembleRelease -PsignReleaseWithDebugKey --stacktrace
+
+      - name: Upload optimized APK (use this one to judge speed)
+        uses: actions/upload-artifact@v4
+        with:
+          name: quizzen-release-apk
+          path: app/build/outputs/apk/release/*.apk
+          if-no-files-found: error
+          retention-days: 14
+
+      - name: Debug APK (only when requested)
+        if: ${{ inputs.include_debug }}
+        run: ./gradlew assembleDebug --stacktrace
+
+      - name: Upload debug APK (only when requested)
+        if: ${{ inputs.include_debug }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: quizzen-debug-apk
+          path: app/build/outputs/apk/debug/*.apk
+          if-no-files-found: error
+          retention-days: 7

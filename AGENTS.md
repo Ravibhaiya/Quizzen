@@ -14,6 +14,12 @@ truth: `docs/reference/quizzen-web-reference.html`.
 Nothing may be committed that fails these. If you cannot run Gradle, say so explicitly and keep changes small and
 conservative; do not claim verification you did not do.
 
+## CI rules
+
+CI is intentionally cheap: `ci.yml` runs on pull requests only (and skips docs-only changes), APKs are built only by the manual
+`apk.yml`, `release-check.yml` runs only when build settings change. Do not add push-to-main triggers, per-run artifact uploads or
+long retention; keep new jobs path-filtered. See the README table.
+
 ## Architecture rules
 
 1. **Layers**: `domain` (pure Kotlin, no Android/Compose imports) <- `data` (DataStore) <- `ui` (Compose + ViewModels).

@@ -66,7 +66,7 @@ private fun FeedbackContent(feedback: Feedback) {
     val background = when (feedback.type) {
         FeedbackType.Correct -> colors.success
         FeedbackType.Incorrect -> colors.error
-        FeedbackType.Timeout -> colors.warning
+        FeedbackType.Timeout -> colors.timeout
     }
     val icon = when (feedback.type) {
         FeedbackType.Correct -> QuizzenIcons.CheckBold
