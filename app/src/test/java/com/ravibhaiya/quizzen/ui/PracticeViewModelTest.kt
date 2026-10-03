@@ -197,6 +197,7 @@ class PracticeViewModelTest {
         answerWrong(vm)
 
         val next = playFast(vm, 10) // questions 2..11, i.e. the ten after the mistake
+        vm.onPause() // stop the endless tick loop, otherwise runTest never becomes idle
         assertEquals(3, next.count { it == mistake })
         assertTrue("came back immediately", next.first() != mistake)
         val positions = next.indices.filter { next[it] == mistake }
@@ -213,6 +214,7 @@ class PracticeViewModelTest {
         answerRight(vm)
 
         val next = playFast(vm, 10)
+        vm.onPause()
         assertEquals(2, next.count { it == slow })
         assertTrue(next.first() != slow)
     }
@@ -226,7 +228,9 @@ class PracticeViewModelTest {
         assertEquals(4, vm.state.value.remainingSeconds)
         answerRight(vm)
 
-        assertEquals(0, playFast(vm, 15).count { it == question })
+        val next = playFast(vm, 15)
+        vm.onPause()
+        assertEquals(0, next.count { it == question })
     }
 
     @Test
@@ -252,7 +256,9 @@ class PracticeViewModelTest {
         val mistake = vm.state.value.question
         answerWrong(vm)
 
-        assertEquals(0, playFast(vm, 15).count { it == mistake })
+        val next = playFast(vm, 15)
+        vm.onPause()
+        assertEquals(0, next.count { it == mistake })
     }
 
     @Test
@@ -260,10 +266,12 @@ class PracticeViewModelTest {
         val first = PracticeViewModel(tables, UniqueProducts(), Random(3))
         first.onResume()
         answerWrong(first) // leaves comebacks scheduled in this quiz only
+        first.onPause()
 
         val second = PracticeViewModel(tables, UniqueProducts(), Random(3))
         second.onResume()
         val shown = playFast(second, 15)
+        second.onPause()
         assertEquals(15, shown.toSet().size) // no comebacks: nothing was carried over
     }
 }
