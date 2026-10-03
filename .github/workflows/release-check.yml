@@ -1,0 +1,40 @@
+name: Release build check
+
+# The optimized (R8) build is slower and only breaks when build settings, shrinker rules or dependencies change, so it runs
+# only for pull requests that touch those files.
+on:
+  pull_request:
+    paths:
+      - 'app/build.gradle.kts'
+      - 'app/proguard-rules.pro'
+      - 'app/src/main/baseline-prof.txt'
+      - 'build.gradle.kts'
+      - 'settings.gradle.kts'
+      - 'gradle.properties'
+      - 'gradle/**'
+
+concurrency:
+  group: release-check-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: 17
+
+      - uses: gradle/actions/setup-gradle@v4
+        with:
+          cache-read-only: false
+
+      - name: Optimized release build (R8, baseline profile)
+        run: ./gradlew assembleRelease --stacktrace

@@ -45,8 +45,9 @@ Normative description of the app. "Web" = the prototype in `docs/reference/quizz
 - **Limits**: squares and square roots use base numbers up to **30**; cubes and cube roots up to **20**. The range is over the
   base number (for a root question it is the answer): 2-30 gives squares up to 30² = 900, square roots of up to 900, cubes up to
   20³ = 8000 and cube roots of up to 8000. A range that goes above 20 is cut at 20 for the cube kinds only.
-- A line under the fields shows the limits until something is selected, then the range each selected kind will really use, e.g.
-  "Squares & roots: 2–30 · Cubes & roots: 2–20".
+- Two limit cards under the fields (see DESIGN_SYSTEM): before anything is selected they show the allowed `1–30` / `1–20`; once a
+  kind is selected its card shows the range it will really use (`2–30`, or `2–20` with "Cut at 20" when Max is above the limit) with a
+  bar on a 1–30 scale, `None` when the range has no numbers for it, and the unselected kind fades.
 - **Start** is enabled when at least one type is selected and the range is valid. Errors: Min greater than Max, a blank/zero field
   (blocks Start, no message while typing), and "only cubes/cube roots selected but Min is above 20" (no numbers to ask).
   If squares are also selected and Min is above 20, only the square kinds are asked.
@@ -112,6 +113,7 @@ Normative description of the app. "Web" = the prototype in `docs/reference/quizz
 | Header showed a gradient blob logo with a "Q" | No logo in the header | Owner request. |
 | No splash / launcher icon design | Launcher icon and full-screen splash use the owner's `quizzen-logo.svg` | Owner request. |
 | Hero titles could wrap ("Vocabula/ry" on narrow phones) | Title shrinks to stay on one line | Owner request; same idea as the practice question auto-fit. |
+| "Time's Up" sheet was orange | Sky blue (`#2E9FE0`) | Owner request; orange was too close to the app's primary colour. |
 | Powers & Roots was a placeholder | Implemented (types, range, timer) in the Quizzen style, from a reference screenshot of another app | Owner request. The reference's "0 disables the timer" is **not** adopted: 0 or blank uses the default like every other screen. |
 | Followed `prefers-color-scheme` (light + dark) | Light only | Product decision: the app is light-only. |
 | Haptics toggle was not persisted or connected | Persisted (DataStore) and applied everywhere, with a distinct effect per action | Real feature. |

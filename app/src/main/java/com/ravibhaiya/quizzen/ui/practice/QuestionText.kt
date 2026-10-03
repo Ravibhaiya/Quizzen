@@ -21,6 +21,12 @@ import com.ravibhaiya.quizzen.domain.RootQuestion
 private val ScriptSize = 0.55.em
 
 /**
+ * Pulls the root sign towards the cube-root index, which moves the index to the right so it sits against the sign like a
+ * printed cube root. Measured on the font: at this value the gap shrinks from about 4.9 sp to about 0.7 sp at 49.6 sp.
+ */
+private val RootIndexNudge = (-0.15).em
+
+/**
  * How a question is drawn on the Practice screen. The operator (the multiplication sign, the exponent, the root sign) is
  * tinted with [accent], exactly like the orange "x" in the original design:
  *  - product: `710 x 60`
@@ -44,7 +50,9 @@ fun Question.toDisplayText(accent: Color): AnnotatedString = buildAnnotatedStrin
             withStyle(script) { append(question.exponent.toString()) }
         }
         is RootQuestion -> {
-            if (question.degree != 2) withStyle(script) { append(question.degree.toString()) }
+            if (question.degree != 2) {
+                withStyle(script.copy(letterSpacing = RootIndexNudge)) { append(question.degree.toString()) }
+            }
             withStyle(SpanStyle(color = accent)) { append("\u221A") }
             append(question.radicand.toString())
         }

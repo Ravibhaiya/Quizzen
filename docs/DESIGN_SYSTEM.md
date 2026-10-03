@@ -20,7 +20,7 @@ has a dark palette; it was intentionally not ported.)
 | onSurface | `#211710` |
 | onSurfaceVariant | `#5C4A3B` |
 | quizzen.tone30 (gradient end) | `#B85E1E` |
-| quizzen.success / error / warning | `#1FAE6A / #E14C4C / #F2924B` |
+| quizzen.success / error / timeout | `#1FAE6A / #E14C4C / #2E9FE0` (timeout = the sky-blue "Time's Up" sheet) |
 
 The web CSS also defines tone40-70 and dark-on-light, but no rule uses them, so they are intentionally not ported.
 All tokens above were verified against the CSS of `docs/reference/quizzen-web-reference.html`, and the rendered light-theme
@@ -98,6 +98,16 @@ glow circles (280 dp top-right, 220 dp bottom-left, primaryContainer @ 35%, edge
 - Timer chip pulses 1.0 -> 1.1 (1 s cycle) when <= 5 s remain.
 - Wrong answer: 400 ms horizontal shake, keyframes -3, 5, -9, 9, -9, 9, -9, 5, -3, 0 dp.
 - Answer field focus: fills with `surface`, 4 dp primary@20% ring.
+
+## Limit cards (Powers & Roots)
+
+Two cards side by side under the Min/Max fields ("Squares & roots", "Cubes & roots"). Each is a 22 dp-radius surfaceContainer card
+(`2 6 0` neutral shadow at 5%) with: name (13 sp, onSurfaceVariant), the numbers that will really be used (22 sp ExtraBold,
+e.g. `2–30`), an 8 dp bar, and a caption (12 sp). The bar uses one scale for both cards (1 to 30): grey track up to the kind's
+limit, a dotted line for the numbers above it, and the used range filled with the primary colour (animated, 250 ms).
+States: nothing chosen (shows `1–limit` in onSurfaceVariant, no fill), using (fill; caption `Limit N`, or primary-coloured
+`Cut at N` when Max was above the limit), no numbers (`None` in the error colour), other kind selected (card at 45% opacity).
+The state rules live in `LimitCardModel.kt` (pure Kotlin, unit tested).
 
 ## Number field (Powers & Roots range)
 

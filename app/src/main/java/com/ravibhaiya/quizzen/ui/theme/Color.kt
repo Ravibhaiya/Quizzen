@@ -12,7 +12,8 @@ data class QuizzenColors(
     val tone30: Color,
     val success: Color,
     val error: Color,
-    val warning: Color,
+    /** Background of the "Time's Up" sheet. */
+    val timeout: Color,
 )
 
 // Palette = CSS `:root` of the web reference. The app is light-only by design (no dark palette).
@@ -30,12 +31,13 @@ private val Tone30 = Color(0xFFB85E1E)
 // Feedback colors.
 private val Success = Color(0xFF1FAE6A)
 private val Error = Color(0xFFE14C4C)
-private val Warning = Color(0xFFF2924B)
+// Sky blue: sits with the green/red sheets at a similar brightness (white text contrast ~2.9:1, like the green one).
+private val Timeout = Color(0xFF2E9FE0)
 
 // Only Material's `inversePrimary` slot needs this; the web design has no equivalent.
 private val InversePrimary = Color(0xFFF4B178)
 
-internal val QuizzenExtraColors = QuizzenColors(Tone30, Success, Error, Warning)
+internal val QuizzenExtraColors = QuizzenColors(Tone30, Success, Error, Timeout)
 
 /**
  * Every Material role is set explicitly so no component (Snackbar, dividers, sheets...) can fall back to the
