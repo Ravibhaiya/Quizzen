@@ -32,13 +32,19 @@ sealed interface PracticeConfig {
         }
     }
 
-    /** Squares, cubes, square roots and cube roots for base numbers in `min..max` (see [PowersRootsRules]). */
+    /**
+     * Squares, cubes, square roots and cube roots. [squares] is the range of base numbers for squares and square roots,
+     * [cubes] the one for cubes and cube roots (see [PowersRootsRules] for the limits).
+     */
     data class PowersRoots(
         val types: Set<PowerRootType>,
-        val min: Int,
-        val max: Int,
+        val squares: IntRange,
+        val cubes: IntRange,
         override val timerSeconds: Int,
     ) : PracticeConfig {
         override val repeatsMistakes: Boolean get() = true
+
+        fun rangeOf(type: PowerRootType): IntRange =
+            if (type.family == PowerRootType.Family.Square) squares else cubes
     }
 }

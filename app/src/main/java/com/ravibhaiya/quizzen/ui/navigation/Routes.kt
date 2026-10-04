@@ -17,8 +17,10 @@ object Routes {
     const val ARG_NUMBERS = "numbers"
     const val ARG_SECONDS = "seconds"
     const val ARG_TYPES = "types"
-    const val ARG_MIN = "min"
-    const val ARG_MAX = "max"
+    const val ARG_SQ_MIN = "smin"
+    const val ARG_SQ_MAX = "smax"
+    const val ARG_CU_MIN = "cmin"
+    const val ARG_CU_MAX = "cmax"
 
     const val MODE_MULTIPLY = "multiply"
     const val MODE_TABLES = "tables"
@@ -26,7 +28,8 @@ object Routes {
 
     const val PRACTICE = "practice/{$ARG_MODE}?$ARG_D1={$ARG_D1}&$ARG_D2={$ARG_D2}" +
         "&$ARG_NUMBERS={$ARG_NUMBERS}&$ARG_SECONDS={$ARG_SECONDS}" +
-        "&$ARG_TYPES={$ARG_TYPES}&$ARG_MIN={$ARG_MIN}&$ARG_MAX={$ARG_MAX}"
+        "&$ARG_TYPES={$ARG_TYPES}&$ARG_SQ_MIN={$ARG_SQ_MIN}&$ARG_SQ_MAX={$ARG_SQ_MAX}" +
+        "&$ARG_CU_MIN={$ARG_CU_MIN}&$ARG_CU_MAX={$ARG_CU_MAX}"
 
     fun practice(config: PracticeConfig): String = when (config) {
         is PracticeConfig.Multiply ->
@@ -37,7 +40,8 @@ object Routes {
                 "&$ARG_SECONDS=${config.timerSeconds}"
         is PracticeConfig.PowersRoots ->
             "practice/$MODE_POWERS?$ARG_TYPES=${config.types.sortedBy { it.ordinal }.joinToString(",") { it.code }}" +
-                "&$ARG_MIN=${config.min}&$ARG_MAX=${config.max}&$ARG_SECONDS=${config.timerSeconds}"
+                "&$ARG_SQ_MIN=${config.squares.first}&$ARG_SQ_MAX=${config.squares.last}" +
+                "&$ARG_CU_MIN=${config.cubes.first}&$ARG_CU_MAX=${config.cubes.last}&$ARG_SECONDS=${config.timerSeconds}"
     }
 }
 
@@ -51,8 +55,10 @@ object PracticeArgs {
         numbers = handle.get<String>(Routes.ARG_NUMBERS),
         seconds = handle.get<Int>(Routes.ARG_SECONDS),
         types = handle.get<String>(Routes.ARG_TYPES),
-        min = handle.get<Int>(Routes.ARG_MIN),
-        max = handle.get<Int>(Routes.ARG_MAX),
+        squareMin = handle.get<Int>(Routes.ARG_SQ_MIN),
+        squareMax = handle.get<Int>(Routes.ARG_SQ_MAX),
+        cubeMin = handle.get<Int>(Routes.ARG_CU_MIN),
+        cubeMax = handle.get<Int>(Routes.ARG_CU_MAX),
     )
 
     fun decode(
@@ -62,8 +68,10 @@ object PracticeArgs {
         numbers: String?,
         seconds: Int?,
         types: String? = null,
-        min: Int? = null,
-        max: Int? = null,
+        squareMin: Int? = null,
+        squareMax: Int? = null,
+        cubeMin: Int? = null,
+        cubeMax: Int? = null,
     ): PracticeConfig {
         val timer = (seconds ?: 0).takeIf { it > 0 } ?: 20
         return when (mode) {
@@ -73,13 +81,21 @@ object PracticeArgs {
                 timerSeconds = timer,
             )
             Routes.MODE_POWERS -> {
-                val low = (min ?: PowersRootsRules.DEFAULT_MIN)
-                    .coerceIn(PowersRootsRules.MIN_ALLOWED, PowersRootsRules.MAX_ALLOWED)
+                val square = PowerRootType.Family.Square
+                val cube = PowerRootType.Family.Cube
                 PracticeConfig.PowersRoots(
                     types = types.orEmpty().split(',').mapNotNull(PowerRootType::fromCode).toSet()
                         .ifEmpty { PowerRootType.entries.toSet() },
-                    min = low,
-                    max = (max ?: PowersRootsRules.DEFAULT_MAX).coerceIn(low, PowersRootsRules.MAX_ALLOWED),
+                    squares = PowersRootsRules.coerce(
+                        squareMin ?: PowersRootsRules.DEFAULT_MIN,
+                        squareMax ?: PowersRootsRules.SQUARE_LIMIT,
+                        square,
+                    ),
+                    cubes = PowersRootsRules.coerce(
+                        cubeMin ?: PowersRootsRules.DEFAULT_MIN,
+                        cubeMax ?: PowersRootsRules.CUBE_LIMIT,
+                        cube,
+                    ),
                     timerSeconds = timer,
                 )
             }

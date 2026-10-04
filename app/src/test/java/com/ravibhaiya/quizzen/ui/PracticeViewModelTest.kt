@@ -140,23 +140,30 @@ class PracticeViewModelTest {
     fun powersRootsRouteRoundTrips() {
         val config = PracticeConfig.PowersRoots(
             types = setOf(PowerRootType.CubeRoots, PowerRootType.Squares),
-            min = 3,
-            max = 25,
+            squares = 3..25,
+            cubes = 4..18,
             timerSeconds = 15,
         )
         val route = Routes.practice(config)
-        assertEquals("practice/powers?types=sq,cbrt&min=3&max=25&seconds=15", route)
+        assertEquals("practice/powers?types=sq,cbrt&smin=3&smax=25&cmin=4&cmax=18&seconds=15", route)
 
-        val decoded = PracticeArgs.decode("powers", null, null, null, 15, types = "sq,cbrt", min = 3, max = 25)
+        val decoded = PracticeArgs.decode(
+            "powers", null, null, null, 15,
+            types = "sq,cbrt", squareMin = 3, squareMax = 25, cubeMin = 4, cubeMax = 18,
+        )
         assertEquals(config, decoded)
     }
 
     @Test
     fun powersRootsDecodingRepairsBadArguments() {
-        val decoded = PracticeArgs.decode("powers", null, null, null, 0, types = "", min = 99, max = 1)
-        assertEquals(PowerRootType.entries.toSet(), (decoded as PracticeConfig.PowersRoots).types)
-        assertEquals(30, decoded.min) // clamped to the allowed range
-        assertEquals(30, decoded.max) // never below min
+        val decoded = PracticeArgs.decode(
+            "powers", null, null, null, 0,
+            types = "", squareMin = 99, squareMax = 1, cubeMin = 2, cubeMax = 30,
+        )
+        decoded as PracticeConfig.PowersRoots
+        assertEquals(PowerRootType.entries.toSet(), decoded.types)
+        assertEquals(30..30, decoded.squares) // start pulled inside the limit, end never before it
+        assertEquals(2..20, decoded.cubes) // cubes stop at 20
         assertEquals(20, decoded.timerSeconds) // falls back to the default
     }
 

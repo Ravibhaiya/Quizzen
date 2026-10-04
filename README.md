@@ -10,8 +10,8 @@ springy press animations. It is a native re-implementation of the original singl
 - **Home** with a Math / Language segmented control and swipeable tabs (animated pill indicator).
 - **Multiply**: pick digit counts (2-5) for each operand, set a per-question timer (0-180 s), practice.
 - **Tables Practice**: pick any of the tables 2-31 (or Select All), set a timer, practice `n x 1..10`.
-- **Powers & Roots**: choose squares, cubes, square roots and/or cube roots, a number range (squares and square roots up to 30,
-  cubes and cube roots up to 20) and a timer.
+- **Powers & Roots**: choose squares, cubes, square roots and/or cube roots, a two number-range sliders (squares and square
+  roots up to 30, cubes and cube roots up to 20) and a timer.
 - **Mistake repeats** (Tables, Powers & Roots): a wrong answer brings the same question back 3 times, a slow one 2 times, within
   the next 10 questions and never right away; nothing is saved between quizzes.
 - **Practice**: live countdown chip (pulses in the last 5 s), numeric answer field, animated feedback

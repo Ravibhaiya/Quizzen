@@ -8,7 +8,7 @@ enum class PowerRootType(val code: String, val family: Family, val limit: Int) {
     CubeRoots("cbrt", Family.Cube, PowersRootsRules.CUBE_LIMIT),
     ;
 
-    /** Squares and square roots share one limit, cubes and cube roots another. */
+    /** Squares and square roots share one range (and limit), cubes and cube roots another. */
     enum class Family { Square, Cube }
 
     companion object {
@@ -17,49 +17,30 @@ enum class PowerRootType(val code: String, val family: Family, val limit: Int) {
 }
 
 /**
- * Rules for the Powers & Roots number range. The range is over the *base number*: `x` for `x^2` / `x^3`, and the answer
- * for roots (`sqrt(x^2)` = x). Squares and square roots go up to [SQUARE_LIMIT], cubes and cube roots up to [CUBE_LIMIT];
- * a range that goes above a kind's limit is simply cut off at that limit for that kind.
+ * Rules for the Powers & Roots number ranges. Each family has its own range of *base numbers*: `x` for `x^2` / `x^3`, and the
+ * answer for roots (`sqrt(x^2)` = x). Squares and square roots go up to [SQUARE_LIMIT], cubes and cube roots up to
+ * [CUBE_LIMIT]. The range sliders can only produce values inside these limits; [coerce] repairs anything that arrives from
+ * elsewhere (saved navigation arguments).
  */
 object PowersRootsRules {
     const val SQUARE_LIMIT = 30
     const val CUBE_LIMIT = 20
 
-    /** Smallest / largest number the Min and Max fields accept. */
+    /** Smallest number a range may start at. */
     const val MIN_ALLOWED = 1
-    const val MAX_ALLOWED = SQUARE_LIMIT
 
+    /** The sliders start at 2 (1 squared and cubed is not much of a question), up to the limit. */
     const val DEFAULT_MIN = 2
-    const val DEFAULT_MAX = SQUARE_LIMIT
 
-    enum class Issue { None, InvalidNumber, MinAboveMax, BeyondCubeLimit }
+    fun limitOf(family: PowerRootType.Family): Int =
+        if (family == PowerRootType.Family.Square) SQUARE_LIMIT else CUBE_LIMIT
 
-    /** Result of cleaning what was typed into the Min/Max fields. */
-    data class NumberInput(val text: String, val exceededLimit: Boolean)
+    fun defaultRange(family: PowerRootType.Family): IntRange = DEFAULT_MIN..limitOf(family)
 
-    /** Digits only, no leading zeros, and anything above [MAX_ALLOWED] is cut to it (and flagged). Blank stays blank. */
-    fun normalizeInput(raw: String): NumberInput {
-        val digits = raw.filter(Char::isDigit).take(3)
-        if (digits.isEmpty()) return NumberInput("", exceededLimit = false)
-        val value = digits.toInt()
-        return if (value > MAX_ALLOWED) {
-            NumberInput(MAX_ALLOWED.toString(), exceededLimit = true)
-        } else {
-            NumberInput(value.toString(), exceededLimit = false)
-        }
-    }
-
-    /** Numbers actually used for [type], or null when the range has nothing in it for that kind. */
-    fun effectiveRange(type: PowerRootType, min: Int, max: Int): IntRange? {
-        val high = minOf(max, type.limit)
-        return if (min <= high) min..high else null
-    }
-
-    fun issue(types: Set<PowerRootType>, min: Int?, max: Int?): Issue {
-        if (min == null || max == null) return Issue.InvalidNumber
-        if (min !in MIN_ALLOWED..MAX_ALLOWED || max !in MIN_ALLOWED..MAX_ALLOWED) return Issue.InvalidNumber
-        if (min > max) return Issue.MinAboveMax
-        if (types.isNotEmpty() && types.none { effectiveRange(it, min, max) != null }) return Issue.BeyondCubeLimit
-        return Issue.None
+    /** A valid range for [family]: inside `MIN_ALLOWED..limit`, and never ending before it starts. */
+    fun coerce(min: Int, max: Int, family: PowerRootType.Family): IntRange {
+        val limit = limitOf(family)
+        val low = min.coerceIn(MIN_ALLOWED, limit)
+        return low..max.coerceIn(low, limit)
     }
 }

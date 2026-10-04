@@ -92,8 +92,10 @@ fun QuizzenNavHost(
                 navArgument(Routes.ARG_NUMBERS) { type = NavType.StringType; defaultValue = "" },
                 navArgument(Routes.ARG_SECONDS) { type = NavType.IntType; defaultValue = 20 },
                 navArgument(Routes.ARG_TYPES) { type = NavType.StringType; defaultValue = "" },
-                navArgument(Routes.ARG_MIN) { type = NavType.IntType; defaultValue = PowersRootsRules.DEFAULT_MIN },
-                navArgument(Routes.ARG_MAX) { type = NavType.IntType; defaultValue = PowersRootsRules.DEFAULT_MAX },
+                navArgument(Routes.ARG_SQ_MIN) { type = NavType.IntType; defaultValue = PowersRootsRules.DEFAULT_MIN },
+                navArgument(Routes.ARG_SQ_MAX) { type = NavType.IntType; defaultValue = PowersRootsRules.SQUARE_LIMIT },
+                navArgument(Routes.ARG_CU_MIN) { type = NavType.IntType; defaultValue = PowersRootsRules.DEFAULT_MIN },
+                navArgument(Routes.ARG_CU_MAX) { type = NavType.IntType; defaultValue = PowersRootsRules.CUBE_LIMIT },
             ),
         ) {
             PracticeScreen(

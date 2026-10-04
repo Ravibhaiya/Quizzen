@@ -1,34 +1,33 @@
 package com.ravibhaiya.quizzen.ui.powers
 
 import androidx.annotation.StringRes
-import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
-import androidx.compose.animation.expandVertically
-import androidx.compose.animation.fadeIn
-import androidx.compose.animation.fadeOut
-import androidx.compose.animation.shrinkVertically
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
-import androidx.compose.ui.text.input.ImeAction
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -37,12 +36,13 @@ import com.ravibhaiya.quizzen.R
 import com.ravibhaiya.quizzen.domain.PowerRootType
 import com.ravibhaiya.quizzen.domain.PowersRootsRules
 import com.ravibhaiya.quizzen.domain.PracticeConfig
-import com.ravibhaiya.quizzen.ui.components.NumberField
+import com.ravibhaiya.quizzen.ui.components.NeutralShadowColor
 import com.ravibhaiya.quizzen.ui.components.OptionChip
-import com.ravibhaiya.quizzen.ui.components.QuizzenIcons
+import com.ravibhaiya.quizzen.ui.components.QuizzenRangeSlider
 import com.ravibhaiya.quizzen.ui.components.QuizzenScreen
 import com.ravibhaiya.quizzen.ui.components.ScreenHeader
 import com.ravibhaiya.quizzen.ui.components.TimerFooter
+import com.ravibhaiya.quizzen.ui.components.cssShadow
 import com.ravibhaiya.quizzen.ui.components.rememberHaptics
 import com.ravibhaiya.quizzen.ui.theme.quizzen
 
@@ -80,12 +80,10 @@ fun PowersRootsConfigScreen(
                     selected = state.types,
                     onToggle = { haptics.tick(); viewModel.toggleType(it) },
                 )
-                NumberRange(
+                NumberRanges(
                     state = state,
-                    onMinChanged = viewModel::onMinChanged,
-                    onMaxChanged = viewModel::onMaxChanged,
-                    onMinFocusLost = viewModel::onMinFocusLost,
-                    onMaxFocusLost = viewModel::onMaxFocusLost,
+                    onRangeChanged = viewModel::onRangeChanged,
+                    onRangeChangeFinished = { haptics.tick() },
                 )
             }
 
@@ -126,12 +124,10 @@ private fun PracticeTypes(selected: Set<PowerRootType>, onToggle: (PowerRootType
 }
 
 @Composable
-private fun NumberRange(
+private fun NumberRanges(
     state: PowersRootsConfigUiState,
-    onMinChanged: (String) -> Unit,
-    onMaxChanged: (String) -> Unit,
-    onMinFocusLost: () -> Unit,
-    onMaxFocusLost: () -> Unit,
+    onRangeChanged: (PowerRootType.Family, IntRange) -> Unit,
+    onRangeChangeFinished: () -> Unit,
 ) {
     Text(
         text = stringResource(R.string.number_range),
@@ -139,65 +135,89 @@ private fun NumberRange(
         color = MaterialTheme.colorScheme.onSurface,
         modifier = Modifier.padding(bottom = 14.dp),
     )
-    val hasError = state.limitExceeded || state.showIssue
-    Row(
-        horizontalArrangement = Arrangement.spacedBy(12.dp),
-        verticalAlignment = Alignment.Bottom,
-    ) {
-        NumberField(
-            label = stringResource(R.string.min_number),
-            value = state.minText,
-            onValueChange = onMinChanged,
-            onFocusLost = onMinFocusLost,
-            isError = hasError,
-            modifier = Modifier.weight(1f),
-        )
-        Icon(
-            imageVector = QuizzenIcons.ArrowRight,
-            contentDescription = null,
-            tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f),
-            modifier = Modifier.padding(bottom = 24.dp).size(24.dp),
-        )
-        NumberField(
-            label = stringResource(R.string.max_number),
-            value = state.maxText,
-            onValueChange = onMaxChanged,
-            onFocusLost = onMaxFocusLost,
-            imeAction = ImeAction.Done,
-            isError = hasError,
-            modifier = Modifier.weight(1f),
-        )
+    Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+        listOf(PowerRootType.Family.Square, PowerRootType.Family.Cube).forEach { family ->
+            RangeCard(
+                family = family,
+                range = state.rangeOf(family),
+                inUse = state.isInUse(family),
+                onRangeChange = { onRangeChanged(family, it) },
+                onRangeChangeFinished = onRangeChangeFinished,
+            )
+        }
     }
-
-    val error = rangeError(state)
-    AnimatedVisibility(
-        visible = error != null,
-        enter = fadeIn(tween(150)) + expandVertically(tween(150)),
-        exit = fadeOut(tween(150)) + shrinkVertically(tween(150)),
-    ) {
-        Text(
-            text = error.orEmpty(),
-            style = MaterialTheme.typography.bodyMedium.copy(fontSize = 13.6.sp),
-            color = MaterialTheme.quizzen.error,
-            modifier = Modifier.padding(start = 4.dp, top = 12.dp),
-        )
-    }
-    LimitCards(
-        models = limitCardModels(state.types, state.min, state.max),
-        modifier = Modifier.padding(top = 16.dp),
-    )
 }
 
+/**
+ * One slider for one kind of question. The slider's own ends are the limit (shown as the two small numbers under it), and
+ * the pill shows the range in use, so nothing else is needed to explain the limits. When other kinds are chosen but not this
+ * one the card fades and cannot be dragged.
+ */
 @Composable
-private fun rangeError(state: PowersRootsConfigUiState): String? = when {
-    state.limitExceeded -> stringResource(R.string.range_error_limit, PowersRootsRules.MAX_ALLOWED)
-    !state.showIssue -> null
-    else -> when (state.issue) {
-        PowersRootsRules.Issue.InvalidNumber ->
-            stringResource(R.string.range_error_invalid, PowersRootsRules.MIN_ALLOWED, PowersRootsRules.MAX_ALLOWED)
-        PowersRootsRules.Issue.MinAboveMax -> stringResource(R.string.range_error_min_above_max)
-        PowersRootsRules.Issue.BeyondCubeLimit -> stringResource(R.string.range_error_cube_limit, PowersRootsRules.CUBE_LIMIT)
-        PowersRootsRules.Issue.None -> null
+private fun RangeCard(
+    family: PowerRootType.Family,
+    range: IntRange,
+    inUse: Boolean,
+    onRangeChange: (IntRange) -> Unit,
+    onRangeChangeFinished: () -> Unit,
+) {
+    val shape = RoundedCornerShape(24.dp)
+    val limit = PowersRootsRules.limitOf(family)
+    val fade by animateFloatAsState(if (inUse) 1f else 0.45f, tween(200), label = "rangeCardFade")
+    val title = stringResource(
+        if (family == PowerRootType.Family.Square) R.string.range_title_squares else R.string.range_title_cubes,
+    )
+
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .graphicsLayer { alpha = fade }
+            .cssShadow(
+                NeutralShadowColor.copy(alpha = 0.05f),
+                offsetY = 2.dp, blur = 6.dp, spread = 0.dp, shape = shape,
+            )
+            .background(MaterialTheme.colorScheme.surfaceContainer, shape)
+            .padding(start = 18.dp, end = 18.dp, top = 16.dp, bottom = 14.dp),
+    ) {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Text(
+                text = title,
+                style = MaterialTheme.typography.titleMedium.copy(fontSize = 16.sp, fontWeight = FontWeight.Bold),
+                color = MaterialTheme.colorScheme.onSurface,
+            )
+            Text(
+                text = stringResource(R.string.range_value, range.first, range.last),
+                style = MaterialTheme.typography.labelLarge.copy(fontSize = 15.sp),
+                color = MaterialTheme.colorScheme.onPrimaryContainer,
+                modifier = Modifier
+                    .background(MaterialTheme.colorScheme.primaryContainer, CircleShape)
+                    .padding(horizontal = 14.dp, vertical = 6.dp),
+            )
+        }
+        QuizzenRangeSlider(
+            range = range,
+            lowest = PowersRootsRules.MIN_ALLOWED,
+            highest = limit,
+            onRangeChange = onRangeChange,
+            onRangeChangeFinished = onRangeChangeFinished,
+            startThumbDescription = stringResource(R.string.range_thumb_min, title),
+            endThumbDescription = stringResource(R.string.range_thumb_max, title),
+            enabled = inUse,
+            modifier = Modifier.padding(top = 6.dp),
+        )
+        // The two end numbers line up with the ends of the track (half a thumb in from the card edge).
+        Row(
+            modifier = Modifier.fillMaxWidth().padding(horizontal = 15.dp),
+            horizontalArrangement = Arrangement.SpaceBetween,
+        ) {
+            val endStyle = MaterialTheme.typography.bodyMedium.copy(fontSize = 12.sp)
+            Text(PowersRootsRules.MIN_ALLOWED.toString(), style = endStyle, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            Text(limit.toString(), style = endStyle, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        }
     }
 }
 

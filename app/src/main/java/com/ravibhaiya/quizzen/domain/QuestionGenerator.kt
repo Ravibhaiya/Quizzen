@@ -22,9 +22,9 @@ class RandomQuestionGenerator(private val random: Random = Random.Default) : Que
 
     private fun powersRoots(config: PracticeConfig.PowersRoots): Question {
         val choices = config.types
-            .mapNotNull { type -> PowersRootsRules.effectiveRange(type, config.min, config.max)?.let { type to it } }
+            .map { type -> type to config.rangeOf(type) }
             // Unreachable for validated configs; keeps a corrupted config from crashing the quiz.
-            .ifEmpty { PowerRootType.entries.map { it to (PowersRootsRules.DEFAULT_MIN..it.limit) } }
+            .ifEmpty { PowerRootType.entries.map { it to PowersRootsRules.defaultRange(it.family) } }
         val (type, range) = choices.random(random)
         val base = random.nextInt(range.first, range.last + 1).toLong()
         return when (type) {
