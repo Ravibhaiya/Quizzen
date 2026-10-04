@@ -45,21 +45,11 @@
     <string name="type_square_roots">Square Roots (√x)</string>
     <string name="type_cube_roots">Cube Roots (³√x)</string>
     <string name="number_range">Number Range</string>
-    <string name="min_number">Min Number</string>
-    <string name="max_number">Max Number</string>
-    <string name="limit_title_squares">Squares &amp; roots</string>
-    <string name="limit_title_cubes">Cubes &amp; roots</string>
-    <string name="limit_range">%1$d–%2$d</string>
-    <string name="limit_none">None</string>
-    <string name="limit_caption">Limit %1$d</string>
-    <string name="limit_cut">Cut at %1$d</string>
-    <string name="limit_a11y_using">%1$s: using %2$d to %3$d, limit %4$d</string>
-    <string name="limit_a11y_idle">%1$s: numbers up to %2$d</string>
-    <string name="limit_a11y_none">%1$s: no numbers in this range, limit %2$d</string>
-    <string name="range_error_limit">Numbers can\'t be above %1$d</string>
-    <string name="range_error_invalid">Enter numbers from %1$d to %2$d</string>
-    <string name="range_error_min_above_max">Min can\'t be greater than Max</string>
-    <string name="range_error_cube_limit">Cubes and cube roots only go up to %1$d</string>
+    <string name="range_title_squares">Squares &amp; roots</string>
+    <string name="range_title_cubes">Cubes &amp; roots</string>
+    <string name="range_value">%1$d–%2$d</string>
+    <string name="range_thumb_min">%1$s: smallest number</string>
+    <string name="range_thumb_max">%1$s: largest number</string>
 
     <!-- Practice -->
     <string name="practice_title">Practice</string>

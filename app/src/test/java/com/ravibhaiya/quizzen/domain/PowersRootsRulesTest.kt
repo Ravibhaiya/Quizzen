@@ -1,14 +1,10 @@
 package com.ravibhaiya.quizzen.domain
 
-import com.ravibhaiya.quizzen.domain.PowersRootsRules.Issue
+import com.ravibhaiya.quizzen.domain.PowerRootType.Family
 import org.junit.Assert.assertEquals
-import org.junit.Assert.assertNull
 import org.junit.Test
 
 class PowersRootsRulesTest {
-
-    private val squares = setOf(PowerRootType.Squares)
-    private val cubes = setOf(PowerRootType.Cubes, PowerRootType.CubeRoots)
 
     @Test
     fun limitsAreThirtyForSquaresAndTwentyForCubes() {
@@ -16,44 +12,29 @@ class PowersRootsRulesTest {
         assertEquals(30, PowerRootType.SquareRoots.limit)
         assertEquals(20, PowerRootType.Cubes.limit)
         assertEquals(20, PowerRootType.CubeRoots.limit)
+        assertEquals(30, PowersRootsRules.limitOf(Family.Square))
+        assertEquals(20, PowersRootsRules.limitOf(Family.Cube))
     }
 
     @Test
-    fun effectiveRange_cutsEachKindAtItsOwnLimit() {
-        assertEquals(2..30, PowersRootsRules.effectiveRange(PowerRootType.Squares, 2, 30))
-        assertEquals(2..20, PowersRootsRules.effectiveRange(PowerRootType.Cubes, 2, 30))
-        assertEquals(5..12, PowersRootsRules.effectiveRange(PowerRootType.CubeRoots, 5, 12))
-        assertNull(PowersRootsRules.effectiveRange(PowerRootType.CubeRoots, 21, 30))
+    fun defaultRangesStartAtTwoAndEndAtTheLimit() {
+        assertEquals(2..30, PowersRootsRules.defaultRange(Family.Square))
+        assertEquals(2..20, PowersRootsRules.defaultRange(Family.Cube))
     }
 
     @Test
-    fun validRanges() {
-        assertEquals(Issue.None, PowersRootsRules.issue(squares, 2, 30))
-        assertEquals(Issue.None, PowersRootsRules.issue(cubes, 2, 30)) // cut to 20, still fine
-        assertEquals(Issue.None, PowersRootsRules.issue(squares + cubes, 21, 30)) // squares still have 21..30
-        assertEquals(Issue.None, PowersRootsRules.issue(emptySet(), 2, 30)) // selection is checked separately
+    fun coerce_keepsValidRanges() {
+        assertEquals(5..12, PowersRootsRules.coerce(5, 12, Family.Cube))
+        assertEquals(1..30, PowersRootsRules.coerce(1, 30, Family.Square))
+        assertEquals(7..7, PowersRootsRules.coerce(7, 7, Family.Square))
     }
 
     @Test
-    fun invalidRanges() {
-        assertEquals(Issue.InvalidNumber, PowersRootsRules.issue(squares, null, 30))
-        assertEquals(Issue.InvalidNumber, PowersRootsRules.issue(squares, 2, null))
-        assertEquals(Issue.InvalidNumber, PowersRootsRules.issue(squares, 0, 30))
-        assertEquals(Issue.InvalidNumber, PowersRootsRules.issue(squares, 2, 31))
-        assertEquals(Issue.MinAboveMax, PowersRootsRules.issue(squares, 9, 5))
-        assertEquals(Issue.BeyondCubeLimit, PowersRootsRules.issue(cubes, 21, 30))
-    }
-
-    @Test
-    fun normalizeInput_keepsDigitsOnly_stripsLeadingZeros_andCapsAtThirty() {
-        assertEquals(PowersRootsRules.NumberInput("", false), PowersRootsRules.normalizeInput(""))
-        assertEquals(PowersRootsRules.NumberInput("", false), PowersRootsRules.normalizeInput("ab"))
-        assertEquals(PowersRootsRules.NumberInput("7", false), PowersRootsRules.normalizeInput("007"))
-        assertEquals(PowersRootsRules.NumberInput("0", false), PowersRootsRules.normalizeInput("0"))
-        assertEquals(PowersRootsRules.NumberInput("25", false), PowersRootsRules.normalizeInput("2a5"))
-        assertEquals(PowersRootsRules.NumberInput("30", false), PowersRootsRules.normalizeInput("30"))
-        assertEquals(PowersRootsRules.NumberInput("30", true), PowersRootsRules.normalizeInput("31"))
-        assertEquals(PowersRootsRules.NumberInput("30", true), PowersRootsRules.normalizeInput("999"))
+    fun coerce_repairsRangesOutsideTheLimits() {
+        assertEquals(2..20, PowersRootsRules.coerce(2, 30, Family.Cube)) // cubes stop at 20
+        assertEquals(1..30, PowersRootsRules.coerce(-4, 99, Family.Square))
+        assertEquals(20..20, PowersRootsRules.coerce(25, 30, Family.Cube)) // start pulled inside, end never before start
+        assertEquals(9..9, PowersRootsRules.coerce(9, 5, Family.Square)) // end before start
     }
 
     @Test

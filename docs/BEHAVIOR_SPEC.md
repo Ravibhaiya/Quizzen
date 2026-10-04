@@ -40,17 +40,15 @@ Normative description of the app. "Web" = the prototype in `docs/reference/quizz
 
 ## Powers & Roots configuration
 - **Practice Types** (multi-select, none selected initially): Squares (x²), Cubes (x³), Square Roots (√x), Cube Roots (³√x).
-- **Number Range**: Min Number (default 2) and Max Number (default 30), digits only, 1 to 30. A value above 30 is cut to 30 and
-  "Numbers can't be above 30" shows for 2.5 s. An empty or zero field returns to its default when it loses focus.
-- **Limits**: squares and square roots use base numbers up to **30**; cubes and cube roots up to **20**. The range is over the
-  base number (for a root question it is the answer): 2-30 gives squares up to 30² = 900, square roots of up to 900, cubes up to
-  20³ = 8000 and cube roots of up to 8000. A range that goes above 20 is cut at 20 for the cube kinds only.
-- Two limit cards under the fields (see DESIGN_SYSTEM): before anything is selected they show the allowed `1–30` / `1–20`; once a
-  kind is selected its card shows the range it will really use (`2–30`, or `2–20` with "Cut at 20" when Max is above the limit) with a
-  bar on a 1–30 scale, `None` when the range has no numbers for it, and the unselected kind fades.
-- **Start** is enabled when at least one type is selected and the range is valid. Errors: Min greater than Max, a blank/zero field
-  (blocks Start, no message while typing), and "only cubes/cube roots selected but Min is above 20" (no numbers to ask).
-  If squares are also selected and Min is above 20, only the square kinds are asked.
+- **Number Range**: two sliders, each with two thumbs (smallest and largest number), snapping to whole numbers:
+  - **Squares & roots**: 1 to **30** (starts at 2–30), used for squares and square roots.
+  - **Cubes & roots**: 1 to **20** (starts at 2–20), used for cubes and cube roots.
+  The end of each slider is its limit, so the limits need no extra text; the two small numbers under a slider show its ends and a
+  pill on the card shows the range in use (e.g. `2–30`). A range is over the base number (for a root question it is the answer):
+  2–30 gives squares up to 30² = 900 and square roots of up to 900; 2–20 gives cubes up to 20³ = 8000.
+- A slider whose kinds are not selected (while other kinds are) is faded and cannot be dragged; when nothing is selected both can
+  be set. Releasing a thumb gives a light tick (haptics).
+- Because the sliders can only produce valid ranges, the only rule for **Start** is that at least one type is selected.
 - Timer field default **10** s (same rules as below).
 
 ## Timer field (all config screens)
@@ -114,7 +112,7 @@ Normative description of the app. "Web" = the prototype in `docs/reference/quizz
 | No splash / launcher icon design | Launcher icon and full-screen splash use the owner's `quizzen-logo.svg` | Owner request. |
 | Hero titles could wrap ("Vocabula/ry" on narrow phones) | Title shrinks to stay on one line | Owner request; same idea as the practice question auto-fit. |
 | "Time's Up" sheet was orange | Sky blue (`#2E9FE0`) | Owner request; orange was too close to the app's primary colour. |
-| Powers & Roots was a placeholder | Implemented (types, range, timer) in the Quizzen style, from a reference screenshot of another app | Owner request. The reference's "0 disables the timer" is **not** adopted: 0 or blank uses the default like every other screen. |
+| Powers & Roots was a placeholder | Implemented (types, two range sliders, timer) in the Quizzen style, from a reference screenshot of another app | Owner request. The reference's "0 disables the timer" is **not** adopted: 0 or blank uses the default like every other screen. |
 | Followed `prefers-color-scheme` (light + dark) | Light only | Product decision: the app is light-only. |
 | Haptics toggle was not persisted or connected | Persisted (DataStore) and applied everywhere, with a distinct effect per action | Real feature. |
 | Option chips had 22 px side padding | 18 dp side padding | On 360 dp phones three chips need 326 dp but only 324 dp are available, so "4 Digits" wrapped and left a gap on the right. With 18 dp, three chips fit per row (2, 3, 4 Digits, then 5 Digits). |

@@ -50,8 +50,11 @@ class QuestionGeneratorTest {
 
     // ---- Powers & Roots: squares and square roots go up to 30, cubes and cube roots up to 20 ----
 
-    private fun powers(types: Set<PowerRootType>, min: Int = 2, max: Int = 30) =
-        PracticeConfig.PowersRoots(types = types, min = min, max = max, timerSeconds = 10)
+    private fun powers(
+        types: Set<PowerRootType>,
+        squares: IntRange = 2..30,
+        cubes: IntRange = 2..20,
+    ) = PracticeConfig.PowersRoots(types = types, squares = squares, cubes = cubes, timerSeconds = 10)
 
     @Test
     fun squares_useBasesUpToThirty() {
@@ -67,7 +70,7 @@ class QuestionGeneratorTest {
     }
 
     @Test
-    fun cubes_areCutOffAtTwentyEvenWhenTheRangeGoesToThirty() {
+    fun cubes_useBasesUpToTwenty() {
         var highest = 0L
         repeat(3_000) {
             val q = generator.next(powers(setOf(PowerRootType.Cubes))) as PowerQuestion
@@ -122,11 +125,16 @@ class QuestionGeneratorTest {
     }
 
     @Test
-    fun rangeAboveTwenty_dropsTheCubeKindsAndKeepsTheSquareKinds() {
-        repeat(1_000) {
-            val q = generator.next(powers(PowerRootType.entries.toSet(), min = 25))
-            val ok = (q is PowerQuestion && q.exponent == 2 && q.base in 25..30) ||
-                (q is RootQuestion && q.degree == 2 && q.answer in 25..30)
+    fun eachKindUsesItsOwnRange() {
+        repeat(2_000) {
+            val q = generator.next(powers(PowerRootType.entries.toSet(), squares = 25..30, cubes = 2..5))
+            val ok = when {
+                q is PowerQuestion && q.exponent == 2 -> q.base in 25..30
+                q is RootQuestion && q.degree == 2 -> q.answer in 25..30
+                q is PowerQuestion && q.exponent == 3 -> q.base in 2..5
+                q is RootQuestion && q.degree == 3 -> q.answer in 2..5
+                else -> false
+            }
             assertTrue("unexpected $q", ok)
         }
     }
@@ -134,7 +142,7 @@ class QuestionGeneratorTest {
     @Test
     fun customRangeIsRespected() {
         repeat(500) {
-            val q = generator.next(powers(setOf(PowerRootType.Squares), min = 10, max = 12)) as PowerQuestion
+            val q = generator.next(powers(setOf(PowerRootType.Squares), squares = 10..12)) as PowerQuestion
             assertTrue(q.base in 10..12)
         }
     }

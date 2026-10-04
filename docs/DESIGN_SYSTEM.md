@@ -99,21 +99,14 @@ glow circles (280 dp top-right, 220 dp bottom-left, primaryContainer @ 35%, edge
 - Wrong answer: 400 ms horizontal shake, keyframes -3, 5, -9, 9, -9, 9, -9, 5, -3, 0 dp.
 - Answer field focus: fills with `surface`, 4 dp primary@20% ring.
 
-## Limit cards (Powers & Roots)
+## Range slider (Powers & Roots)
 
-Two cards side by side under the Min/Max fields ("Squares & roots", "Cubes & roots"). Each is a 22 dp-radius surfaceContainer card
-(`2 6 0` neutral shadow at 5%) with: name (13 sp, onSurfaceVariant), the numbers that will really be used (22 sp ExtraBold,
-e.g. `2–30`), an 8 dp bar, and a caption (12 sp). The bar uses one scale for both cards (1 to 30): grey track up to the kind's
-limit, a dotted line for the numbers above it, and the used range filled with the primary colour (animated, 250 ms).
-States: nothing chosen (shows `1–limit` in onSurfaceVariant, no fill), using (fill; caption `Limit N`, or primary-coloured
-`Cut at N` when Max was above the limit), no numbers (`None` in the error colour), other kind selected (card at 45% opacity).
-The state rules live in `LimitCardModel.kt` (pure Kotlin, unit tested).
-
-## Number field (Powers & Roots range)
-
-`NumberField`: label above (bodyMedium, onSurfaceVariant), then a 24 dp-radius surfaceContainer box with a centred 26 sp
-ExtraBold number, `2 8 0` neutral shadow at 5%, and a 2 dp outline that is transparent, primary when focused, or red
-(`quizzen.error`) on error. Multi-select chips reuse `OptionChip` with `role = Role.Checkbox`.
+`QuizzenRangeSlider` (a styled Material 3 `RangeSlider`, whole-number steps, no tick marks) sits in a card per kind (24 dp
+radius, surfaceContainer, `2 6 0` neutral shadow at 5%). Card header: kind name (16 sp Bold) on the left, a pill with the range
+on the right (primaryContainer, onPrimaryContainer, 15 sp ExtraBold, `2–30`). Track: 10 dp tall, fully rounded, peach
+(`surfaceContainerHigh`) with the selected range in primary. Thumbs: 30 dp white circles with a 4 dp primary ring and a soft
+shadow, growing to 118% (spring) while held. Under the track, the two end numbers (1 and the limit, 12 sp onSurfaceVariant)
+line up with the track ends. A card whose kinds are not selected fades to 45% and is disabled.
 
 ## Logo, launcher icon and splash
 
