@@ -38,4 +38,17 @@ jobs:
           git diff --exit-code -- app/src/main/res/drawable app/src/main/res/values/logo_colors.xml
 
       - name: Unit tests, lint and debug build
-        run: ./gradlew testDebugUnitTest lintDebug assembleDebug --stacktrace
+        shell: bash
+        run: ./gradlew testDebugUnitTest lintDebug assembleDebug --stacktrace --console=plain 2>&1 | tee build.log
+
+      # When the build fails, show the compiler/test errors as annotations on the pull request (the full log is long).
+      - name: Show build errors
+        if: failure()
+        run: |
+          python3 - <<'PY'
+          import re
+          lines = open('build.log').read().splitlines()
+          keep = [l for l in lines if re.search(r'^e: |^\S+\.kt:\d+|FAILED|What went wrong|Execution failed|Lint found|error:|^> ', l)]
+          msg = "\n".join(keep[:80]).replace('%', '%25').replace('\r', '%0D').replace('\n', '%0A')
+          print("::error title=Gradle::" + msg)
+          PY
