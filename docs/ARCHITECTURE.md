@@ -14,7 +14,7 @@ Single Gradle module `:app`, single Activity, Compose UI, MVVM with unidirection
 | Layer | Package | Rules |
 |-------|---------|-------|
 | domain | `domain/` | Pure Kotlin. `Question` (sealed: `ProductQuestion`, `PowerQuestion`, `RootQuestion`), `Feedback`, `PracticeConfig` (Multiply / Tables / PowersRoots), `QuestionGenerator`, `TimerInput`, `PowersRootsRules` (limits 30 / 20, validation). No Android imports. |
-| data | `data/` | `SettingsRepository` interface + `DataStoreSettingsRepository` (`haptic_enabled`, default `true`). |
+| data | `data/` | One DataStore file (`QuizzenDataStore`). `SettingsRepository` (`haptic_enabled`, default `true`) and `QuizSettingsRepository`: the last-used setup of each quiz, one short text per quiz written by `SettingsCodec` (pure Kotlin, repairs bad values on read). |
 | ui | `ui/*` | Feature packages with `Screen` + `ViewModel`. `components/` shared widgets. `theme/` design tokens. `navigation/` routes + NavHost. |
 
 ## Screens and state

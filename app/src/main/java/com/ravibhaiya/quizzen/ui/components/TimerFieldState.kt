@@ -41,6 +41,12 @@ class TimerFieldState(
         _state.update { it.onFocusLost(defaultSeconds) }
     }
 
+    /** Shows [seconds] in the field (used when the screen restores the last-used setting). */
+    fun set(seconds: Int) {
+        errorJob?.cancel()
+        _state.value = TimerInput(seconds.toString())
+    }
+
     fun resolvedSeconds(): Int = _state.value.resolveSeconds(defaultSeconds)
 
     private companion object {

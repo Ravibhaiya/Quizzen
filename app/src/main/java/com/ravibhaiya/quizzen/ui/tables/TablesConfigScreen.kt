@@ -1,5 +1,7 @@
 package com.ravibhaiya.quizzen.ui.tables
 
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -17,6 +19,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -37,14 +40,22 @@ fun TablesConfigScreen(
     hapticEnabled: Boolean,
     onBack: () -> Unit,
     onStart: (PracticeConfig.Tables) -> Unit,
-    viewModel: TablesConfigViewModel = viewModel(),
+    viewModel: TablesConfigViewModel = viewModel(factory = TablesConfigViewModel.Factory),
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
     val timer by viewModel.timer.state.collectAsStateWithLifecycle()
     val haptics = rememberHaptics(hapticEnabled)
 
     QuizzenScreen {
-        Column(Modifier.fillMaxSize().statusBarsPadding().imePadding()) {
+        // Wait (a few milliseconds) for the saved setting so the screen never flashes the defaults first.
+        val shown by animateFloatAsState(if (state.loaded) 1f else 0f, tween(120), label = "configShown")
+        Column(
+            Modifier
+                .fillMaxSize()
+                .graphicsLayer { alpha = shown }
+                .statusBarsPadding()
+                .imePadding(),
+        ) {
             Column(
                 modifier = Modifier
                     .weight(1f)
@@ -95,10 +106,10 @@ fun TablesConfigScreen(
 
             TimerFooter(
                 timer = timer,
-                onTimerChange = viewModel.timer::onTextChanged,
+                onTimerChange = viewModel::onTimerChanged,
                 onTimerFocusLost = viewModel.timer::onFocusLost,
                 startEnabled = state.selected.isNotEmpty(),
-                onStart = { haptics.heavyClick(); onStart(viewModel.buildConfig()) },
+                onStart = { haptics.heavyClick(); onStart(viewModel.startQuiz()) },
             )
         }
     }
