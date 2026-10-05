@@ -114,6 +114,13 @@ values are read inside `graphicsLayer`/`offset`/`drawBehind` lambdas, text is ne
 branch. Practice-number limits for Powers & Roots (30 for squares and square roots, 20 for cubes and cube roots) live only in
 `PowersRootsRules` / `PowerRootType.limit`; never repeat those numbers elsewhere.
 
+## Remembered quiz settings
+
+Each quiz's setup screen restores what the user last started it with: ViewModel takes a `QuizSettingsRepository`, loads in `init`
+(with the `edited` guard and the `loaded` flag), and `startQuiz()` saves while returning the config. A new setup screen or a new
+setting must go through `SettingsCodec` (encode, decode **with repair**) and get a round-trip test in `SettingsCodecTest`. Never
+store anything about running quizzes or answers.
+
 ## Mistake repeats
 
 How wrong/slow answers come back lives only in `domain/PracticeSession.kt` and `domain/AnswerOutcome.kt` (constants:

@@ -38,6 +38,16 @@ Normative description of the app. "Web" = the prototype in `docs/reference/quizz
   The button appears active whenever all numbers are selected (also when selected manually).
 - Timer field default **10** s. Start is disabled until at least one number is selected.
 
+## Remembered settings
+- Each quiz's setup screen opens with the settings it was **last started with**: Multiply (digits of both numbers, timer), Tables
+  (selected numbers, timer) and Powers & Roots (selected types, both ranges, timer). They are saved when **Start** is pressed.
+- The first time (nothing saved) the screen shows its defaults. A saved value that is no longer valid is repaired or replaced by the
+  default, and a damaged or unreadable save is treated as "nothing saved"; saving can never crash the app.
+- The values are read a few milliseconds after the screen opens; the screen fades in once they are ready so the defaults never
+  flash. Anything the user touches before that is not overwritten.
+- Saved settings are only about the setup screen. A quiz itself always starts fresh, and nothing about answers is saved.
+- Stored on the device only (a few bytes in the app's preferences file); clearing the app data resets everything.
+
 ## Powers & Roots configuration
 - **Practice Types** (multi-select, none selected initially): Squares (x²), Cubes (x³), Square Roots (√x), Cube Roots (³√x).
 - **Number Range**: two sliders, each with two thumbs (smallest and largest number), snapping to whole numbers:

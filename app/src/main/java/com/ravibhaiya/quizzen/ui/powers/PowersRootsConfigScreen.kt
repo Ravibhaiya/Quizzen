@@ -51,14 +51,22 @@ fun PowersRootsConfigScreen(
     hapticEnabled: Boolean,
     onBack: () -> Unit,
     onStart: (PracticeConfig.PowersRoots) -> Unit,
-    viewModel: PowersRootsConfigViewModel = viewModel(),
+    viewModel: PowersRootsConfigViewModel = viewModel(factory = PowersRootsConfigViewModel.Factory),
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
     val timer by viewModel.timer.state.collectAsStateWithLifecycle()
     val haptics = rememberHaptics(hapticEnabled)
 
     QuizzenScreen {
-        Column(Modifier.fillMaxSize().statusBarsPadding().imePadding()) {
+        // Wait (a few milliseconds) for the saved setting so the screen never flashes the defaults first.
+        val shown by animateFloatAsState(if (state.loaded) 1f else 0f, tween(120), label = "configShown")
+        Column(
+            Modifier
+                .fillMaxSize()
+                .graphicsLayer { alpha = shown }
+                .statusBarsPadding()
+                .imePadding(),
+        ) {
             Column(
                 modifier = Modifier
                     .weight(1f)
@@ -89,10 +97,10 @@ fun PowersRootsConfigScreen(
 
             TimerFooter(
                 timer = timer,
-                onTimerChange = viewModel.timer::onTextChanged,
+                onTimerChange = viewModel::onTimerChanged,
                 onTimerFocusLost = viewModel.timer::onFocusLost,
                 startEnabled = state.canStart,
-                onStart = { haptics.heavyClick(); onStart(viewModel.buildConfig()) },
+                onStart = { haptics.heavyClick(); onStart(viewModel.startQuiz()) },
             )
         }
     }

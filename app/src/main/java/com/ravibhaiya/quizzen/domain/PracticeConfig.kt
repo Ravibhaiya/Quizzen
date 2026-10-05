@@ -17,6 +17,11 @@ sealed interface PracticeConfig {
         override val timerSeconds: Int,
     ) : PracticeConfig {
         override val repeatsMistakes: Boolean get() = false
+
+        companion object {
+            /** Digit counts offered for each number. */
+            val DIGIT_OPTIONS: List<Int> = listOf(2, 3, 4, 5)
+        }
     }
 
     /** `n x m` where `n` is one of the chosen table numbers and `m` is 1..[MULTIPLIER_MAX]. */

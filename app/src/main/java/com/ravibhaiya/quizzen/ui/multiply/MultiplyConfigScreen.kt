@@ -1,5 +1,7 @@
 package com.ravibhaiya.quizzen.ui.multiply
 
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.FlowRow
@@ -15,6 +17,7 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -32,14 +35,22 @@ fun MultiplyConfigScreen(
     hapticEnabled: Boolean,
     onBack: () -> Unit,
     onStart: (PracticeConfig.Multiply) -> Unit,
-    viewModel: MultiplyConfigViewModel = viewModel(),
+    viewModel: MultiplyConfigViewModel = viewModel(factory = MultiplyConfigViewModel.Factory),
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
     val timer by viewModel.timer.state.collectAsStateWithLifecycle()
     val haptics = rememberHaptics(hapticEnabled)
 
     QuizzenScreen {
-        Column(Modifier.fillMaxSize().statusBarsPadding().imePadding()) {
+        // Wait (a few milliseconds) for the saved setting so the screen never flashes the defaults first.
+        val shown by animateFloatAsState(if (state.loaded) 1f else 0f, tween(120), label = "configShown")
+        Column(
+            Modifier
+                .fillMaxSize()
+                .graphicsLayer { alpha = shown }
+                .statusBarsPadding()
+                .imePadding(),
+        ) {
             Column(
                 modifier = Modifier
                     .weight(1f)
@@ -72,10 +83,10 @@ fun MultiplyConfigScreen(
 
             TimerFooter(
                 timer = timer,
-                onTimerChange = viewModel.timer::onTextChanged,
+                onTimerChange = viewModel::onTimerChanged,
                 onTimerFocusLost = viewModel.timer::onFocusLost,
                 startEnabled = true,
-                onStart = { haptics.heavyClick(); onStart(viewModel.buildConfig()) },
+                onStart = { haptics.heavyClick(); onStart(viewModel.startQuiz()) },
             )
         }
     }
@@ -95,7 +106,7 @@ private fun DigitSection(title: String, selected: Int, onSelect: (Int) -> Unit) 
         horizontalArrangement = Arrangement.spacedBy(10.dp),
         verticalArrangement = Arrangement.spacedBy(10.dp),
     ) {
-        MultiplyConfigViewModel.DIGIT_OPTIONS.forEach { digits ->
+        PracticeConfig.Multiply.DIGIT_OPTIONS.forEach { digits ->
             OptionChip(
                 label = stringResource(R.string.digits_option, digits),
                 selected = digits == selected,
