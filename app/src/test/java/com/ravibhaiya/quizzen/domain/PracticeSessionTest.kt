@@ -7,24 +7,31 @@ import org.junit.Test
 
 class PracticeSessionTest {
 
-    /** Every question is new, so any question that shows up twice is a comeback. */
+    /** Questions that are all different, so any question that shows up twice is a comeback. */
     private class UniqueQuestions : QuestionGenerator {
         private var counter = 1_000L
         override fun next(config: PracticeConfig): Question = ProductQuestion(++counter, 1)
     }
 
+    /** A limited quiz with [size] different questions, standing in for the real list of a Tables / Powers & Roots quiz. */
+    private fun pool(size: Int): List<Question> = List(size) { ProductQuestion(1_000L + it, 1) }
+
     private val limited = PracticeConfig.Tables(numbers = listOf(2, 3), timerSeconds = 10)
     private val unlimited = PracticeConfig.Multiply(firstDigits = 2, secondDigits = 2, timerSeconds = 10)
 
-    /** Plays [total] questions; [outcomeOf] decides how each one is answered. Returns the questions in order shown. */
+    /**
+     * Plays [total] questions; [outcomeOf] decides how each one is answered. Returns the questions in order shown.
+     * [questions] is the quiz's list of questions (null = draw at random from [generator], like Multiply).
+     */
     private fun play(
         total: Int,
         seed: Int,
         config: PracticeConfig = limited,
         generator: QuestionGenerator = UniqueQuestions(),
+        questions: List<Question>? = if (config.repeatsMistakes) pool(2_000) else null,
         outcomeOf: (position: Int, question: Question) -> AnswerOutcome,
     ): List<Question> {
-        val session = PracticeSession(generator, config, Random(seed))
+        val session = PracticeSession(generator, config, Random(seed), questions)
         val shown = ArrayList<Question>()
         var question = session.next()
         for (position in 1..total) {
@@ -141,13 +148,11 @@ class PracticeSessionTest {
     }
 
     @Test
-    fun withASmallPool_aFreshQuestionIsNeverTheSameAsThePreviousOne() {
-        for (poolSize in listOf(3, 5, 10, 29)) {
+    fun withASmallPool_aQuestionIsNeverTheSameAsThePreviousOne_andNoQuestionIsLost() {
+        for (poolSize in listOf(3, 5, 10, 29, 96)) {
             val random = Random(poolSize)
-            val smallPool = object : QuestionGenerator {
-                override fun next(config: PracticeConfig): Question = ProductQuestion(random.nextInt(poolSize).toLong(), 1)
-            }
-            val shown = play(total = 20_000, seed = poolSize, generator = smallPool) { _, _ ->
+            val questions = pool(poolSize)
+            val shown = play(total = 20_000, seed = poolSize, questions = questions) { _, _ ->
                 when (random.nextInt(10)) {
                     0, 1, 2 -> AnswerOutcome.Wrong
                     3, 4 -> AnswerOutcome.Slow
@@ -155,6 +160,61 @@ class PracticeSessionTest {
                 }
             }
             assertEquals("pool=$poolSize", 0, shown.zipWithNext().count { (a, b) -> a == b })
+            assertEquals("pool=$poolSize", questions.toSet(), shown.toSet())
+        }
+    }
+
+    // ---- shuffled rounds ----
+
+    @Test
+    fun everyQuestionIsAskedOncePerRound_andRoundsKeepGoingForever() {
+        val questions = pool(29)
+        for (seed in 0 until 40) {
+            val shown = play(total = 29 * 6, seed = seed, questions = questions) { _, _ -> AnswerOutcome.Fast }
+            val rounds = shown.chunked(29)
+            assertTrue("seed=$seed", rounds.all { it.size == 29 && it.toSet() == questions.toSet() })
+            assertTrue("two rounds in the same order, seed=$seed", rounds.zipWithNext().all { (a, b) -> a != b })
+            assertTrue("repeat at a round boundary, seed=$seed", shown.zipWithNext().all { (a, b) -> a != b })
+        }
+    }
+
+    @Test
+    fun theOrderOfARoundIsDifferentEveryQuiz() {
+        val questions = pool(29)
+        val firstRounds = (0 until 40).map { seed ->
+            play(total = 29, seed = seed, questions = questions) { _, _ -> AnswerOutcome.Fast }
+        }.toSet()
+        assertTrue("only ${firstRounds.size} different orders", firstRounds.size > 35)
+    }
+
+    @Test
+    fun aMistakeIsAddedToTheOrder_andTheRestOfTheRoundIsUntouched() {
+        val questions = pool(29)
+        for (seed in 0 until 300) {
+            val mistakePosition = 1 + seed % 20
+            var mistake: Question? = null
+            val shown = play(total = 29 + 3, seed = seed, questions = questions) { position, question ->
+                if (position == mistakePosition) { mistake = question; AnswerOutcome.Wrong } else AnswerOutcome.Fast
+            }
+            val counts = shown.groupingBy { it }.eachCount()
+            assertEquals("seed=$seed", 4, counts[mistake])
+            assertTrue("seed=$seed", questions.all { it == mistake || counts[it] == 1 })
+        }
+    }
+
+    @Test
+    fun pileUp_everyQuestionOfTheRoundIsStillAskedOnce_andNoComebackIsLost() {
+        val questions = pool(29)
+        for (seed in 0 until 100) {
+            val mistakes = ArrayList<Question>()
+            val longRun = play(total = 80, seed = seed, questions = questions) { position, question ->
+                if (position <= 5 && question !in mistakes) { mistakes += question; AnswerOutcome.Wrong } else AnswerOutcome.Fast
+            }
+            val firstRound = longRun.take(29 + 3 * mistakes.size) // the round plus the comebacks it had to make room for
+            val counts = firstRound.groupingBy { it }.eachCount()
+            assertTrue("seed=$seed", mistakes.all { counts[it] == 4 })
+            assertTrue("seed=$seed", questions.all { it in mistakes || counts[it] == 1 })
+            assertTrue(longRun.zipWithNext().all { (a, b) -> a != b })
         }
     }
 
@@ -166,11 +226,11 @@ class PracticeSessionTest {
 
     @Test
     fun aNewSession_startsWithNothingScheduled() {
-        val first = PracticeSession(UniqueQuestions(), limited, Random(1))
+        val first = PracticeSession(UniqueQuestions(), limited, Random(1), pool(200))
         val question = first.next()
         first.report(question, AnswerOutcome.Wrong)
 
-        val second = PracticeSession(UniqueQuestions(), limited, Random(1))
+        val second = PracticeSession(UniqueQuestions(), limited, Random(1), pool(200))
         val shownInSecond = List(15) { second.next() }
         // The second session never saw that mistake: all its questions are fresh and different.
         assertEquals(15, shownInSecond.toSet().size)

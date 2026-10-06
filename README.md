@@ -12,6 +12,8 @@ springy press animations. It is a native re-implementation of the original singl
 - **Tables Practice**: pick any of the tables 2-31 (or Select All), set a timer, practice `n x 1..10`.
 - **Powers & Roots**: choose squares, cubes, square roots and/or cube roots, a two number-range sliders (squares and square
   roots up to 30, cubes and cube roots up to 20) and a timer.
+- **Shuffled rounds** (Tables, Powers & Roots): every question is asked once in a random order before any repeats, then a new
+  shuffle, forever.
 - **Mistake repeats** (Tables, Powers & Roots): a wrong answer brings the same question back 3 times, a slow one 2 times, within
   the next 10 questions and never right away; nothing is saved between quizzes.
 - **Remembered settings**: each quiz's setup screen reopens with what you last started it with (digits, numbers, types, ranges,

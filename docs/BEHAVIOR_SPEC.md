@@ -76,12 +76,17 @@ Normative description of the app. "Web" = the prototype in `docs/reference/quizz
   - Tables: `table number x random(1..10)`, table number drawn uniformly from the selection.
 - Numeric answer field (digits only, max 12) and **Check** button; the IME "Done" action also checks. The field is focused
   automatically for each question.
-- **Mistakes and slow answers come back** (Tables and Powers & Roots only; Multiply stays fully random). Inside one quiz:
+- **Order of questions** (Tables and Powers & Roots, the quizzes with a limited set of questions): when the quiz starts, all its
+  questions are shuffled into a random order and asked one after the other, so **every question comes up once before any
+  question comes up again**. When the last one has been asked they are shuffled again (a new random order) and the quiz goes on,
+  forever. Every quiz gets its own shuffle; nothing is saved. Multiply has far too many possible questions to list, so each
+  of its questions is drawn at random.
+- **Mistakes and slow answers come back** (same two quizzes; Multiply is not affected). They are added into that order. Inside one quiz:
   - A wrong answer or a time-up brings the same question back **3 times** among the next 10 questions.
   - A correct but **slow** answer brings it back **2 times** among the next 10. Slow = answered with **less than 40% of the
     timer left** on the countdown (timer 10 s: 4 s left is still fast, 3 s left is slow; a wrong answer is never "slow", it is wrong).
-  - Comebacks never land on the very next question, never two in a row, and a new question is never the same as the one just
-    before it. Where exactly they land in the 10 is random each time.
+  - Comebacks never land on the very next question, never two in a row, and the next question of the round is never the same as
+    the one just before it (a question that would be is moved a little later in the round). Where exactly they land in the 10 is random each time.
   - A comeback answered wrong/slow again starts a fresh set (3 or 2) counted from that moment; the old unused ones are dropped.
     A comeback answered fast keeps the rest of its set.
   - If many mistakes pile up so the 10 slots are full, the leftover comebacks come right after the window instead of being lost.

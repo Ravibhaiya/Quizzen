@@ -13,26 +13,10 @@ class RandomQuestionGenerator(private val random: Random = Random.Default) : Que
             left = randomWithDigits(config.firstDigits),
             right = randomWithDigits(config.secondDigits),
         )
-        is PracticeConfig.Tables -> ProductQuestion(
-            left = config.numbers.random(random).toLong(),
-            right = random.nextLong(1, PracticeConfig.Tables.MULTIPLIER_MAX + 1L),
-        )
-        is PracticeConfig.PowersRoots -> powersRoots(config)
-    }
-
-    private fun powersRoots(config: PracticeConfig.PowersRoots): Question {
-        val choices = config.types
-            .map { type -> type to config.rangeOf(type) }
-            // Unreachable for validated configs; keeps a corrupted config from crashing the quiz.
-            .ifEmpty { PowerRootType.entries.map { it to PowersRootsRules.defaultRange(it.family) } }
-        val (type, range) = choices.random(random)
-        val base = random.nextInt(range.first, range.last + 1).toLong()
-        return when (type) {
-            PowerRootType.Squares -> PowerQuestion(base, exponent = 2)
-            PowerRootType.Cubes -> PowerQuestion(base, exponent = 3)
-            PowerRootType.SquareRoots -> RootQuestion(degree = 2, result = base)
-            PowerRootType.CubeRoots -> RootQuestion(degree = 3, result = base)
-        }
+        // Limited quizzes are normally played from a shuffled round (see PracticeSession); a plain pick from the same list
+        // keeps this generator complete.
+        is PracticeConfig.Tables, is PracticeConfig.PowersRoots ->
+            requireNotNull(QuestionPool.of(config)) { "nothing to ask: $config" }.random(random)
     }
 
     /** 1 digit -> 1..9, n digits -> 10^(n-1)..10^n - 1 (matches the web original). */
