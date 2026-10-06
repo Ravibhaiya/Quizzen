@@ -123,11 +123,13 @@ store anything about running quizzes or answers.
 
 ## Mistake repeats
 
-How wrong/slow answers come back lives only in `domain/PracticeSession.kt` and `domain/AnswerOutcome.kt` (constants:
+The order of questions (shuffled rounds over `QuestionPool`) and how wrong/slow answers come back live only in
+`domain/PracticeSession.kt`, `domain/QuestionPool.kt` and `domain/AnswerOutcome.kt` (constants:
 `WRONG_REPEATS = 3`, `SLOW_REPEATS = 2`, `WINDOW = 10`, slow = under 40% of the timer left). Keep it pure Kotlin with an injected
 `Random`, keep its state inside the object (no static/global state, no persistence: every quiz must start from nothing), and
 change `docs/BEHAVIOR_SPEC.md` and `PracticeSessionTest` together with any rule. A new practice mode opts in with
-`repeatsMistakes = true` only if its set of questions is small enough for repeats to make sense.
+`repeatsMistakes = true` only if its set of questions is small enough for repeats to make sense, and then add it to
+`QuestionPool.of` so it is asked in shuffled rounds.
 
 ## Adding a new practice mode (checklist)
 

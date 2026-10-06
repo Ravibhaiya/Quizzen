@@ -13,6 +13,7 @@ import com.ravibhaiya.quizzen.domain.PracticeConfig
 import com.ravibhaiya.quizzen.domain.PracticeSession
 import com.ravibhaiya.quizzen.domain.Question
 import com.ravibhaiya.quizzen.domain.QuestionGenerator
+import com.ravibhaiya.quizzen.domain.QuestionPool
 import com.ravibhaiya.quizzen.domain.RandomQuestionGenerator
 import com.ravibhaiya.quizzen.ui.navigation.PracticeArgs
 import kotlinx.coroutines.Job
@@ -46,10 +47,11 @@ class PracticeViewModel(
     private val config: PracticeConfig,
     generator: QuestionGenerator = RandomQuestionGenerator(),
     random: Random = Random.Default,
+    questions: List<Question>? = QuestionPool.of(config),
 ) : ViewModel() {
 
     /** Picks the questions and brings mistakes back. Lives and dies with this ViewModel, so every new quiz starts empty. */
-    private val session = PracticeSession(generator, config, random)
+    private val session = PracticeSession(generator, config, random, questions)
 
     private val _state = MutableStateFlow(
         PracticeUiState(question = session.next(), remainingSeconds = config.timerSeconds),

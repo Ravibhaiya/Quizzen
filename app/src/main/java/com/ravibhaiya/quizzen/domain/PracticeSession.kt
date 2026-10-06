@@ -5,7 +5,12 @@ import kotlin.random.Random
 /**
  * Decides which question comes next in one practice session, and brings mistakes back.
  *
- * Rules (only for quizzes with a limited set of questions, see [PracticeConfig.repeatsMistakes]):
+ * Quizzes with a limited set of questions (Tables, Powers & Roots) are asked in **rounds**: all their questions are shuffled
+ * into a random order and asked one after the other, so every question comes up once before any question comes up again.
+ * When a round is finished the questions are shuffled again and the quiz simply goes on, forever. Multiply has far too many
+ * possible questions to list, so each question is drawn at random.
+ *
+ * Mistakes are added to that order (only for limited quizzes, see [PracticeConfig.repeatsMistakes]):
  *  - a wrong answer (or a time-out) makes the same question come back [WRONG_REPEATS] times,
  *  - a correct but slow answer makes it come back [SLOW_REPEATS] times,
  *  - every comeback lands somewhere in the next [WINDOW] questions, never as the very next one, and two comebacks of the
@@ -24,7 +29,12 @@ class PracticeSession(
     private val generator: QuestionGenerator,
     private val config: PracticeConfig,
     private val random: Random = Random.Default,
+    /** Every question of the quiz (see [QuestionPool]), or null to draw each question at random from [generator]. */
+    private val questions: List<Question>? = QuestionPool.of(config),
 ) {
+    /** The questions still to be asked in the current round, in the order they will come. */
+    private val round = ArrayDeque<Question>()
+
     /** Number of the question on screen: 1 for the first, 0 before the first. */
     private var position = 0
     private var previous: Question? = null
@@ -54,6 +64,10 @@ class PracticeSession(
 
     private fun freshQuestion(): Question {
         val blocked = setOfNotNull(previous, scheduled[position + 1])
+        return if (questions == null) drawAtRandom(blocked) else nextOfRound(questions, blocked)
+    }
+
+    private fun drawAtRandom(blocked: Set<Question>): Question {
         var candidate = generator.next(config)
         var attempts = 0
         // With a single possible question (or two, both blocked) there is nothing else to pick: give up after a while.
@@ -62,6 +76,27 @@ class PracticeSession(
             attempts++
         }
         return candidate
+    }
+
+    private fun nextOfRound(all: List<Question>, blocked: Set<Question>): Question {
+        if (round.isEmpty()) round.addAll(all.shuffled(random))
+        takeUnblocked(blocked)?.let { return it }
+        // Only blocked questions are left in this round (they are being asked right now anyway): start the next round early.
+        round.clear()
+        round.addAll(all.shuffled(random))
+        takeUnblocked(blocked)?.let { return it }
+        // Tiny quiz (one or two questions): nothing else exists, so an immediate repeat cannot be avoided.
+        return round.removeFirst()
+    }
+
+    /** The first question of the round that is not [blocked]; blocked ones move to the end so they are still asked later. */
+    private fun takeUnblocked(blocked: Set<Question>): Question? {
+        repeat(round.size) {
+            val question = round.removeFirst()
+            if (question !in blocked) return question
+            round.addLast(question)
+        }
+        return null
     }
 
     private fun schedule(question: Question, repeats: Int) {

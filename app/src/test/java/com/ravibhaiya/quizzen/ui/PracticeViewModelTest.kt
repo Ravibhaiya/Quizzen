@@ -177,6 +177,9 @@ class PracticeViewModelTest {
 
     private val tables = PracticeConfig.Tables(numbers = listOf(2), timerSeconds = 10)
 
+    /** Plenty of different questions, so any question that shows up again is a comeback. */
+    private val manyQuestions: List<Question> = List(500) { ProductQuestion(1_000L + it, 1) }
+
     private fun TestScope.finishQuestion(vm: PracticeViewModel, answer: String) {
         vm.onAnswerChanged(answer)
         vm.onCheck()
@@ -198,7 +201,7 @@ class PracticeViewModelTest {
 
     @Test
     fun wrongAnswer_bringsTheQuestionBackThreeTimes_insideTheNextTen_butNotNext() = runTest(dispatcher) {
-        val vm = PracticeViewModel(tables, UniqueProducts(), Random(3))
+        val vm = PracticeViewModel(tables, UniqueProducts(), Random(3), manyQuestions)
         vm.onResume()
         val mistake = vm.state.value.question
         answerWrong(vm)
@@ -213,7 +216,7 @@ class PracticeViewModelTest {
 
     @Test
     fun slowAnswer_bringsTheQuestionBackTwice() = runTest(dispatcher) {
-        val vm = PracticeViewModel(tables, UniqueProducts(), Random(3))
+        val vm = PracticeViewModel(tables, UniqueProducts(), Random(3), manyQuestions)
         vm.onResume()
         val slow = vm.state.value.question
         advanceTimeBy(7_100) // 7 of 10 s used: 3 s left, which is below 40%
@@ -228,7 +231,7 @@ class PracticeViewModelTest {
 
     @Test
     fun answerWithExactlyFortyPercentLeft_isStillFast() = runTest(dispatcher) {
-        val vm = PracticeViewModel(tables, UniqueProducts(), Random(3))
+        val vm = PracticeViewModel(tables, UniqueProducts(), Random(3), manyQuestions)
         vm.onResume()
         val question = vm.state.value.question
         advanceTimeBy(6_100) // 4 s left of 10 = exactly 40%
@@ -243,7 +246,7 @@ class PracticeViewModelTest {
     @Test
     fun timeOut_countsAsAWrongAnswer() = runTest(dispatcher) {
         val config = PracticeConfig.Tables(numbers = listOf(2), timerSeconds = 3)
-        val vm = PracticeViewModel(config, UniqueProducts(), Random(3))
+        val vm = PracticeViewModel(config, UniqueProducts(), Random(3), manyQuestions)
         vm.onResume()
         val missed = vm.state.value.question
         advanceTimeBy(3_100) // the countdown reaches 0
@@ -270,12 +273,12 @@ class PracticeViewModelTest {
 
     @Test
     fun aNewQuiz_startsFromNothing() = runTest(dispatcher) {
-        val first = PracticeViewModel(tables, UniqueProducts(), Random(3))
+        val first = PracticeViewModel(tables, UniqueProducts(), Random(3), manyQuestions)
         first.onResume()
         answerWrong(first) // leaves comebacks scheduled in this quiz only
         first.onPause()
 
-        val second = PracticeViewModel(tables, UniqueProducts(), Random(3))
+        val second = PracticeViewModel(tables, UniqueProducts(), Random(3), manyQuestions)
         second.onResume()
         val shown = playFast(second, 15)
         second.onPause()
