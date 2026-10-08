@@ -1,8 +1,10 @@
 package com.ravibhaiya.quizzen.ui
 
 import com.ravibhaiya.quizzen.data.QuizSettingsRepository
+import com.ravibhaiya.quizzen.domain.AlphabetChallenge
 import com.ravibhaiya.quizzen.domain.PowerRootType
 import com.ravibhaiya.quizzen.domain.PracticeConfig
+import com.ravibhaiya.quizzen.ui.alphabet.AlphabetConfigViewModel
 import com.ravibhaiya.quizzen.ui.multiply.MultiplyConfigViewModel
 import com.ravibhaiya.quizzen.ui.powers.PowersRootsConfigViewModel
 import com.ravibhaiya.quizzen.ui.tables.TablesConfigViewModel
@@ -35,11 +37,13 @@ class ConfigViewModelsTest {
         var multiply: PracticeConfig.Multiply? = null,
         var tables: PracticeConfig.Tables? = null,
         var powers: PracticeConfig.PowersRoots? = null,
+        var alphabet: PracticeConfig.Alphabet? = null,
         private val gate: CompletableDeferred<Unit>? = null,
     ) : QuizSettingsRepository {
         var savedMultiply: PracticeConfig.Multiply? = null
         var savedTables: PracticeConfig.Tables? = null
         var savedPowers: PracticeConfig.PowersRoots? = null
+        var savedAlphabet: PracticeConfig.Alphabet? = null
 
         override suspend fun loadMultiply(defaultTimer: Int): PracticeConfig.Multiply? { gate?.await(); return multiply }
         override suspend fun saveMultiply(config: PracticeConfig.Multiply) { savedMultiply = config }
@@ -47,6 +51,8 @@ class ConfigViewModelsTest {
         override suspend fun saveTables(config: PracticeConfig.Tables) { savedTables = config }
         override suspend fun loadPowersRoots(defaultTimer: Int): PracticeConfig.PowersRoots? { gate?.await(); return powers }
         override suspend fun savePowersRoots(config: PracticeConfig.PowersRoots) { savedPowers = config }
+        override suspend fun loadAlphabet(defaultTimer: Int): PracticeConfig.Alphabet? { gate?.await(); return alphabet }
+        override suspend fun saveAlphabet(config: PracticeConfig.Alphabet) { savedAlphabet = config }
     }
 
     // ---- Multiply ----
@@ -144,6 +150,46 @@ class ConfigViewModelsTest {
         assertEquals(2..30, vm.state.value.squares)
         assertEquals(2..20, vm.state.value.cubes)
         assertEquals("10", vm.timer.state.value.text)
+    }
+
+    // ---- Alphabet ----
+
+    @Test
+    fun alphabet_opensWithTheLastUsedSetting_andSavesOnStart() = runTest(dispatcher) {
+        val saved = PracticeConfig.Alphabet(AlphabetChallenge.FindLetter, letters = 3..18, timerSeconds = 25)
+        val repository = FakeRepository(alphabet = saved)
+        val vm = AlphabetConfigViewModel(repository)
+        runCurrent()
+        assertEquals(AlphabetChallenge.FindLetter, vm.state.value.challenge)
+        assertEquals(3..18, vm.state.value.letters)
+        assertEquals("25", vm.timer.state.value.text)
+
+        vm.selectChallenge(AlphabetChallenge.ReverseLetter)
+        vm.onLettersChanged(5..9)
+        val config = vm.startQuiz()
+        runCurrent()
+        assertEquals(PracticeConfig.Alphabet(AlphabetChallenge.ReverseLetter, 5..9, 25), config)
+        assertEquals(config, repository.savedAlphabet)
+    }
+
+    @Test
+    fun alphabet_withNothingSaved_usesTheDefaults() = runTest(dispatcher) {
+        val vm = AlphabetConfigViewModel(FakeRepository())
+        runCurrent()
+        assertEquals(AlphabetChallenge.FindPosition, vm.state.value.challenge)
+        assertEquals(1..26, vm.state.value.letters)
+        assertEquals("10", vm.timer.state.value.text)
+        assertTrue(vm.state.value.loaded)
+    }
+
+    @Test
+    fun alphabet_aRangeFromOutsideIsRepaired() = runTest(dispatcher) {
+        val vm = AlphabetConfigViewModel(FakeRepository())
+        runCurrent()
+        vm.onLettersChanged(0..40)
+        assertEquals(1..26, vm.state.value.letters)
+        vm.onLettersChanged(30..2)
+        assertEquals(26..26, vm.state.value.letters)
     }
 
     // ---- loading ----

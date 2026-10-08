@@ -1,5 +1,6 @@
 package com.ravibhaiya.quizzen.domain
 
+import com.ravibhaiya.quizzen.domain.AlphabetQuestion
 import com.ravibhaiya.quizzen.domain.PowerQuestion
 import com.ravibhaiya.quizzen.domain.PowerRootType
 import com.ravibhaiya.quizzen.domain.ProductQuestion
@@ -117,7 +118,7 @@ class QuestionGeneratorTest {
                     seen += "root${q.degree}"
                     if (q.degree == 3) assertTrue(q.answer <= 20) else if (q.answer > 20) squareKindAboveTwenty = true
                 }
-                is ProductQuestion -> throw AssertionError("unexpected $q")
+                is ProductQuestion, is AlphabetQuestion -> throw AssertionError("unexpected $q")
             }
         }
         assertEquals(setOf("power2", "power3", "root2", "root3"), seen)

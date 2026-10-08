@@ -6,6 +6,7 @@ import androidx.lifecycle.createSavedStateHandle
 import androidx.lifecycle.viewModelScope
 import androidx.lifecycle.viewmodel.initializer
 import androidx.lifecycle.viewmodel.viewModelFactory
+import com.ravibhaiya.quizzen.domain.AnswerKind
 import com.ravibhaiya.quizzen.domain.AnswerOutcome
 import com.ravibhaiya.quizzen.domain.Feedback
 import com.ravibhaiya.quizzen.domain.FeedbackType
@@ -64,14 +65,19 @@ class PracticeViewModel(
 
     fun onAnswerChanged(raw: String) {
         if (_state.value.isLocked) return
-        _state.update { it.copy(answer = raw.filter(Char::isDigit).take(MAX_ANSWER_DIGITS)) }
+        _state.update { it.copy(answer = cleanAnswer(it.question.answerKind, raw)) }
+    }
+
+    /** Numbers keep their digits only; a letter answer is one capital letter, and typing another letter replaces it. */
+    private fun cleanAnswer(kind: AnswerKind, raw: String): String = when (kind) {
+        AnswerKind.Number -> raw.filter(Char::isDigit).take(MAX_ANSWER_DIGITS)
+        AnswerKind.Letter -> raw.lastOrNull { it.uppercaseChar() in 'A'..'Z' }?.uppercaseChar()?.toString().orEmpty()
     }
 
     fun onCheck() {
         val current = _state.value
         if (current.isLocked) return
-        val value = current.answer.toLongOrNull()
-        showFeedback(if (value == current.question.answer) FeedbackType.Correct else FeedbackType.Incorrect)
+        showFeedback(if (current.question.isCorrect(current.answer)) FeedbackType.Correct else FeedbackType.Incorrect)
     }
 
     /** Call when the screen is visible & interactive. Resumes the countdown without resetting it. */
@@ -115,7 +121,7 @@ class PracticeViewModel(
         feedbackJob?.cancel()
         _state.update {
             it.copy(
-                feedback = Feedback(type, it.question.answer),
+                feedback = Feedback(type, it.question.answerText),
                 isLocked = true,
                 shakeCount = if (type == FeedbackType.Incorrect) it.shakeCount + 1 else it.shakeCount,
             )

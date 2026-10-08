@@ -12,6 +12,8 @@ import androidx.compose.ui.text.style.BaselineShift
 import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.em
 import com.ravibhaiya.quizzen.R
+import com.ravibhaiya.quizzen.domain.AlphabetChallenge
+import com.ravibhaiya.quizzen.domain.AlphabetQuestion
 import com.ravibhaiya.quizzen.domain.PowerQuestion
 import com.ravibhaiya.quizzen.domain.ProductQuestion
 import com.ravibhaiya.quizzen.domain.Question
@@ -32,6 +34,7 @@ private val RootIndexNudge = (-0.15).em
  *  - product: `710 x 60`
  *  - square / cube: `17` with a raised `2` / `3`
  *  - square root / cube root: `√784` and a raised `3` in front of the root sign for cube roots
+ *  - alphabet: just the letter (`C`) or the place (`3`), in the text colour
  *
  * Exponents use a real superscript style instead of the `²` `³` characters so they scale with the text.
  */
@@ -45,6 +48,7 @@ fun Question.toDisplayText(accent: Color): AnnotatedString = buildAnnotatedStrin
             append(" ")
             append(question.right.toString())
         }
+        is AlphabetQuestion -> append(question.shown)
         is PowerQuestion -> {
             append(question.base.toString())
             withStyle(script) { append(question.exponent.toString()) }
@@ -77,4 +81,22 @@ fun spokenQuestion(question: Question): String = when (question) {
         2 -> stringResource(R.string.question_spoken_square_root, question.radicand)
         else -> stringResource(R.string.question_spoken_cube_root, question.radicand)
     }
+    is AlphabetQuestion -> when (question.challenge) {
+        AlphabetChallenge.FindPosition -> stringResource(R.string.question_spoken_letter, question.shown)
+        AlphabetChallenge.FindLetter -> stringResource(R.string.question_spoken_position, question.position)
+        AlphabetChallenge.ReverseLetter -> stringResource(R.string.question_spoken_opposite, question.shown)
+    }
+}
+
+/** The placeholder of the answer field: tells Alphabet players what to type; every other quiz just says "Answer". */
+@Composable
+fun answerHint(question: Question): String = when (question) {
+    is AlphabetQuestion -> stringResource(
+        when (question.challenge) {
+            AlphabetChallenge.FindPosition -> R.string.answer_hint_position
+            AlphabetChallenge.FindLetter -> R.string.answer_hint_letter
+            AlphabetChallenge.ReverseLetter -> R.string.answer_hint_opposite
+        },
+    )
+    else -> stringResource(R.string.answer_hint)
 }

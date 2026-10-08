@@ -5,7 +5,7 @@ sealed interface PracticeConfig {
     val timerSeconds: Int
 
     /**
-     * True for quizzes with a limited set of questions (Tables, Powers & Roots): wrong and slow answers come back later in
+     * True for quizzes with a limited set of questions (Tables, Powers & Roots, Alphabet): wrong and slow answers come back later in
      * the same session (see [PracticeSession]). Multiply draws from far too many questions for that.
      */
     val repeatsMistakes: Boolean
@@ -51,5 +51,14 @@ sealed interface PracticeConfig {
 
         fun rangeOf(type: PowerRootType): IntRange =
             if (type.family == PowerRootType.Family.Square) squares else cubes
+    }
+
+    /** Alphabet Reasoning: one [challenge] over the letters at positions [letters] (1 = A ... 26 = Z). */
+    data class Alphabet(
+        val challenge: AlphabetChallenge,
+        val letters: IntRange,
+        override val timerSeconds: Int,
+    ) : PracticeConfig {
+        override val repeatsMistakes: Boolean get() = true
     }
 }

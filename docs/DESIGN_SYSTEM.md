@@ -108,6 +108,19 @@ on the right (primaryContainer, onPrimaryContainer, 15 sp ExtraBold, `2–30`). 
 shadow, growing to 118% (spring) while held. Under the track, the two end numbers (1 and the limit, 12 sp onSurfaceVariant)
 line up with the track ends. A card whose kinds are not selected fades to 45% and is disabled.
 
+## Alphabet setup (letter range, challenge cards, tip)
+
+No new colours or shapes: everything is built from the tokens above.
+
+- **Letter range card**: same card as the Powers & Roots range cards (24 dp radius, `surfaceContainer`, `2 6 0` neutral shadow at 5%).
+  Top row: two tiles, each a caption (`labelSmall`, uppercase, `onSurfaceVariant`: FROM / TO) over a 20 dp rounded box
+  (`surfaceContainerHigh`) holding the letter (`headlineLarge` at 30 sp, `onSurface`), with a 22 dp `ArrowRight` icon between them.
+  Under the tiles, `QuizzenRangeSlider` (1 to 26) and the two end letters (12 sp `onSurfaceVariant`).
+- **Challenge card** (single select, radio): full width, 24 dp radius, 18 dp / 16 dp padding, a 24 dp radio mark (2 dp ring, 12 dp dot)
+  and a title (16.32 sp Bold) over an example line (13.6 sp). Selection is the chip language: selected = `primary` fill, `onPrimary`
+  text and the soft `primary@55%` shadow (`0 8 16 -6`); not selected = `surfaceContainer`. Press scale 0.96, 200 ms colour changes.
+- **Tip card**: `primaryContainer` with `onPrimaryContainer` text, 24 dp radius, a small uppercase "TIP" label over one line of body text.
+
 ## Logo, launcher icon and splash
 
 Single source: `design/quizzen-logo.svg` (rounded-square orange-to-red gradient, white "Quizzen" wordmark, yellow dot and Q

@@ -15,7 +15,7 @@ class RandomQuestionGenerator(private val random: Random = Random.Default) : Que
         )
         // Limited quizzes are normally played from a shuffled round (see PracticeSession); a plain pick from the same list
         // keeps this generator complete.
-        is PracticeConfig.Tables, is PracticeConfig.PowersRoots ->
+        is PracticeConfig.Tables, is PracticeConfig.PowersRoots, is PracticeConfig.Alphabet ->
             requireNotNull(QuestionPool.of(config)) { "nothing to ask: $config" }.random(random)
     }
 

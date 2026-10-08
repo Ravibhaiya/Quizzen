@@ -1,5 +1,6 @@
 package com.ravibhaiya.quizzen.data
 
+import com.ravibhaiya.quizzen.domain.AlphabetChallenge
 import com.ravibhaiya.quizzen.domain.PowerRootType
 import com.ravibhaiya.quizzen.domain.PracticeConfig
 import org.junit.Assert.assertEquals
@@ -25,6 +26,21 @@ class SettingsCodecTest {
             timerSeconds = 15,
         )
         assertEquals(powers, SettingsCodec.decodePowersRoots(SettingsCodec.encode(powers), defaultTimer = 10))
+
+        val alphabet = PracticeConfig.Alphabet(AlphabetChallenge.ReverseLetter, letters = 4..20, timerSeconds = 15)
+        assertEquals(alphabet, SettingsCodec.decodeAlphabet(SettingsCodec.encode(alphabet), defaultTimer = 10))
+    }
+
+    @Test
+    fun alphabet_textIsShort_andDecodingRepairsWhatIsOutsideTheScreen() {
+        assertEquals("ch=pos;l=1-26;t=10", SettingsCodec.encode(PracticeConfig.Alphabet(AlphabetChallenge.FindPosition, 1..26, 10)))
+        val repaired = SettingsCodec.decodeAlphabet("ch=let;l=40-2;t=999", 10)!!
+        assertEquals(AlphabetChallenge.FindLetter, repaired.challenge)
+        assertEquals(26..26, repaired.letters)
+        assertEquals(10, repaired.timerSeconds)
+        assertEquals(1..26, SettingsCodec.decodeAlphabet("ch=pos;t=5", 10)!!.letters) // missing range: the whole alphabet
+        assertNull(SettingsCodec.decodeAlphabet("ch=unknown;l=1-26;t=10", 10)) // not a challenge: use the defaults
+        assertNull(SettingsCodec.decodeAlphabet(null, 10))
     }
 
     @Test

@@ -16,6 +16,13 @@ class QuestionPoolTest {
     }
 
     @Test
+    fun alphabet_isEveryLetterOfTheRange_eachOnce() {
+        val pool = QuestionPool.of(PracticeConfig.Alphabet(AlphabetChallenge.FindLetter, letters = 5..9, timerSeconds = 10))!!
+        assertEquals((5..9).map { AlphabetQuestion(AlphabetChallenge.FindLetter, it) }, pool)
+        assertEquals(26, QuestionPool.of(PracticeConfig.Alphabet(AlphabetChallenge.FindPosition, AlphabetRules.FULL, 10))!!.size)
+    }
+
+    @Test
     fun powersRoots_isEveryBaseOfEveryChosenKind_eachOnce() {
         val config = PracticeConfig.PowersRoots(PowerRootType.entries.toSet(), squares = 2..30, cubes = 2..20, timerSeconds = 10)
         val pool = QuestionPool.of(config)!!

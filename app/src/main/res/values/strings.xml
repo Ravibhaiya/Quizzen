@@ -51,6 +51,25 @@
     <string name="range_thumb_min">%1$s: smallest number</string>
     <string name="range_thumb_max">%1$s: largest number</string>
 
+    <!-- Alphabet Reasoning configuration -->
+    <string name="alphabet_title">Alphabet</string>
+    <string name="letter_range">Letter Range</string>
+    <string name="letter_from">From</string>
+    <string name="letter_to">To</string>
+    <string name="letter_thumb_from">First letter</string>
+    <string name="letter_thumb_to">Last letter</string>
+    <string name="challenge_type">Challenge Type</string>
+    <string name="challenge_find_position">Find Position</string>
+    <string name="challenge_find_position_example">Show A → Type 1</string>
+    <string name="challenge_find_letter">Find Letter</string>
+    <string name="challenge_find_letter_example">Show 1 → Type A</string>
+    <string name="challenge_reverse_letter">Reverse Letter</string>
+    <string name="challenge_reverse_letter_example">Show A → Type Z</string>
+    <string name="tip_title">Tip</string>
+    <string name="tip_find_position">A = 1, B = 2 … Z = 26. You see a letter and type its number.</string>
+    <string name="tip_find_letter">You see a number and type the letter in that place: 3 is C.</string>
+    <string name="tip_reverse_letter">Count from the other end: A is Z, B is Y, C is X.</string>
+
     <!-- Practice -->
     <string name="practice_title">Practice</string>
     <string name="seconds_short">%1$ds</string>
@@ -60,11 +79,17 @@
     <string name="question_spoken_cube">%1$d cubed</string>
     <string name="question_spoken_square_root">square root of %1$d</string>
     <string name="question_spoken_cube_root">cube root of %1$d</string>
+    <string name="answer_hint_position">Position</string>
+    <string name="answer_hint_letter">Letter</string>
+    <string name="answer_hint_opposite">Opposite letter</string>
+    <string name="question_spoken_letter">letter %1$s</string>
+    <string name="question_spoken_position">position %1$d</string>
+    <string name="question_spoken_opposite">opposite of letter %1$s</string>
     <string name="check">Check</string>
     <string name="feedback_correct_title">Correct!</string>
     <string name="feedback_correct_sub">Nice work — next question loading</string>
     <string name="feedback_incorrect_title">Incorrect</string>
-    <string name="feedback_incorrect_sub">The correct answer was %1$d</string>
+    <string name="feedback_incorrect_sub">The correct answer was %1$s</string>
     <string name="feedback_timeout_title">Time\'s Up</string>
-    <string name="feedback_timeout_sub">The answer was %1$d — here\'s a fresh one</string>
+    <string name="feedback_timeout_sub">The answer was %1$s — here\'s a fresh one</string>
 </resources>
