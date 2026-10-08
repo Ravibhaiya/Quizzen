@@ -26,6 +26,9 @@ interface QuizSettingsRepository {
 
     suspend fun loadPowersRoots(defaultTimer: Int): PracticeConfig.PowersRoots?
     suspend fun savePowersRoots(config: PracticeConfig.PowersRoots)
+
+    suspend fun loadAlphabet(defaultTimer: Int): PracticeConfig.Alphabet?
+    suspend fun saveAlphabet(config: PracticeConfig.Alphabet)
 }
 
 class DataStoreQuizSettingsRepository(context: Context) : QuizSettingsRepository {
@@ -48,6 +51,11 @@ class DataStoreQuizSettingsRepository(context: Context) : QuizSettingsRepository
     override suspend fun savePowersRoots(config: PracticeConfig.PowersRoots) =
         write(POWERS_KEY, SettingsCodec.encode(config))
 
+    override suspend fun loadAlphabet(defaultTimer: Int) =
+        SettingsCodec.decodeAlphabet(read(ALPHABET_KEY), defaultTimer)
+
+    override suspend fun saveAlphabet(config: PracticeConfig.Alphabet) = write(ALPHABET_KEY, SettingsCodec.encode(config))
+
     private suspend fun read(key: Preferences.Key<String>): String? =
         runCatching { dataStore.data.first()[key] }.getOrNull() // a damaged file just means "nothing saved"
 
@@ -59,6 +67,7 @@ class DataStoreQuizSettingsRepository(context: Context) : QuizSettingsRepository
         val MULTIPLY_KEY = stringPreferencesKey("quiz_multiply")
         val TABLES_KEY = stringPreferencesKey("quiz_tables")
         val POWERS_KEY = stringPreferencesKey("quiz_powers_roots")
+        val ALPHABET_KEY = stringPreferencesKey("quiz_alphabet")
     }
 }
 

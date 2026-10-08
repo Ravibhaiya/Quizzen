@@ -12,9 +12,11 @@ springy press animations. It is a native re-implementation of the original singl
 - **Tables Practice**: pick any of the tables 2-31 (or Select All), set a timer, practice `n x 1..10`.
 - **Powers & Roots**: choose squares, cubes, square roots and/or cube roots, a two number-range sliders (squares and square
   roots up to 30, cubes and cube roots up to 20) and a timer.
-- **Shuffled rounds** (Tables, Powers & Roots): every question is asked once in a random order before any repeats, then a new
+- **Alphabet Reasoning**: pick a letter range (first and last letter, one slider), one of three challenges (find a letter's
+  position, find the letter at a position, or the opposite letter from the other end of the alphabet) and a timer.
+- **Shuffled rounds** (Tables, Powers & Roots, Alphabet): every question is asked once in a random order before any repeats, then a new
   shuffle, forever.
-- **Mistake repeats** (Tables, Powers & Roots): a wrong answer brings the same question back 3 times, a slow one 2 times, within
+- **Mistake repeats** (Tables, Powers & Roots, Alphabet): a wrong answer brings the same question back 3 times, a slow one 2 times, within
   the next 10 questions and never right away; nothing is saved between quizzes.
 - **Remembered settings**: each quiz's setup screen reopens with what you last started it with (digits, numbers, types, ranges,
   timer); stored on the device only.
@@ -22,7 +24,7 @@ springy press animations. It is a native re-implementation of the original singl
   bottom sheet (Correct / Incorrect / Time's Up), shake on wrong answers, auto-advance to a fresh question.
 - **Settings** bottom sheet with a persisted Haptic Feedback switch.
 - Light theme only (by design, regardless of the system dark-mode setting), edge-to-edge, IME-aware layouts, 440 dp max content width on large screens.
-- Other tiles (Powers & Roots, Fraction & Percentage, Alphabet Reasoning, Vocabulary, Fixed Preposition,
+- Other tiles (Fraction & Percentage, Vocabulary, Fixed Preposition,
   Phrasal Verb) and Database Manager are placeholders, exactly as in the prototype (they show "Coming soon").
 
 ## Tech stack

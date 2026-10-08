@@ -47,6 +47,7 @@ import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
+import androidx.compose.ui.text.input.KeyboardCapitalization
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
@@ -56,6 +57,7 @@ import androidx.lifecycle.compose.LifecycleEventEffect
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.ravibhaiya.quizzen.R
+import com.ravibhaiya.quizzen.domain.AnswerKind
 import com.ravibhaiya.quizzen.domain.FeedbackType
 import com.ravibhaiya.quizzen.ui.components.FitText
 import com.ravibhaiya.quizzen.ui.components.NeutralShadowColor
@@ -147,6 +149,8 @@ fun PracticeScreen(
 
                 AnswerField(
                     value = state.answer,
+                    hint = answerHint(state.question),
+                    kind = state.question.answerKind,
                     onValueChange = viewModel::onAnswerChanged,
                     onDone = viewModel::onCheck,
                     readOnly = state.isLocked,
@@ -202,6 +206,8 @@ private fun TimerChip(seconds: Int, pulsing: Boolean) {
 @Composable
 private fun AnswerField(
     value: String,
+    hint: String,
+    kind: AnswerKind,
     onValueChange: (String) -> Unit,
     onDone: () -> Unit,
     readOnly: Boolean,
@@ -232,7 +238,15 @@ private fun AnswerField(
             letterSpacing = 0.sp,
         ),
         cursorBrush = SolidColor(primary),
-        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number, imeAction = ImeAction.Done),
+        keyboardOptions = if (kind == AnswerKind.Letter) {
+            KeyboardOptions(
+                capitalization = KeyboardCapitalization.Characters,
+                keyboardType = KeyboardType.Text,
+                imeAction = ImeAction.Done,
+            )
+        } else {
+            KeyboardOptions(keyboardType = KeyboardType.Number, imeAction = ImeAction.Done)
+        },
         keyboardActions = KeyboardActions(onDone = { onDone() }),
         modifier = modifier
             .fillMaxWidth()
@@ -256,7 +270,7 @@ private fun AnswerField(
             Box(Modifier.fillMaxWidth().padding(22.dp), contentAlignment = Alignment.Center) {
                 if (value.isEmpty()) {
                     Text(
-                        text = stringResource(R.string.answer_hint),
+                        text = hint,
                         style = MaterialTheme.typography.headlineLarge.copy(
                             fontSize = 22.4.sp,
                             fontWeight = FontWeight.Bold,

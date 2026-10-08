@@ -1,6 +1,8 @@
 package com.ravibhaiya.quizzen.ui.navigation
 
 import androidx.lifecycle.SavedStateHandle
+import com.ravibhaiya.quizzen.domain.AlphabetChallenge
+import com.ravibhaiya.quizzen.domain.AlphabetRules
 import com.ravibhaiya.quizzen.domain.PowerRootType
 import com.ravibhaiya.quizzen.domain.PowersRootsRules
 import com.ravibhaiya.quizzen.domain.PracticeConfig
@@ -10,6 +12,7 @@ object Routes {
     const val MULTIPLY = "multiply"
     const val TABLES = "tables"
     const val POWERS = "powers"
+    const val ALPHABET = "alphabet"
 
     const val ARG_MODE = "mode"
     const val ARG_D1 = "d1"
@@ -21,15 +24,20 @@ object Routes {
     const val ARG_SQ_MAX = "smax"
     const val ARG_CU_MIN = "cmin"
     const val ARG_CU_MAX = "cmax"
+    const val ARG_CHALLENGE = "ch"
+    const val ARG_LETTER_FROM = "lfrom"
+    const val ARG_LETTER_TO = "lto"
 
     const val MODE_MULTIPLY = "multiply"
     const val MODE_TABLES = "tables"
     const val MODE_POWERS = "powers"
+    const val MODE_ALPHABET = "alphabet"
 
     const val PRACTICE = "practice/{$ARG_MODE}?$ARG_D1={$ARG_D1}&$ARG_D2={$ARG_D2}" +
         "&$ARG_NUMBERS={$ARG_NUMBERS}&$ARG_SECONDS={$ARG_SECONDS}" +
         "&$ARG_TYPES={$ARG_TYPES}&$ARG_SQ_MIN={$ARG_SQ_MIN}&$ARG_SQ_MAX={$ARG_SQ_MAX}" +
-        "&$ARG_CU_MIN={$ARG_CU_MIN}&$ARG_CU_MAX={$ARG_CU_MAX}"
+        "&$ARG_CU_MIN={$ARG_CU_MIN}&$ARG_CU_MAX={$ARG_CU_MAX}" +
+        "&$ARG_CHALLENGE={$ARG_CHALLENGE}&$ARG_LETTER_FROM={$ARG_LETTER_FROM}&$ARG_LETTER_TO={$ARG_LETTER_TO}"
 
     fun practice(config: PracticeConfig): String = when (config) {
         is PracticeConfig.Multiply ->
@@ -42,6 +50,10 @@ object Routes {
             "practice/$MODE_POWERS?$ARG_TYPES=${config.types.sortedBy { it.ordinal }.joinToString(",") { it.code }}" +
                 "&$ARG_SQ_MIN=${config.squares.first}&$ARG_SQ_MAX=${config.squares.last}" +
                 "&$ARG_CU_MIN=${config.cubes.first}&$ARG_CU_MAX=${config.cubes.last}&$ARG_SECONDS=${config.timerSeconds}"
+        is PracticeConfig.Alphabet ->
+            "practice/$MODE_ALPHABET?$ARG_CHALLENGE=${config.challenge.code}" +
+                "&$ARG_LETTER_FROM=${config.letters.first}&$ARG_LETTER_TO=${config.letters.last}" +
+                "&$ARG_SECONDS=${config.timerSeconds}"
     }
 }
 
@@ -59,6 +71,9 @@ object PracticeArgs {
         squareMax = handle.get<Int>(Routes.ARG_SQ_MAX),
         cubeMin = handle.get<Int>(Routes.ARG_CU_MIN),
         cubeMax = handle.get<Int>(Routes.ARG_CU_MAX),
+        challenge = handle.get<String>(Routes.ARG_CHALLENGE),
+        letterFrom = handle.get<Int>(Routes.ARG_LETTER_FROM),
+        letterTo = handle.get<Int>(Routes.ARG_LETTER_TO),
     )
 
     fun decode(
@@ -72,6 +87,9 @@ object PracticeArgs {
         squareMax: Int? = null,
         cubeMin: Int? = null,
         cubeMax: Int? = null,
+        challenge: String? = null,
+        letterFrom: Int? = null,
+        letterTo: Int? = null,
     ): PracticeConfig {
         val timer = (seconds ?: 0).takeIf { it > 0 } ?: 20
         return when (mode) {
@@ -99,6 +117,11 @@ object PracticeArgs {
                     timerSeconds = timer,
                 )
             }
+            Routes.MODE_ALPHABET -> PracticeConfig.Alphabet(
+                challenge = AlphabetChallenge.fromCode(challenge) ?: AlphabetChallenge.FindPosition,
+                letters = AlphabetRules.coerce(letterFrom ?: AlphabetRules.FIRST, letterTo ?: AlphabetRules.SIZE),
+                timerSeconds = timer,
+            )
             else -> PracticeConfig.Multiply(
                 firstDigits = (d1 ?: 3).coerceIn(1, 5),
                 secondDigits = (d2 ?: 2).coerceIn(1, 5),

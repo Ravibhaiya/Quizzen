@@ -20,7 +20,7 @@ Normative description of the app. "Web" = the prototype in `docs/reference/quizz
 - Hero-card titles ("Multiply", "Vocabulary") are always a single line: the text shrinks (24.8 sp down to 14 sp) instead of wrapping.
 - Segmented control: **Math** | **Language**. Tap animates the pager; swiping the pager moves the indicator with the finger.
 - **Math** page: hero "Multiply" (-> Multiply config); tiles "Tables Practice" (-> Tables config), "Powers & Roots"
-  (-> Powers & Roots config), "Fraction & Percentage", "Alphabet Reasoning" (placeholders).
+  (-> Powers & Roots config), "Alphabet Reasoning" (-> Alphabet config), "Fraction & Percentage" (placeholder).
 - **Language** page: hero "Vocabulary"; tiles "Fixed Preposition", "Phrasal Verb" (all placeholders).
 - Placeholders show a "Coming soon" snackbar.
 
@@ -40,13 +40,29 @@ Normative description of the app. "Web" = the prototype in `docs/reference/quizz
 
 ## Remembered settings
 - Each quiz's setup screen opens with the settings it was **last started with**: Multiply (digits of both numbers, timer), Tables
-  (selected numbers, timer) and Powers & Roots (selected types, both ranges, timer). They are saved when **Start** is pressed.
+  (selected numbers, timer), Powers & Roots (selected types, both ranges, timer) and Alphabet (challenge type, letter range, timer).
+  They are saved when **Start** is pressed.
 - The first time (nothing saved) the screen shows its defaults. A saved value that is no longer valid is repaired or replaced by the
   default, and a damaged or unreadable save is treated as "nothing saved"; saving can never crash the app.
 - The values are read a few milliseconds after the screen opens; the screen fades in once they are ready so the defaults never
   flash. Anything the user touches before that is not overwritten.
 - Saved settings are only about the setup screen. A quiz itself always starts fresh, and nothing about answers is saved.
 - Stored on the device only (a few bytes in the app's preferences file); clearing the app data resets everything.
+
+## Alphabet configuration
+- Title "Alphabet", subtitle "Configure your challenge".
+- **Letter Range**: one card with the first letter (**From**) and the last letter (**To**) as two big tiles with an arrow between them,
+  and one two-thumb slider under them that moves both (whole letters, A to Z; the small letters under the slider show its ends).
+  Starts at **A to Z**; one letter (From = To) is allowed. Releasing a thumb gives a light tick (haptics).
+- **Challenge Type** (single select, default **Find Position**), three full-width cards with a radio mark and an example line:
+  - **Find Position**: "Show A -> Type 1". A letter is shown, type its place in the alphabet (A = 1 ... Z = 26).
+  - **Find Letter**: "Show 1 -> Type A". A place is shown, type the letter.
+  - **Reverse Letter**: "Show A -> Type Z". A letter is shown, type the letter at the same place counted from the other end
+    (A <-> Z, B <-> Y, ... M <-> N).
+- A **Tip** card under the choices explains the chosen challenge in one line and changes when the choice changes.
+- Timer field default **10** s (a blank or 0 uses the default, like every other screen). Start is always enabled.
+- Start -> Practice. Every letter of the range is one question; the quiz uses shuffled rounds and mistake repeats like Tables and
+  Powers & Roots (see Practice).
 
 ## Powers & Roots configuration
 - **Practice Types** (multi-select, none selected initially): Squares (x²), Cubes (x³), Square Roots (√x), Cube Roots (³√x).
@@ -76,12 +92,16 @@ Normative description of the app. "Web" = the prototype in `docs/reference/quizz
   - Tables: `table number x random(1..10)`, table number drawn uniformly from the selection.
 - Numeric answer field (digits only, max 12) and **Check** button; the IME "Done" action also checks. The field is focused
   automatically for each question.
-- **Order of questions** (Tables and Powers & Roots, the quizzes with a limited set of questions): when the quiz starts, all its
+- Alphabet quizzes: the question is the letter (`C`) or the number (`3`) in the text colour. When the answer is a letter the field
+  opens the normal keyboard in capitals, takes **one letter** (typing another replaces it) and is checked whatever the case; when it is a
+  number it is the usual number pad. The placeholder says what to type ("Position", "Letter", "Opposite letter"). The feedback sheet
+  shows the correct answer as the number or the capital letter. Screen readers say "letter C", "position 3", "opposite of letter C".
+- **Order of questions** (Tables, Powers & Roots and Alphabet, the quizzes with a limited set of questions): when the quiz starts, all its
   questions are shuffled into a random order and asked one after the other, so **every question comes up once before any
   question comes up again**. When the last one has been asked they are shuffled again (a new random order) and the quiz goes on,
   forever. Every quiz gets its own shuffle; nothing is saved. Multiply has far too many possible questions to list, so each
   of its questions is drawn at random.
-- **Mistakes and slow answers come back** (same two quizzes; Multiply is not affected). They are added into that order. Inside one quiz:
+- **Mistakes and slow answers come back** (same three quizzes; Multiply is not affected). They are added into that order. Inside one quiz:
   - A wrong answer or a time-up brings the same question back **3 times** among the next 10 questions.
   - A correct but **slow** answer brings it back **2 times** among the next 10. Slow = answered with **less than 40% of the
     timer left** on the countdown (timer 10 s: 4 s left is still fast, 3 s left is slow; a wrong answer is never "slow", it is wrong).
@@ -101,8 +121,8 @@ Normative description of the app. "Web" = the prototype in `docs/reference/quizz
 
   | Effect | When |
   |---|---|
-  | Tick (light) | selecting a digit option or table number, switching Math/Language, turning haptics off, "Coming soon" taps |
-  | Click (medium) | opening Multiply/Tables/Settings, Back, Select All, turning haptics on |
+  | Tick (light) | selecting a digit option, table number or challenge type, letter-range slider released, switching Math/Language, turning haptics off, "Coming soon" taps |
+  | Click (medium) | opening Multiply/Tables/Powers & Roots/Alphabet/Settings, Back, Select All, turning haptics on |
   | Heavy click (firm thump) | Start |
   | Success (two rising taps) | correct answer |
   | Error (three hard buzzes) | wrong answer |
@@ -128,6 +148,7 @@ Normative description of the app. "Web" = the prototype in `docs/reference/quizz
 | Hero titles could wrap ("Vocabula/ry" on narrow phones) | Title shrinks to stay on one line | Owner request; same idea as the practice question auto-fit. |
 | "Time's Up" sheet was orange | Sky blue (`#2E9FE0`) | Owner request; orange was too close to the app's primary colour. |
 | Powers & Roots was a placeholder | Implemented (types, two range sliders, timer) in the Quizzen style, from a reference screenshot of another app | Owner request. The reference's "0 disables the timer" is **not** adopted: 0 or blank uses the default like every other screen. |
+| Alphabet Reasoning was a placeholder | Implemented (letter range, three challenge types, timer) in the Quizzen style, from a reference screenshot of another app | Owner request. The two letter pickers of the reference became tiles driven by one range slider (like the Powers & Roots ranges), the radio cards use the app's primary selection style, and the reference's "0 disables the timer" is **not** adopted. |
 | Followed `prefers-color-scheme` (light + dark) | Light only | Product decision: the app is light-only. |
 | Haptics toggle was not persisted or connected | Persisted (DataStore) and applied everywhere, with a distinct effect per action | Real feature. |
 | Option chips had 22 px side padding | 18 dp side padding | On 360 dp phones three chips need 326 dp but only 324 dp are available, so "4 Digits" wrapped and left a gap on the right. With 18 dp, three chips fit per row (2, 3, 4 Digits, then 5 Digits). |

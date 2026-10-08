@@ -1,5 +1,7 @@
 package com.ravibhaiya.quizzen.data
 
+import com.ravibhaiya.quizzen.domain.AlphabetChallenge
+import com.ravibhaiya.quizzen.domain.AlphabetRules
 import com.ravibhaiya.quizzen.domain.PowerRootType
 import com.ravibhaiya.quizzen.domain.PowersRootsRules
 import com.ravibhaiya.quizzen.domain.PracticeConfig
@@ -22,6 +24,9 @@ object SettingsCodec {
         "ty=${config.types.sortedBy { it.ordinal }.joinToString(",") { it.code }};" +
             "sq=${config.squares.first}-${config.squares.last};cu=${config.cubes.first}-${config.cubes.last};" +
             "t=${config.timerSeconds}"
+
+    fun encode(config: PracticeConfig.Alphabet): String =
+        "ch=${config.challenge.code};l=${config.letters.first}-${config.letters.last};t=${config.timerSeconds}"
 
     fun decodeMultiply(text: String?, defaultTimer: Int): PracticeConfig.Multiply? {
         val values = parse(text) ?: return null
@@ -51,6 +56,19 @@ object SettingsCodec {
             types = values["ty"].orEmpty().split(',').mapNotNull(PowerRootType::fromCode).toSet(),
             squares = range(values["sq"], square),
             cubes = range(values["cu"], cube),
+            timerSeconds = timer(values["t"], defaultTimer),
+        )
+    }
+
+    fun decodeAlphabet(text: String?, defaultTimer: Int): PracticeConfig.Alphabet? {
+        val values = parse(text) ?: return null
+        val letters = values["l"].orEmpty().split('-')
+        return PracticeConfig.Alphabet(
+            challenge = AlphabetChallenge.fromCode(values["ch"]) ?: return null,
+            letters = AlphabetRules.coerce(
+                from = letters.getOrNull(0)?.toIntOrNull() ?: AlphabetRules.FIRST,
+                to = letters.getOrNull(1)?.toIntOrNull() ?: AlphabetRules.SIZE,
+            ),
             timerSeconds = timer(values["t"], defaultTimer),
         )
     }

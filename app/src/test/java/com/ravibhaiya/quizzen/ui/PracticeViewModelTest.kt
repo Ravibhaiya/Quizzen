@@ -1,5 +1,7 @@
 package com.ravibhaiya.quizzen.ui
 
+import com.ravibhaiya.quizzen.domain.AlphabetChallenge
+import com.ravibhaiya.quizzen.domain.AlphabetQuestion
 import com.ravibhaiya.quizzen.domain.FeedbackType
 import com.ravibhaiya.quizzen.domain.PowerRootType
 import com.ravibhaiya.quizzen.domain.PracticeConfig
@@ -96,7 +98,7 @@ class PracticeViewModelTest {
         val feedback = vm.state.value.feedback
         assertNotNull(feedback)
         assertEquals(FeedbackType.Incorrect, feedback!!.type)
-        assertEquals(132L, feedback.correctAnswer)
+        assertEquals("132", feedback.correctAnswer)
         assertEquals(1, vm.state.value.shakeCount)
     }
 
@@ -165,6 +167,65 @@ class PracticeViewModelTest {
         assertEquals(30..30, decoded.squares) // start pulled inside the limit, end never before it
         assertEquals(2..20, decoded.cubes) // cubes stop at 20
         assertEquals(20, decoded.timerSeconds) // falls back to the default
+    }
+
+    // ---- Alphabet Reasoning ----
+
+    private fun alphabet(challenge: AlphabetChallenge, letters: IntRange = 3..3) =
+        PracticeViewModel(PracticeConfig.Alphabet(challenge, letters, timerSeconds = 10), SequenceGenerator())
+
+    @Test
+    fun alphabetRouteRoundTrips() {
+        val config = PracticeConfig.Alphabet(AlphabetChallenge.ReverseLetter, letters = 4..20, timerSeconds = 15)
+        val route = Routes.practice(config)
+        assertEquals("practice/alphabet?ch=rev&lfrom=4&lto=20&seconds=15", route)
+
+        val decoded = PracticeArgs.decode("alphabet", null, null, null, 15, challenge = "rev", letterFrom = 4, letterTo = 20)
+        assertEquals(config, decoded)
+    }
+
+    @Test
+    fun alphabetDecodingRepairsBadArguments() {
+        val decoded = PracticeArgs.decode("alphabet", null, null, null, 0, challenge = "nonsense", letterFrom = 99, letterTo = 1)
+        decoded as PracticeConfig.Alphabet
+        assertEquals(AlphabetChallenge.FindPosition, decoded.challenge)
+        assertEquals(26..26, decoded.letters) // start pulled inside the alphabet, end never before it
+        assertEquals(20, decoded.timerSeconds)
+    }
+
+    @Test
+    fun alphabet_findPosition_isTypedAsDigits() {
+        val vm = alphabet(AlphabetChallenge.FindPosition) // asks C
+        assertEquals(AlphabetQuestion(AlphabetChallenge.FindPosition, 3), vm.state.value.question)
+        vm.onAnswerChanged("x3y")
+        assertEquals("3", vm.state.value.answer)
+        vm.onCheck()
+        assertEquals(FeedbackType.Correct, vm.state.value.feedback?.type)
+    }
+
+    @Test
+    fun alphabet_letterAnswer_isOneCapitalLetter_andTheLatestLetterWins() {
+        val vm = alphabet(AlphabetChallenge.FindLetter) // asks 3, answer C
+        vm.onAnswerChanged("7")
+        assertEquals("", vm.state.value.answer) // digits are not a letter answer
+        vm.onAnswerChanged("c")
+        assertEquals("C", vm.state.value.answer)
+        vm.onAnswerChanged("Cd")
+        assertEquals("D", vm.state.value.answer)
+    }
+
+    @Test
+    fun alphabet_letterAnswer_isCheckedWhateverTheCase_andFeedbackShowsTheLetter() {
+        val right = alphabet(AlphabetChallenge.FindLetter)
+        right.onAnswerChanged("c")
+        right.onCheck()
+        assertEquals(FeedbackType.Correct, right.state.value.feedback?.type)
+
+        val wrong = alphabet(AlphabetChallenge.ReverseLetter) // asks C, answer X
+        wrong.onAnswerChanged("c")
+        wrong.onCheck()
+        assertEquals(FeedbackType.Incorrect, wrong.state.value.feedback?.type)
+        assertEquals("X", wrong.state.value.feedback?.correctAnswer)
     }
 
     // ---- mistakes and slow answers come back (limited-number quizzes only) ----

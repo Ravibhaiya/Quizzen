@@ -16,8 +16,10 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
+import com.ravibhaiya.quizzen.domain.AlphabetRules
 import com.ravibhaiya.quizzen.domain.PowersRootsRules
 import com.ravibhaiya.quizzen.ui.components.EmphasizedEasing
+import com.ravibhaiya.quizzen.ui.alphabet.AlphabetConfigScreen
 import com.ravibhaiya.quizzen.ui.home.HomeScreen
 import com.ravibhaiya.quizzen.ui.multiply.MultiplyConfigScreen
 import com.ravibhaiya.quizzen.ui.powers.PowersRootsConfigScreen
@@ -60,6 +62,7 @@ fun QuizzenNavHost(
                 onOpenMultiply = { navController.navigate(Routes.MULTIPLY) },
                 onOpenTables = { navController.navigate(Routes.TABLES) },
                 onOpenPowers = { navController.navigate(Routes.POWERS) },
+                onOpenAlphabet = { navController.navigate(Routes.ALPHABET) },
             )
         }
         composable(Routes.MULTIPLY) {
@@ -83,6 +86,13 @@ fun QuizzenNavHost(
                 onStart = { config -> navController.navigate(Routes.practice(config)) },
             )
         }
+        composable(Routes.ALPHABET) {
+            AlphabetConfigScreen(
+                hapticEnabled = hapticEnabled,
+                onBack = { navController.popBackStack() },
+                onStart = { config -> navController.navigate(Routes.practice(config)) },
+            )
+        }
         composable(
             route = Routes.PRACTICE,
             arguments = listOf(
@@ -96,6 +106,9 @@ fun QuizzenNavHost(
                 navArgument(Routes.ARG_SQ_MAX) { type = NavType.IntType; defaultValue = PowersRootsRules.SQUARE_LIMIT },
                 navArgument(Routes.ARG_CU_MIN) { type = NavType.IntType; defaultValue = PowersRootsRules.DEFAULT_MIN },
                 navArgument(Routes.ARG_CU_MAX) { type = NavType.IntType; defaultValue = PowersRootsRules.CUBE_LIMIT },
+                navArgument(Routes.ARG_CHALLENGE) { type = NavType.StringType; defaultValue = "" },
+                navArgument(Routes.ARG_LETTER_FROM) { type = NavType.IntType; defaultValue = AlphabetRules.FIRST },
+                navArgument(Routes.ARG_LETTER_TO) { type = NavType.IntType; defaultValue = AlphabetRules.SIZE },
             ),
         ) {
             PracticeScreen(
