@@ -19,6 +19,7 @@ import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -112,7 +113,6 @@ fun AlphabetConfigScreen(
                     AlphabetChallenge.entries.forEach { challenge ->
                         ChallengeCard(
                             title = stringResource(challenge.titleRes()),
-                            example = stringResource(challenge.exampleRes()),
                             selected = challenge == state.challenge,
                             onClick = { haptics.tick(); viewModel.selectChallenge(challenge) },
                         )
@@ -144,7 +144,7 @@ private fun SectionTitle(@StringRes title: Int) {
 }
 
 /**
- * The letter range: the first and the last letter as two big tiles with an arrow between them, and one two-thumb slider under
+ * The letter range: the first letter at the left and the last letter at the right as two small tiles with an arrow between them, and one two-thumb slider under
  * them that moves both. The slider's ends are A and Z (the small letters under it), the tiles show what is chosen right now.
  */
 @Composable
@@ -167,24 +167,22 @@ private fun LetterRangeCard(
     ) {
         Row(
             modifier = Modifier.fillMaxWidth(),
-            verticalAlignment = Alignment.Bottom,
-            horizontalArrangement = Arrangement.spacedBy(12.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.SpaceBetween,
         ) {
             LetterTile(
                 label = stringResource(R.string.letter_from),
                 letter = AlphabetRules.letterOf(range.first),
-                modifier = Modifier.weight(1f),
             )
             Icon(
                 imageVector = QuizzenIcons.ArrowRight,
                 contentDescription = null,
                 tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                modifier = Modifier.padding(bottom = 18.dp).size(22.dp),
+                modifier = Modifier.size(22.dp),
             )
             LetterTile(
                 label = stringResource(R.string.letter_to),
                 letter = AlphabetRules.letterOf(range.last),
-                modifier = Modifier.weight(1f),
             )
         }
         QuizzenRangeSlider(
@@ -209,44 +207,39 @@ private fun LetterRangeCard(
     }
 }
 
-/** A small caption and the letter in a rounded box, like the timer's value box. Read as one item: "From, A". */
+/** The chosen letter in the same small box as the timer's value (letter on top, FROM / TO under it). Read as one item. */
 @Composable
 private fun LetterTile(label: String, letter: Char, modifier: Modifier = Modifier) {
     Column(
-        modifier = modifier.semantics(mergeDescendants = true) {},
+        modifier = modifier
+            .widthIn(min = 64.dp)
+            .background(MaterialTheme.colorScheme.surfaceContainerHigh, RoundedCornerShape(18.dp))
+            .padding(horizontal = 16.dp, vertical = 10.dp)
+            .semantics(mergeDescendants = true) {},
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
+        Text(
+            text = letter.toString(),
+            style = MaterialTheme.typography.titleMedium.copy(fontSize = 20.sp),
+            color = MaterialTheme.colorScheme.onSurface,
+            textAlign = TextAlign.Center,
+        )
         Text(
             text = label.uppercase(),
             style = MaterialTheme.typography.labelSmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
-            modifier = Modifier.padding(bottom = 6.dp),
+            modifier = Modifier.padding(top = 2.dp),
         )
-        Box(
-            modifier = Modifier
-                .fillMaxWidth()
-                .background(MaterialTheme.colorScheme.surfaceContainerHigh, RoundedCornerShape(20.dp))
-                .padding(vertical = 14.dp),
-            contentAlignment = Alignment.Center,
-        ) {
-            Text(
-                text = letter.toString(),
-                style = MaterialTheme.typography.headlineLarge.copy(fontSize = 30.sp, letterSpacing = 0.sp),
-                color = MaterialTheme.colorScheme.onSurface,
-                textAlign = TextAlign.Center,
-            )
-        }
     }
 }
 
 /**
- * One full-width choice (single select). Same selection language as the option chips and the table cells: primary fill with a
- * soft coloured shadow when chosen, plain `surfaceContainer` otherwise; a radio mark on the left says "pick one".
+ * One full-width choice (single select), just its name. Same selection language as the option chips and the table cells: primary
+ * fill with a soft coloured shadow when chosen, plain `surfaceContainer` otherwise; a radio mark on the left says "pick one".
  */
 @Composable
 private fun ChallengeCard(
     title: String,
-    example: String,
     selected: Boolean,
     onClick: () -> Unit,
 ) {
@@ -261,11 +254,6 @@ private fun ChallengeCard(
         targetValue = if (selected) colors.onPrimary else colors.onSurface,
         animationSpec = tween(200),
         label = "challengeContent",
-    )
-    val secondary by animateColorAsState(
-        targetValue = if (selected) colors.onPrimary.copy(alpha = 0.85f) else colors.onSurfaceVariant,
-        animationSpec = tween(200),
-        label = "challengeSecondary",
     )
     val glow by animateColorAsState(
         targetValue = colors.primary.copy(alpha = if (selected) 0.55f else 0f),
@@ -293,19 +281,12 @@ private fun ChallengeCard(
         horizontalArrangement = Arrangement.spacedBy(16.dp),
     ) {
         RadioMark(selected = selected, color = content)
-        Column(Modifier.weight(1f)) {
-            Text(
-                text = title,
-                style = MaterialTheme.typography.bodyMedium.copy(fontSize = 16.32.sp, fontWeight = FontWeight.Bold),
-                color = content,
-            )
-            Text(
-                text = example,
-                style = MaterialTheme.typography.bodyMedium.copy(fontSize = 13.6.sp),
-                color = secondary,
-                modifier = Modifier.padding(top = 2.dp),
-            )
-        }
+        Text(
+            text = title,
+            style = MaterialTheme.typography.bodyMedium.copy(fontSize = 16.32.sp, fontWeight = FontWeight.Bold),
+            color = content,
+            modifier = Modifier.weight(1f),
+        )
     }
 }
 
@@ -347,13 +328,6 @@ private fun AlphabetChallenge.titleRes(): Int = when (this) {
     AlphabetChallenge.FindPosition -> R.string.challenge_find_position
     AlphabetChallenge.FindLetter -> R.string.challenge_find_letter
     AlphabetChallenge.ReverseLetter -> R.string.challenge_reverse_letter
-}
-
-@StringRes
-private fun AlphabetChallenge.exampleRes(): Int = when (this) {
-    AlphabetChallenge.FindPosition -> R.string.challenge_find_position_example
-    AlphabetChallenge.FindLetter -> R.string.challenge_find_letter_example
-    AlphabetChallenge.ReverseLetter -> R.string.challenge_reverse_letter_example
 }
 
 @StringRes

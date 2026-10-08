@@ -51,13 +51,13 @@ Normative description of the app. "Web" = the prototype in `docs/reference/quizz
 
 ## Alphabet configuration
 - Title "Alphabet", subtitle "Configure your challenge".
-- **Letter Range**: one card with the first letter (**From**) and the last letter (**To**) as two big tiles with an arrow between them,
-  and one two-thumb slider under them that moves both (whole letters, A to Z; the small letters under the slider show its ends).
+- **Letter Range**: one card with the first letter (**From**, at the left) and the last letter (**To**, at the right) as two small
+  tiles (the size of the timer's value box) with an arrow between them, and one two-thumb slider under them that moves both (whole letters, A to Z; the small letters under the slider show its ends).
   Starts at **A to Z**; one letter (From = To) is allowed. Releasing a thumb gives a light tick (haptics).
-- **Challenge Type** (single select, default **Find Position**), three full-width cards with a radio mark and an example line:
-  - **Find Position**: "Show A -> Type 1". A letter is shown, type its place in the alphabet (A = 1 ... Z = 26).
-  - **Find Letter**: "Show 1 -> Type A". A place is shown, type the letter.
-  - **Reverse Letter**: "Show A -> Type Z". A letter is shown, type the letter at the same place counted from the other end
+- **Challenge Type** (single select, default **Find Position**), three full-width cards with a radio mark and just the name (no example line):
+  - **Find Position**: a letter is shown, type its place in the alphabet (A = 1 ... Z = 26).
+  - **Find Letter**: a place is shown, type the letter.
+  - **Reverse Letter**: a letter is shown, type the letter at the same place counted from the other end
     (A <-> Z, B <-> Y, ... M <-> N).
 - A **Tip** card under the choices explains the chosen challenge in one line and changes when the choice changes.
 - Timer field default **10** s (a blank or 0 uses the default, like every other screen). Start is always enabled.
