@@ -3,6 +3,7 @@ package com.ravibhaiya.quizzen.ui.navigation
 import androidx.lifecycle.SavedStateHandle
 import com.ravibhaiya.quizzen.domain.AlphabetChallenge
 import com.ravibhaiya.quizzen.domain.AlphabetRules
+import com.ravibhaiya.quizzen.domain.FractionChallenge
 import com.ravibhaiya.quizzen.domain.PowerRootType
 import com.ravibhaiya.quizzen.domain.PowersRootsRules
 import com.ravibhaiya.quizzen.domain.PracticeConfig
@@ -13,6 +14,7 @@ object Routes {
     const val TABLES = "tables"
     const val POWERS = "powers"
     const val ALPHABET = "alphabet"
+    const val FRACTIONS = "fractions"
 
     const val ARG_MODE = "mode"
     const val ARG_D1 = "d1"
@@ -32,6 +34,7 @@ object Routes {
     const val MODE_TABLES = "tables"
     const val MODE_POWERS = "powers"
     const val MODE_ALPHABET = "alphabet"
+    const val MODE_FRACTIONS = "fractions"
 
     const val PRACTICE = "practice/{$ARG_MODE}?$ARG_D1={$ARG_D1}&$ARG_D2={$ARG_D2}" +
         "&$ARG_NUMBERS={$ARG_NUMBERS}&$ARG_SECONDS={$ARG_SECONDS}" +
@@ -54,6 +57,9 @@ object Routes {
             "practice/$MODE_ALPHABET?$ARG_CHALLENGE=${config.challenge.code}" +
                 "&$ARG_LETTER_FROM=${config.letters.first}&$ARG_LETTER_TO=${config.letters.last}" +
                 "&$ARG_SECONDS=${config.timerSeconds}"
+        // The challenge travels in the same argument as Alphabet's (the mode says which codes to read).
+        is PracticeConfig.Fractions ->
+            "practice/$MODE_FRACTIONS?$ARG_CHALLENGE=${config.challenge.code}&$ARG_SECONDS=${config.timerSeconds}"
     }
 }
 
@@ -120,6 +126,10 @@ object PracticeArgs {
             Routes.MODE_ALPHABET -> PracticeConfig.Alphabet(
                 challenge = AlphabetChallenge.fromCode(challenge) ?: AlphabetChallenge.FindPosition,
                 letters = AlphabetRules.coerce(letterFrom ?: AlphabetRules.FIRST, letterTo ?: AlphabetRules.SIZE),
+                timerSeconds = timer,
+            )
+            Routes.MODE_FRACTIONS -> PracticeConfig.Fractions(
+                challenge = FractionChallenge.fromCode(challenge) ?: FractionChallenge.Fraction,
                 timerSeconds = timer,
             )
             else -> PracticeConfig.Multiply(

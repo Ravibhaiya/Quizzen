@@ -14,6 +14,9 @@ import androidx.compose.ui.unit.em
 import com.ravibhaiya.quizzen.R
 import com.ravibhaiya.quizzen.domain.AlphabetChallenge
 import com.ravibhaiya.quizzen.domain.AlphabetQuestion
+import com.ravibhaiya.quizzen.domain.FractionChallenge
+import com.ravibhaiya.quizzen.domain.FractionQuestion
+import com.ravibhaiya.quizzen.domain.FractionRules
 import com.ravibhaiya.quizzen.domain.PowerQuestion
 import com.ravibhaiya.quizzen.domain.ProductQuestion
 import com.ravibhaiya.quizzen.domain.Question
@@ -28,6 +31,12 @@ private val ScriptSize = 0.55.em
  */
 private val RootIndexNudge = (-0.15).em
 
+/** Size of the numerator and denominator of a mixed number (`33 1/3`) relative to its whole part. */
+private val FractionScriptSize = 0.5.em
+
+/** The gap between the whole part and the small fraction of a mixed number. */
+private val MixedGapSize = 0.25.em
+
 /**
  * How a question is drawn on the Practice screen. The operator (the multiplication sign, the exponent, the root sign) is
  * tinted with [accent], exactly like the orange "x" in the original design:
@@ -35,6 +44,9 @@ private val RootIndexNudge = (-0.15).em
  *  - square / cube: `17` with a raised `2` / `3`
  *  - square root / cube root: `√784` and a raised `3` in front of the root sign for cube roots
  *  - alphabet: just the letter (`C`) or the place (`3`), in the text colour
+ *  - fraction: `1/25` for a fraction to turn into a percentage; for a percentage to turn into a fraction a mixed number with a
+ *    small raised numerator and lowered denominator (`33 1/3%`) or the decimal (`33.33%`), as the question was worded
+ *  The slash and the percent sign are tinted with [accent], like the other operators.
  *
  * Exponents use a real superscript style instead of the `²` `³` characters so they scale with the text.
  */
@@ -49,6 +61,32 @@ fun Question.toDisplayText(accent: Color): AnnotatedString = buildAnnotatedStrin
             append(question.right.toString())
         }
         is AlphabetQuestion -> append(question.shown)
+        is FractionQuestion -> when (question.challenge) {
+            FractionChallenge.Percentage -> {
+                append("1")
+                withStyle(SpanStyle(color = accent)) { append("/") }
+                append(question.denominator.toString())
+            }
+            FractionChallenge.Fraction -> {
+                val percent = question.percent
+                if (question.decimal) {
+                    append(FractionRules.decimalOf(question.denominator))
+                } else {
+                    append(percent.whole.toString())
+                    if (percent.hasFraction) {
+                        withStyle(SpanStyle(fontSize = MixedGapSize)) { append(" ") }
+                        withStyle(SpanStyle(baselineShift = BaselineShift.Superscript, fontSize = FractionScriptSize)) {
+                            append(percent.numerator.toString())
+                        }
+                        withStyle(SpanStyle(color = accent, fontSize = FractionScriptSize)) { append("/") }
+                        withStyle(SpanStyle(baselineShift = BaselineShift.Subscript, fontSize = FractionScriptSize)) {
+                            append(percent.denominator.toString())
+                        }
+                    }
+                }
+                withStyle(SpanStyle(color = accent)) { append("%") }
+            }
+        }
         is PowerQuestion -> {
             append(question.base.toString())
             withStyle(script) { append(question.exponent.toString()) }
@@ -86,9 +124,21 @@ fun spokenQuestion(question: Question): String = when (question) {
         AlphabetChallenge.FindLetter -> stringResource(R.string.question_spoken_position, question.position)
         AlphabetChallenge.ReverseLetter -> stringResource(R.string.question_spoken_opposite, question.shown)
     }
+    is FractionQuestion -> {
+        val percent = question.percent
+        when {
+            question.challenge == FractionChallenge.Percentage ->
+                stringResource(R.string.question_spoken_fraction, question.denominator)
+            question.decimal ->
+                stringResource(R.string.question_spoken_percent_decimal, FractionRules.decimalOf(question.denominator))
+            percent.hasFraction ->
+                stringResource(R.string.question_spoken_percent_mixed, percent.whole, percent.numerator, percent.denominator)
+            else -> stringResource(R.string.question_spoken_percent, percent.whole)
+        }
+    }
 }
 
-/** The placeholder of the answer field: tells Alphabet players what to type; every other quiz just says "Answer". */
+/** The placeholder of the answer field: tells Alphabet and Fraction & Percentage players what to type; every other quiz just says "Answer". */
 @Composable
 fun answerHint(question: Question): String = when (question) {
     is AlphabetQuestion -> stringResource(
@@ -97,6 +147,9 @@ fun answerHint(question: Question): String = when (question) {
             AlphabetChallenge.FindLetter -> R.string.answer_hint_letter
             AlphabetChallenge.ReverseLetter -> R.string.answer_hint_opposite
         },
+    )
+    is FractionQuestion -> stringResource(
+        if (question.challenge == FractionChallenge.Fraction) R.string.answer_hint_fraction else R.string.answer_hint_percentage,
     )
     else -> stringResource(R.string.answer_hint)
 }

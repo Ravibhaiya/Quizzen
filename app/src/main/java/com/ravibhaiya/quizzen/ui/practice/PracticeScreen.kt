@@ -16,6 +16,7 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.imePadding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.rememberScrollState
@@ -45,6 +46,13 @@ import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.text.AnnotatedString
+import androidx.compose.ui.text.SpanStyle
+import androidx.compose.ui.text.buildAnnotatedString
+import androidx.compose.ui.text.input.OffsetMapping
+import androidx.compose.ui.text.input.TransformedText
+import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardCapitalization
@@ -64,6 +72,7 @@ import com.ravibhaiya.quizzen.ui.components.NeutralShadowColor
 import com.ravibhaiya.quizzen.ui.components.PrimaryButton
 import com.ravibhaiya.quizzen.ui.components.QuizzenScreen
 import com.ravibhaiya.quizzen.ui.components.ScreenHeader
+import com.ravibhaiya.quizzen.ui.components.bouncyClickable
 import com.ravibhaiya.quizzen.ui.components.cssShadow
 import com.ravibhaiya.quizzen.ui.components.rememberHaptics
 
@@ -153,6 +162,16 @@ fun PracticeScreen(
                     kind = state.question.answerKind,
                     onValueChange = viewModel::onAnswerChanged,
                     onDone = viewModel::onCheck,
+                    // The number keyboard has no slash: fraction answers get an on-screen "/" key.
+                    onSlash = if (state.question.answerKind == AnswerKind.Fraction) {
+                        {
+                            haptics.tick()
+                            viewModel.onSlash()
+                            runCatching { focusRequester.requestFocus() }
+                        }
+                    } else {
+                        null
+                    },
                     readOnly = state.isLocked,
                     shakeOffsetDp = { shake.value },
                     modifier = Modifier.focusRequester(focusRequester),
@@ -213,6 +232,8 @@ private fun AnswerField(
     readOnly: Boolean,
     shakeOffsetDp: () -> Float,
     modifier: Modifier = Modifier,
+    /** When given, a "/" key is shown at the end of the field and calls this. */
+    onSlash: (() -> Unit)? = null,
 ) {
     val primary = MaterialTheme.colorScheme.primary
     val source = remember { MutableInteractionSource() }
@@ -224,6 +245,10 @@ private fun AnswerField(
         label = "answerContainer",
     )
     val ringAlpha by animateFloatAsState(if (focused) 1f else 0f, tween(200), label = "answerRing")
+    val percentSign = MaterialTheme.colorScheme.onSurfaceVariant
+    val visualTransformation = remember(kind, percentSign) {
+        if (kind == AnswerKind.Percent) PercentSuffix(SpanStyle(color = percentSign)) else VisualTransformation.None
+    }
 
     BasicTextField(
         value = value,
@@ -238,14 +263,16 @@ private fun AnswerField(
             letterSpacing = 0.sp,
         ),
         cursorBrush = SolidColor(primary),
-        keyboardOptions = if (kind == AnswerKind.Letter) {
-            KeyboardOptions(
+        visualTransformation = visualTransformation,
+        keyboardOptions = when (kind) {
+            AnswerKind.Letter -> KeyboardOptions(
                 capitalization = KeyboardCapitalization.Characters,
                 keyboardType = KeyboardType.Text,
                 imeAction = ImeAction.Done,
             )
-        } else {
-            KeyboardOptions(keyboardType = KeyboardType.Number, imeAction = ImeAction.Done)
+            // A percentage needs the decimal point (33.33); the % sign is added by PercentSuffix.
+            AnswerKind.Percent -> KeyboardOptions(keyboardType = KeyboardType.Decimal, imeAction = ImeAction.Done)
+            AnswerKind.Number, AnswerKind.Fraction -> KeyboardOptions(keyboardType = KeyboardType.Number, imeAction = ImeAction.Done)
         },
         keyboardActions = KeyboardActions(onDone = { onDone() }),
         modifier = modifier
@@ -267,20 +294,66 @@ private fun AnswerField(
             .cssShadow(primary.copy(alpha = 0.4f * ringAlpha), offsetY = 10.dp, blur = 20.dp, spread = (-10).dp, shape = shape)
             .background(container, shape),
         decorationBox = { inner ->
-            Box(Modifier.fillMaxWidth().padding(22.dp), contentAlignment = Alignment.Center) {
-                if (value.isEmpty()) {
-                    Text(
-                        text = hint,
-                        style = MaterialTheme.typography.headlineLarge.copy(
-                            fontSize = 22.4.sp,
-                            fontWeight = FontWeight.Bold,
-                            letterSpacing = 0.sp,
-                        ),
-                        color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.55f),
-                    )
+            Box(Modifier.fillMaxWidth(), contentAlignment = Alignment.CenterEnd) {
+                Box(Modifier.fillMaxWidth().padding(22.dp), contentAlignment = Alignment.Center) {
+                    if (value.isEmpty()) {
+                        Text(
+                            text = hint,
+                            style = MaterialTheme.typography.headlineLarge.copy(
+                                fontSize = 22.4.sp,
+                                fontWeight = FontWeight.Bold,
+                                letterSpacing = 0.sp,
+                            ),
+                            color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.55f),
+                        )
+                    }
+                    inner()
                 }
-                inner()
+                if (onSlash != null) SlashKey(onClick = onSlash, modifier = Modifier.padding(end = 12.dp))
             }
         },
     )
+}
+
+/** The "/" key at the end of the answer field of a fraction question (48 dp touch target, like the other round buttons). */
+@Composable
+private fun SlashKey(onClick: () -> Unit, modifier: Modifier = Modifier) {
+    val description = stringResource(R.string.cd_insert_slash)
+    Box(
+        modifier = modifier
+            .size(48.dp)
+            .bouncyClickable(CircleShape, pressedScale = 0.88f, onClick = onClick)
+            .background(MaterialTheme.colorScheme.primaryContainer)
+            .semantics { contentDescription = description },
+        contentAlignment = Alignment.Center,
+    ) {
+        Text(
+            text = stringResource(R.string.slash_key),
+            style = MaterialTheme.typography.headlineLarge.copy(fontSize = 24.sp, letterSpacing = 0.sp),
+            color = MaterialTheme.colorScheme.onPrimaryContainer,
+            modifier = Modifier.clearAndSetSemantics { },
+        )
+    }
+}
+
+/** Shows a `%` after whatever is typed, so the answer `33.33` reads `33.33%` without the player typing the sign. */
+private class PercentSuffix(private val sign: SpanStyle) : VisualTransformation {
+    override fun filter(text: AnnotatedString): TransformedText {
+        if (text.isEmpty()) return TransformedText(text, OffsetMapping.Identity)
+        val shown = buildAnnotatedString {
+            append(text)
+            pushStyle(sign)
+            append("%")
+            pop()
+        }
+        return TransformedText(
+            text = shown,
+            offsetMapping = object : OffsetMapping {
+                override fun originalToTransformed(offset: Int): Int = offset
+
+                // The sign is only ever at the very end, so a cursor on it belongs to the end of what was typed.
+                override fun transformedToOriginal(offset: Int): Int = offset.coerceAtMost(text.length)
+            },
+        )
+    }
 }

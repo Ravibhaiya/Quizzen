@@ -53,6 +53,7 @@ fun HomeScreen(
     onOpenMultiply: () -> Unit,
     onOpenTables: () -> Unit,
     onOpenPowers: () -> Unit,
+    onOpenFractions: () -> Unit,
     onOpenAlphabet: () -> Unit,
 ) {
     var showSettings by rememberSaveable { mutableStateOf(false) }
@@ -114,8 +115,8 @@ fun HomeScreen(
                             onOpenMultiply = { haptics.click(); onOpenMultiply() },
                             onOpenTables = { haptics.click(); onOpenTables() },
                             onOpenPowers = { haptics.click(); onOpenPowers() },
+                            onOpenFractions = { haptics.click(); onOpenFractions() },
                             onOpenAlphabet = { haptics.click(); onOpenAlphabet() },
-                            onComingSoon = notify,
                         )
                     } else {
                         LanguagePage(notify)
@@ -173,8 +174,8 @@ private fun MathPage(
     onOpenMultiply: () -> Unit,
     onOpenTables: () -> Unit,
     onOpenPowers: () -> Unit,
+    onOpenFractions: () -> Unit,
     onOpenAlphabet: () -> Unit,
-    onComingSoon: () -> Unit,
 ) {
     HeroCard(
         letter = "M",
@@ -186,7 +187,7 @@ private fun MathPage(
         FeatureTile("P", stringResource(R.string.feature_powers_roots), QuizzenShapes.BlobB, onOpenPowers, Modifier.weight(1f))
     }
     TileRow {
-        FeatureTile("F", stringResource(R.string.feature_fraction_percentage), QuizzenShapes.BlobB, onComingSoon, Modifier.weight(1f))
+        FeatureTile("F", stringResource(R.string.feature_fraction_percentage), QuizzenShapes.BlobB, onOpenFractions, Modifier.weight(1f))
         FeatureTile("A", stringResource(R.string.feature_alphabet_reasoning), QuizzenShapes.BlobA, onOpenAlphabet, Modifier.weight(1f))
     }
 }

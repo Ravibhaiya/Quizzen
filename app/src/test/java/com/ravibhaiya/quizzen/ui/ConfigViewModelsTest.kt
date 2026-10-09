@@ -2,9 +2,11 @@ package com.ravibhaiya.quizzen.ui
 
 import com.ravibhaiya.quizzen.data.QuizSettingsRepository
 import com.ravibhaiya.quizzen.domain.AlphabetChallenge
+import com.ravibhaiya.quizzen.domain.FractionChallenge
 import com.ravibhaiya.quizzen.domain.PowerRootType
 import com.ravibhaiya.quizzen.domain.PracticeConfig
 import com.ravibhaiya.quizzen.ui.alphabet.AlphabetConfigViewModel
+import com.ravibhaiya.quizzen.ui.fractions.FractionsConfigViewModel
 import com.ravibhaiya.quizzen.ui.multiply.MultiplyConfigViewModel
 import com.ravibhaiya.quizzen.ui.powers.PowersRootsConfigViewModel
 import com.ravibhaiya.quizzen.ui.tables.TablesConfigViewModel
@@ -38,12 +40,14 @@ class ConfigViewModelsTest {
         var tables: PracticeConfig.Tables? = null,
         var powers: PracticeConfig.PowersRoots? = null,
         var alphabet: PracticeConfig.Alphabet? = null,
+        var fractions: PracticeConfig.Fractions? = null,
         private val gate: CompletableDeferred<Unit>? = null,
     ) : QuizSettingsRepository {
         var savedMultiply: PracticeConfig.Multiply? = null
         var savedTables: PracticeConfig.Tables? = null
         var savedPowers: PracticeConfig.PowersRoots? = null
         var savedAlphabet: PracticeConfig.Alphabet? = null
+        var savedFractions: PracticeConfig.Fractions? = null
 
         override suspend fun loadMultiply(defaultTimer: Int): PracticeConfig.Multiply? { gate?.await(); return multiply }
         override suspend fun saveMultiply(config: PracticeConfig.Multiply) { savedMultiply = config }
@@ -53,6 +57,8 @@ class ConfigViewModelsTest {
         override suspend fun savePowersRoots(config: PracticeConfig.PowersRoots) { savedPowers = config }
         override suspend fun loadAlphabet(defaultTimer: Int): PracticeConfig.Alphabet? { gate?.await(); return alphabet }
         override suspend fun saveAlphabet(config: PracticeConfig.Alphabet) { savedAlphabet = config }
+        override suspend fun loadFractions(defaultTimer: Int): PracticeConfig.Fractions? { gate?.await(); return fractions }
+        override suspend fun saveFractions(config: PracticeConfig.Fractions) { savedFractions = config }
     }
 
     // ---- Multiply ----
@@ -190,6 +196,34 @@ class ConfigViewModelsTest {
         assertEquals(1..26, vm.state.value.letters)
         vm.onLettersChanged(30..2)
         assertEquals(26..26, vm.state.value.letters)
+    }
+
+    // ---- Fraction & Percentage ----
+
+    @Test
+    fun fractions_opensWithTheLastUsedSetting_andSavesOnStart() = runTest(dispatcher) {
+        val saved = PracticeConfig.Fractions(FractionChallenge.Percentage, timerSeconds = 25)
+        val repository = FakeRepository(fractions = saved)
+        val vm = FractionsConfigViewModel(repository)
+        runCurrent()
+        assertEquals(FractionChallenge.Percentage, vm.state.value.challenge)
+        assertEquals("25", vm.timer.state.value.text)
+        assertTrue(vm.state.value.loaded)
+
+        vm.selectChallenge(FractionChallenge.Fraction)
+        val config = vm.startQuiz()
+        runCurrent()
+        assertEquals(PracticeConfig.Fractions(FractionChallenge.Fraction, 25), config)
+        assertEquals(config, repository.savedFractions)
+    }
+
+    @Test
+    fun fractions_withNothingSaved_usesTheDefaults() = runTest(dispatcher) {
+        val vm = FractionsConfigViewModel(FakeRepository())
+        runCurrent()
+        assertEquals(FractionChallenge.Fraction, vm.state.value.challenge)
+        assertEquals("10", vm.timer.state.value.text)
+        assertTrue(vm.state.value.loaded)
     }
 
     // ---- loading ----

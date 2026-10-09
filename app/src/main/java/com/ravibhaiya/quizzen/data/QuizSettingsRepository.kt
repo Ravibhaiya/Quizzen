@@ -29,6 +29,9 @@ interface QuizSettingsRepository {
 
     suspend fun loadAlphabet(defaultTimer: Int): PracticeConfig.Alphabet?
     suspend fun saveAlphabet(config: PracticeConfig.Alphabet)
+
+    suspend fun loadFractions(defaultTimer: Int): PracticeConfig.Fractions?
+    suspend fun saveFractions(config: PracticeConfig.Fractions)
 }
 
 class DataStoreQuizSettingsRepository(context: Context) : QuizSettingsRepository {
@@ -56,6 +59,11 @@ class DataStoreQuizSettingsRepository(context: Context) : QuizSettingsRepository
 
     override suspend fun saveAlphabet(config: PracticeConfig.Alphabet) = write(ALPHABET_KEY, SettingsCodec.encode(config))
 
+    override suspend fun loadFractions(defaultTimer: Int) =
+        SettingsCodec.decodeFractions(read(FRACTIONS_KEY), defaultTimer)
+
+    override suspend fun saveFractions(config: PracticeConfig.Fractions) = write(FRACTIONS_KEY, SettingsCodec.encode(config))
+
     private suspend fun read(key: Preferences.Key<String>): String? =
         runCatching { dataStore.data.first()[key] }.getOrNull() // a damaged file just means "nothing saved"
 
@@ -68,6 +76,7 @@ class DataStoreQuizSettingsRepository(context: Context) : QuizSettingsRepository
         val TABLES_KEY = stringPreferencesKey("quiz_tables")
         val POWERS_KEY = stringPreferencesKey("quiz_powers_roots")
         val ALPHABET_KEY = stringPreferencesKey("quiz_alphabet")
+        val FRACTIONS_KEY = stringPreferencesKey("quiz_fractions")
     }
 }
 

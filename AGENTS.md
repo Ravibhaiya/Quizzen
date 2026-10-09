@@ -109,10 +109,13 @@ values are read inside `graphicsLayer`/`offset`/`drawBehind` lambdas, text is ne
 
 ## Question types
 
-`Question` is a sealed type (`ProductQuestion`, `PowerQuestion`, `RootQuestion`, `AlphabetQuestion`). A new kind of question
-needs: a subtype in `domain/Question.kt` (override `answerKind` / `answerText` if the answer is not a plain number: checking goes
-through `Question.isCorrect`, never a direct comparison), a branch in `ui/practice/QuestionText.kt` (`toDisplayText`, `spokenQuestion`
-**and** `answerHint`), and a generator branch. Alphabet letters are positions 1..26 (`AlphabetRules`); never repeat 26 elsewhere. Practice-number limits for Powers & Roots (30 for squares and square roots, 20 for cubes and cube roots) live only in
+`Question` is a sealed type (`ProductQuestion`, `PowerQuestion`, `RootQuestion`, `AlphabetQuestion`, `FractionQuestion`). A new kind of
+question needs: a subtype in `domain/Question.kt` (override `answerKind` / `answerText` if the answer is not a plain number: checking goes
+through `Question.isCorrect`, never a direct comparison; override `asked(random)` only if the same question can be worded in more than
+one way, and keep the wording out of `equals`, as `FractionQuestion` does), a branch in `ui/practice/QuestionText.kt` (`toDisplayText`, `spokenQuestion`
+**and** `answerHint`), and a generator branch. Fraction & Percentage asks only the unit fractions of the owner's chart
+(`FractionRules.DENOMINATORS`); never add other fractions without the owner asking. Its fraction answers rely on the on-screen "/" key
+(`PracticeViewModel.onSlash`) and its percentage answers on the automatic `%` sign (`PercentSuffix` in `PracticeScreen`). Alphabet letters are positions 1..26 (`AlphabetRules`); never repeat 26 elsewhere. Practice-number limits for Powers & Roots (30 for squares and square roots, 20 for cubes and cube roots) live only in
 `PowersRootsRules` / `PowerRootType.limit`; never repeat those numbers elsewhere.
 
 ## Remembered quiz settings

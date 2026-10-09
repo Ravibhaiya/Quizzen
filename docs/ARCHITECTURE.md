@@ -13,7 +13,7 @@ Single Gradle module `:app`, single Activity, Compose UI, MVVM with unidirection
 
 | Layer | Package | Rules |
 |-------|---------|-------|
-| domain | `domain/` | Pure Kotlin. `Question` (sealed: `ProductQuestion`, `PowerQuestion`, `RootQuestion`, `AlphabetQuestion`; `answerKind` / `answerText` / `isCorrect` say what is typed and how it is checked), `Feedback`, `PracticeConfig` (Multiply / Tables / PowersRoots / Alphabet), `QuestionGenerator`, `TimerInput`, `PowersRootsRules` (limits 30 / 20, validation), `AlphabetChallenge` + `AlphabetRules` (letters as positions 1..26, opposite letter, range validation). No Android imports. |
+| domain | `domain/` | Pure Kotlin. `Question` (sealed: `ProductQuestion`, `PowerQuestion`, `RootQuestion`, `AlphabetQuestion`, `FractionQuestion`; `answerKind` / `answerText` / `isCorrect` say what is typed and how it is checked, `asked(random)` lets a question pick its wording), `Feedback`, `PracticeConfig` (Multiply / Tables / PowersRoots / Alphabet / Fractions), `QuestionGenerator`, `TimerInput`, `PowersRootsRules` (limits 30 / 20, validation), `AlphabetChallenge` + `AlphabetRules` (letters as positions 1..26, opposite letter, range validation), `FractionChallenge` + `FractionRules` (the 24 denominators, percentage as a mixed number or decimal worked out from n, fraction and percentage answer checking). No Android imports. |
 | data | `data/` | One DataStore file (`QuizzenDataStore`). `SettingsRepository` (`haptic_enabled`, default `true`) and `QuizSettingsRepository`: the last-used setup of each quiz, one short text per quiz written by `SettingsCodec` (pure Kotlin, repairs bad values on read). |
 | ui | `ui/*` | Feature packages with `Screen` + `ViewModel`. `components/` shared widgets. `theme/` design tokens. `navigation/` routes + NavHost. |
 
@@ -25,6 +25,7 @@ Single Gradle module `:app`, single Activity, Compose UI, MVVM with unidirection
 | Multiply config | `MultiplyConfigViewModel` | `firstDigits`, `secondDigits`, `TimerFieldState` | `buildConfig()` -> `PracticeConfig.Multiply`. |
 | Tables config | `TablesConfigViewModel` | `selected: Set<Int>`, `TimerFieldState` | Start disabled until >= 1 number selected. |
 | Powers & Roots config | `PowersRootsConfigViewModel` | selected `PowerRootType`s, one `IntRange` per kind (squares & roots, cubes & roots), `TimerFieldState` | Limits live in `domain/PowersRoots.kt`; the sliders can only make valid ranges, so Start needs just one selected type. |
+| Fractions config | `FractionsConfigViewModel` | `FractionChallenge`, `TimerFieldState` | Two choices (`ChoiceCard`), so Start is always enabled. |
 | Alphabet config | `AlphabetConfigViewModel` | `AlphabetChallenge`, one `IntRange` of letter positions (A = 1 ... Z = 26), `TimerFieldState` | The slider can only make valid ranges (`AlphabetRules.coerce` is the safety net), so Start is always enabled. |
 | Practice | `PracticeViewModel` | `PracticeUiState` (question, remainingSeconds, answer, feedback, isLocked, shakeCount) | Created with `PracticeViewModel.Factory` reading nav args via `SavedStateHandle`. |
 | App-wide | `SettingsViewModel` (Activity scoped) | `hapticEnabled` | Passed down as a plain `Boolean` + callback. |

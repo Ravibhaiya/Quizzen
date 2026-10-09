@@ -20,7 +20,7 @@ Normative description of the app. "Web" = the prototype in `docs/reference/quizz
 - Hero-card titles ("Multiply", "Vocabulary") are always a single line: the text shrinks (24.8 sp down to 14 sp) instead of wrapping.
 - Segmented control: **Math** | **Language**. Tap animates the pager; swiping the pager moves the indicator with the finger.
 - **Math** page: hero "Multiply" (-> Multiply config); tiles "Tables Practice" (-> Tables config), "Powers & Roots"
-  (-> Powers & Roots config), "Alphabet Reasoning" (-> Alphabet config), "Fraction & Percentage" (placeholder).
+  (-> Powers & Roots config), "Alphabet Reasoning" (-> Alphabet config), "Fraction & Percentage" (-> Fraction & Percentage config).
 - **Language** page: hero "Vocabulary"; tiles "Fixed Preposition", "Phrasal Verb" (all placeholders).
 - Placeholders show a "Coming soon" snackbar.
 
@@ -40,7 +40,8 @@ Normative description of the app. "Web" = the prototype in `docs/reference/quizz
 
 ## Remembered settings
 - Each quiz's setup screen opens with the settings it was **last started with**: Multiply (digits of both numbers, timer), Tables
-  (selected numbers, timer), Powers & Roots (selected types, both ranges, timer) and Alphabet (challenge type, letter range, timer).
+  (selected numbers, timer), Powers & Roots (selected types, both ranges, timer), Alphabet (challenge type, letter range, timer)
+  and Fraction & Percentage (what to answer in, timer).
   They are saved when **Start** is pressed.
 - The first time (nothing saved) the screen shows its defaults. A saved value that is no longer valid is repaired or replaced by the
   default, and a damaged or unreadable save is treated as "nothing saved"; saving can never crash the app.
@@ -63,6 +64,18 @@ Normative description of the app. "Web" = the prototype in `docs/reference/quizz
 - Timer field default **10** s (a blank or 0 uses the default, like every other screen). Start is always enabled.
 - Start -> Practice. Every letter of the range is one question; the quiz uses shuffled rounds and mistake repeats like Tables and
   Powers & Roots (see Practice).
+
+## Fraction & Percentage configuration
+- Title "Fraction & Percentage", subtitle "Configure your challenge".
+- **Answer in** (single select, default **Fraction**): two full-width cards (the same cards as the Alphabet challenge types) with a
+  radio mark and just the name:
+  - **Fraction**: a percentage is shown, type the fraction (`33⅓%` or `33.33%` -> `1/3`).
+  - **Percentage**: a fraction is shown, type the percentage (`1/3` -> `33.33`; the `%` sign is added by the app).
+- Timer field default **10** s. Start is always enabled. Start -> Practice.
+- The questions are exactly the 24 unit fractions of the reference chart, nothing else: 1/2 to 1/20, then 1/24, 1/25, 1/30, 1/40
+  and 1/50. Every one is one question; the quiz uses shuffled rounds and mistake repeats like Tables (see Practice). The
+  percentage of each is `100 / n` (50, 33⅓, 25, 20, 16⅔, 14²⁄₇, 12½, 11⅑, 10, 9¹⁄₁₁, 8⅓, 7⁹⁄₁₃, 7¹⁄₇, 6⅔, 6¼, 5¹⁵⁄₁₇, 5⁵⁄₉,
+  5⁵⁄₁₉, 5, 4⅙, 4, 3⅓, 2½, 2); it is worked out from n, never typed in a table.
 
 ## Powers & Roots configuration
 - **Practice Types** (multi-select, none selected initially): Squares (x²), Cubes (x³), Square Roots (√x), Cube Roots (³√x).
@@ -96,12 +109,29 @@ Normative description of the app. "Web" = the prototype in `docs/reference/quizz
   opens the normal keyboard in capitals, takes **one letter** (typing another replaces it) and is checked whatever the case; when it is a
   number it is the usual number pad. The placeholder says what to type ("Position", "Letter", "Opposite letter"). The feedback sheet
   shows the correct answer as the number or the capital letter. Screen readers say "letter C", "position 3", "opposite of letter C".
-- **Order of questions** (Tables, Powers & Roots and Alphabet, the quizzes with a limited set of questions): when the quiz starts, all its
+- Fraction & Percentage quizzes:
+  - **Answer in Fraction**: the question is the percentage in the primary-tinted `%` style. A percentage with a fractional part is
+    written either as a mixed number (`33 1/3%`, the fraction small: raised numerator, lowered denominator) or as a decimal
+    rounded to two places (`33.33%`); one of the two is picked at random each time a question is asked (whole percentages such
+    as `25%` have only one writing). A question that comes back after a mistake is written exactly as it was missed. The
+    answer is typed as digits around one slash (`1/3`, at most 7 characters, never starting with the slash). The number
+    keyboard has no slash, so a round **"/" key** sits at the end of the answer field: it adds one slash after the digits typed (it
+    does nothing on an empty field or when there already is a slash) and gives a light tick. A fraction with the same value
+    counts (`2/6` for 1/3).
+  - **Answer in Percentage**: the question is the fraction (`1/25`, the slash tinted). The decimal keyboard is used and the answer is
+    typed as digits with at most one decimal point (a decimal comma counts as the point; at most 7 characters). The **`%` sign is
+    shown automatically** after what is typed (`33.33` reads `33.33%`) and is never typed. A percentage that ends (25, 12.5,
+    6.25, 2.5, 2) must be exact; one with endless decimals (33⅓, 16⅔, 5¹⁵⁄₁₇ ...) is right when within 0.05 of the exact
+    value, so it may be rounded or cut (`33.3`, `33.33` and `33.34` are all right for 33⅓; `33` and `33.5` are not).
+  - The placeholder says "Fraction" or "Percentage". The feedback sheet shows the correct answer as `1/3`, or for a percentage in
+    both writings (`33 1/3% ≈ 33.33%`, `6 1/4% = 6.25%`, `25%`). Screen readers say "1 over 25", "33 and 1 over 3 percent",
+    "33.33 percent".
+- **Order of questions** (Tables, Powers & Roots, Alphabet and Fraction & Percentage, the quizzes with a limited set of questions): when the quiz starts, all its
   questions are shuffled into a random order and asked one after the other, so **every question comes up once before any
   question comes up again**. When the last one has been asked they are shuffled again (a new random order) and the quiz goes on,
   forever. Every quiz gets its own shuffle; nothing is saved. Multiply has far too many possible questions to list, so each
   of its questions is drawn at random.
-- **Mistakes and slow answers come back** (same three quizzes; Multiply is not affected). They are added into that order. Inside one quiz:
+- **Mistakes and slow answers come back** (same four quizzes; Multiply is not affected). They are added into that order. Inside one quiz:
   - A wrong answer or a time-up brings the same question back **3 times** among the next 10 questions.
   - A correct but **slow** answer brings it back **2 times** among the next 10. Slow = answered with **less than 40% of the
     timer left** on the countdown (timer 10 s: 4 s left is still fast, 3 s left is slow; a wrong answer is never "slow", it is wrong).
@@ -121,8 +151,8 @@ Normative description of the app. "Web" = the prototype in `docs/reference/quizz
 
   | Effect | When |
   |---|---|
-  | Tick (light) | selecting a digit option, table number or challenge type, range slider released, switching Math/Language, turning haptics off, "Coming soon" taps |
-  | Click (medium) | opening Multiply/Tables/Powers & Roots/Alphabet/Settings, Back, Select All, turning haptics on |
+  | Tick (light) | selecting a digit option, table number, challenge type or what to answer in, pressing the "/" key, range slider released, switching Math/Language, turning haptics off, "Coming soon" taps |
+  | Click (medium) | opening Multiply/Tables/Powers & Roots/Alphabet/Fraction & Percentage/Settings, Back, Select All, turning haptics on |
   | Heavy click (firm thump) | Start |
   | Success (two rising taps) | correct answer |
   | Error (three hard buzzes) | wrong answer |
@@ -149,6 +179,7 @@ Normative description of the app. "Web" = the prototype in `docs/reference/quizz
 | "Time's Up" sheet was orange | Sky blue (`#2E9FE0`) | Owner request; orange was too close to the app's primary colour. |
 | Powers & Roots was a placeholder | Implemented (types, two range sliders, timer) in the Quizzen style, from a reference screenshot of another app | Owner request. The reference's "0 disables the timer" is **not** adopted: 0 or blank uses the default like every other screen. |
 | Alphabet Reasoning was a placeholder | Implemented (letter range, three challenge types, timer) in the Quizzen style, from a reference screenshot of another app | Owner request. The reference's two letter pickers became two pills (the picked letters) above one range slider (like the Powers & Roots ranges), the challenge cards use the app's primary selection style and show only the name, and the reference's "0 disables the timer" is **not** adopted. |
+| Fraction & Percentage was a placeholder | Implemented (answer in Fraction or Percentage, timer) in the Quizzen style, asking only the 24 unit fractions of the owner's chart | Owner request. Fraction answers get an on-screen "/" key because the number keyboard has none; percentage answers get an automatic `%` sign and may be typed with a decimal point. |
 | Followed `prefers-color-scheme` (light + dark) | Light only | Product decision: the app is light-only. |
 | Haptics toggle was not persisted or connected | Persisted (DataStore) and applied everywhere, with a distinct effect per action | Real feature. |
 | Option chips had 22 px side padding | 18 dp side padding | On 360 dp phones three chips need 326 dp but only 324 dp are available, so "4 Digits" wrapped and left a gap on the right. With 18 dp, three chips fit per row (2, 3, 4 Digits, then 5 Digits). |

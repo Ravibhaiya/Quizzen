@@ -44,7 +44,8 @@ class PracticeSession(
 
     fun next(): Question {
         position++
-        val question = scheduled.remove(position) ?: freshQuestion()
+        // A comeback is asked exactly as it was missed; a fresh question picks its wording (see Question.asked).
+        val question = scheduled.remove(position) ?: freshQuestion().asked(random)
         previous = question
         return question
     }

@@ -20,6 +20,7 @@ import com.ravibhaiya.quizzen.domain.AlphabetRules
 import com.ravibhaiya.quizzen.domain.PowersRootsRules
 import com.ravibhaiya.quizzen.ui.components.EmphasizedEasing
 import com.ravibhaiya.quizzen.ui.alphabet.AlphabetConfigScreen
+import com.ravibhaiya.quizzen.ui.fractions.FractionsConfigScreen
 import com.ravibhaiya.quizzen.ui.home.HomeScreen
 import com.ravibhaiya.quizzen.ui.multiply.MultiplyConfigScreen
 import com.ravibhaiya.quizzen.ui.powers.PowersRootsConfigScreen
@@ -62,6 +63,7 @@ fun QuizzenNavHost(
                 onOpenMultiply = { navController.navigate(Routes.MULTIPLY) },
                 onOpenTables = { navController.navigate(Routes.TABLES) },
                 onOpenPowers = { navController.navigate(Routes.POWERS) },
+                onOpenFractions = { navController.navigate(Routes.FRACTIONS) },
                 onOpenAlphabet = { navController.navigate(Routes.ALPHABET) },
             )
         }
@@ -81,6 +83,13 @@ fun QuizzenNavHost(
         }
         composable(Routes.POWERS) {
             PowersRootsConfigScreen(
+                hapticEnabled = hapticEnabled,
+                onBack = { navController.popBackStack() },
+                onStart = { config -> navController.navigate(Routes.practice(config)) },
+            )
+        }
+        composable(Routes.FRACTIONS) {
+            FractionsConfigScreen(
                 hapticEnabled = hapticEnabled,
                 onBack = { navController.popBackStack() },
                 onStart = { config -> navController.navigate(Routes.practice(config)) },

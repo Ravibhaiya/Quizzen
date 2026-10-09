@@ -1,6 +1,7 @@
 package com.ravibhaiya.quizzen.data
 
 import com.ravibhaiya.quizzen.domain.AlphabetChallenge
+import com.ravibhaiya.quizzen.domain.FractionChallenge
 import com.ravibhaiya.quizzen.domain.PowerRootType
 import com.ravibhaiya.quizzen.domain.PracticeConfig
 import org.junit.Assert.assertEquals
@@ -29,6 +30,20 @@ class SettingsCodecTest {
 
         val alphabet = PracticeConfig.Alphabet(AlphabetChallenge.ReverseLetter, letters = 4..20, timerSeconds = 15)
         assertEquals(alphabet, SettingsCodec.decodeAlphabet(SettingsCodec.encode(alphabet), defaultTimer = 10))
+
+        val fractions = PracticeConfig.Fractions(FractionChallenge.Percentage, timerSeconds = 15)
+        assertEquals(fractions, SettingsCodec.decodeFractions(SettingsCodec.encode(fractions), defaultTimer = 10))
+    }
+
+    @Test
+    fun fractions_textIsShort_andDecodingRepairsTheTimer() {
+        assertEquals("fc=fra;t=10", SettingsCodec.encode(PracticeConfig.Fractions(FractionChallenge.Fraction, 10)))
+        assertEquals("fc=per;t=25", SettingsCodec.encode(PracticeConfig.Fractions(FractionChallenge.Percentage, 25)))
+        assertEquals(10, SettingsCodec.decodeFractions("fc=per;t=999", 10)!!.timerSeconds)
+        assertEquals(10, SettingsCodec.decodeFractions("fc=per", 10)!!.timerSeconds)
+        assertNull(SettingsCodec.decodeFractions("fc=unknown;t=10", 10)) // not a challenge: use the defaults
+        assertNull(SettingsCodec.decodeFractions("garbage", 10))
+        assertNull(SettingsCodec.decodeFractions(null, 10))
     }
 
     @Test
