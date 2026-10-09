@@ -1,7 +1,12 @@
 package com.ravibhaiya.quizzen.domain
 
-/** What the player types: digits, or one letter (Alphabet Reasoning). */
-enum class AnswerKind { Number, Letter }
+import kotlin.random.Random
+
+/**
+ * What the player types: digits, one letter (Alphabet Reasoning), a fraction such as `1/3`, or a percentage such as `33.33`
+ * (Fraction & Percentage; the `%` sign is added by the screen).
+ */
+enum class AnswerKind { Number, Letter, Fraction, Percent }
 
 /**
  * A single practice question. [answer] is a [Long] because 5-digit x 5-digit products exceed [Int]. For questions whose answer
@@ -19,7 +24,14 @@ sealed interface Question {
     fun isCorrect(input: String): Boolean = when (answerKind) {
         AnswerKind.Number -> input.toLongOrNull() == answer
         AnswerKind.Letter -> input.trim().equals(answerText, ignoreCase = true)
+        AnswerKind.Fraction, AnswerKind.Percent -> false // these questions check the answer themselves (see FractionQuestion)
     }
+
+    /**
+     * The question as it is put to the player this time. Most questions are always asked the same way, so this is the question
+     * itself; a question that can be worded in more than one way (see [FractionQuestion]) picks one of them with [random].
+     */
+    fun asked(random: Random): Question = this
 }
 
 /** `left x right` (Multiply and Tables). */
@@ -64,6 +76,43 @@ data class AlphabetQuestion(
 
     override val answerText: String
         get() = if (answerKind == AnswerKind.Number) answer.toString() else AlphabetRules.letterOf(answer.toInt()).toString()
+}
+
+/**
+ * Fraction & Percentage: the unit fraction `1/denominator` and its percentage. [challenge] decides which of the two is shown and
+ * which one is typed. For [FractionChallenge.Fraction] a percentage with a fractional part can be written as a mixed number
+ * (`33 1/3%`) or as a decimal ([decimal], `33.33%`); the wording is picked per asking by [asked].
+ *
+ * [decimal] is only wording, not part of what is asked, so it is left out of equality: the same question in another wording is
+ * still the same question for rounds and comebacks. [answer] is the denominator.
+ */
+data class FractionQuestion(
+    val challenge: FractionChallenge,
+    val denominator: Int,
+    val decimal: Boolean = false,
+) : Question {
+    val percent: MixedPercent get() = FractionRules.percentOf(denominator)
+
+    override val answer: Long get() = denominator.toLong()
+
+    override val answerKind: AnswerKind
+        get() = if (challenge == FractionChallenge.Fraction) AnswerKind.Fraction else AnswerKind.Percent
+
+    override val answerText: String
+        get() = if (challenge == FractionChallenge.Fraction) "1/$denominator" else FractionRules.percentText(denominator)
+
+    override fun isCorrect(input: String): Boolean = when (challenge) {
+        FractionChallenge.Fraction -> FractionRules.isFractionAnswer(input, denominator)
+        FractionChallenge.Percentage -> FractionRules.isPercentAnswer(input, denominator)
+    }
+
+    override fun asked(random: Random): Question =
+        if (challenge == FractionChallenge.Fraction && percent.hasFraction) copy(decimal = random.nextBoolean()) else this
+
+    override fun equals(other: Any?): Boolean =
+        other is FractionQuestion && other.challenge == challenge && other.denominator == denominator
+
+    override fun hashCode(): Int = 31 * challenge.hashCode() + denominator
 }
 
 internal fun power(base: Long, exponent: Int): Long {

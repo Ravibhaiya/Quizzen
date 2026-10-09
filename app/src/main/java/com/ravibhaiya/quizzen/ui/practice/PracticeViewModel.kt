@@ -68,11 +68,26 @@ class PracticeViewModel(
         _state.update { it.copy(answer = cleanAnswer(it.question.answerKind, raw)) }
     }
 
-    /** Numbers keep their digits only; a letter answer is one capital letter, and typing another letter replaces it. */
+    /**
+     * Numbers keep their digits only; a letter answer is one capital letter, and typing another letter replaces it. A fraction is
+     * digits around one slash (`1/3`, never starting with the slash); a percentage is digits with at most one decimal point
+     * (a decimal comma counts as the point). The `%` sign is not typed: the screen shows it.
+     */
     private fun cleanAnswer(kind: AnswerKind, raw: String): String = when (kind) {
         AnswerKind.Number -> raw.filter(Char::isDigit).take(MAX_ANSWER_DIGITS)
         AnswerKind.Letter -> raw.lastOrNull { it.uppercaseChar() in 'A'..'Z' }?.uppercaseChar()?.toString().orEmpty()
+        AnswerKind.Fraction -> keepOne(raw.filter { it.isDigit() || it == '/' }.trimStart('/'), '/').take(MAX_FRACTION_LENGTH)
+        AnswerKind.Percent -> keepOne(raw.replace(',', '.').filter { it.isDigit() || it == '.' }, '.').take(MAX_PERCENT_LENGTH)
     }
+
+    /** [text] with every [mark] after the first one removed. */
+    private fun keepOne(text: String, mark: Char): String {
+        val first = text.indexOf(mark)
+        return if (first < 0) text else text.substring(0, first + 1) + text.substring(first + 1).filter { it != mark }
+    }
+
+    /** The on-screen "/" key: adds a slash after the digits typed so far (the number keyboard has none). */
+    fun onSlash() = onAnswerChanged(_state.value.answer + "/")
 
     fun onCheck() {
         val current = _state.value
@@ -147,6 +162,8 @@ class PracticeViewModel(
         const val FEEDBACK_VISIBLE_MS = 1_700L
         const val SHEET_EXIT_MS = 250L
         const val MAX_ANSWER_DIGITS = 12
+        const val MAX_FRACTION_LENGTH = 7
+        const val MAX_PERCENT_LENGTH = 7
 
         val Factory = viewModelFactory {
             initializer {

@@ -2,6 +2,8 @@ package com.ravibhaiya.quizzen.ui
 
 import com.ravibhaiya.quizzen.domain.AlphabetChallenge
 import com.ravibhaiya.quizzen.domain.AlphabetQuestion
+import com.ravibhaiya.quizzen.domain.FractionChallenge
+import com.ravibhaiya.quizzen.domain.FractionQuestion
 import com.ravibhaiya.quizzen.domain.FeedbackType
 import com.ravibhaiya.quizzen.domain.PowerRootType
 import com.ravibhaiya.quizzen.domain.PracticeConfig
@@ -226,6 +228,108 @@ class PracticeViewModelTest {
         wrong.onCheck()
         assertEquals(FeedbackType.Incorrect, wrong.state.value.feedback?.type)
         assertEquals("X", wrong.state.value.feedback?.correctAnswer)
+    }
+
+    // ---- Fraction & Percentage ----
+
+    /** A quiz that only ever asks 1/[denominator], so the question and its answer are known. */
+    private fun fractions(challenge: FractionChallenge, denominator: Int = 3) = PracticeViewModel(
+        PracticeConfig.Fractions(challenge, timerSeconds = 10),
+        SequenceGenerator(),
+        questions = listOf(FractionQuestion(challenge, denominator)),
+    )
+
+    @Test
+    fun fractionsRouteRoundTrips() {
+        val config = PracticeConfig.Fractions(FractionChallenge.Percentage, timerSeconds = 15)
+        val route = Routes.practice(config)
+        assertEquals("practice/fractions?ch=per&seconds=15", route)
+        assertEquals(config, PracticeArgs.decode("fractions", null, null, null, 15, challenge = "per"))
+    }
+
+    @Test
+    fun fractionsDecodingRepairsBadArguments() {
+        val decoded = PracticeArgs.decode("fractions", null, null, null, 0, challenge = "nonsense")
+        decoded as PracticeConfig.Fractions
+        assertEquals(FractionChallenge.Fraction, decoded.challenge)
+        assertEquals(20, decoded.timerSeconds)
+    }
+
+    @Test
+    fun fractionAnswer_isDigitsAroundOneSlash() {
+        val vm = fractions(FractionChallenge.Fraction)
+        vm.onAnswerChanged("1/3")
+        assertEquals("1/3", vm.state.value.answer)
+        vm.onAnswerChanged("/3")
+        assertEquals("3", vm.state.value.answer) // never starts with the slash
+        vm.onAnswerChanged("1//3")
+        assertEquals("1/3", vm.state.value.answer)
+        vm.onAnswerChanged("a1b/c3.5%")
+        assertEquals("1/35", vm.state.value.answer)
+        vm.onAnswerChanged("1/3/4")
+        assertEquals("1/34", vm.state.value.answer)
+        vm.onAnswerChanged("123456789/123")
+        assertEquals(PracticeViewModel.MAX_FRACTION_LENGTH, vm.state.value.answer.length)
+    }
+
+    @Test
+    fun slashKey_addsOneSlashAfterTheDigits() {
+        val vm = fractions(FractionChallenge.Fraction)
+        vm.onSlash()
+        assertEquals("", vm.state.value.answer) // nothing typed yet
+        vm.onAnswerChanged("1")
+        vm.onSlash()
+        assertEquals("1/", vm.state.value.answer)
+        vm.onSlash()
+        assertEquals("1/", vm.state.value.answer) // only one slash
+        vm.onAnswerChanged("1/3")
+        vm.onSlash()
+        assertEquals("1/3", vm.state.value.answer)
+    }
+
+    @Test
+    fun fractionAnswer_isChecked_andFeedbackShowsTheFraction() {
+        val right = fractions(FractionChallenge.Fraction)
+        right.onAnswerChanged("1")
+        right.onSlash()
+        right.onAnswerChanged(right.state.value.answer + "3")
+        right.onCheck()
+        assertEquals(FeedbackType.Correct, right.state.value.feedback?.type)
+
+        val wrong = fractions(FractionChallenge.Fraction)
+        wrong.onAnswerChanged("1/4")
+        wrong.onCheck()
+        assertEquals(FeedbackType.Incorrect, wrong.state.value.feedback?.type)
+        assertEquals("1/3", wrong.state.value.feedback?.correctAnswer)
+    }
+
+    @Test
+    fun percentageAnswer_isDigitsWithOneDecimalPoint_andTheSignIsNotTyped() {
+        val vm = fractions(FractionChallenge.Percentage)
+        vm.onAnswerChanged("33.33")
+        assertEquals("33.33", vm.state.value.answer)
+        vm.onAnswerChanged("33,33%")
+        assertEquals("33.33", vm.state.value.answer) // a decimal comma counts as the point, the sign is dropped
+        vm.onAnswerChanged("3.3.3")
+        assertEquals("3.33", vm.state.value.answer)
+        vm.onAnswerChanged("1/2")
+        assertEquals("12", vm.state.value.answer) // no slash in a percentage
+        vm.onAnswerChanged("1234567890")
+        assertEquals(PracticeViewModel.MAX_PERCENT_LENGTH, vm.state.value.answer.length)
+    }
+
+    @Test
+    fun percentageAnswer_isChecked_andFeedbackShowsBothWritings() {
+        val right = fractions(FractionChallenge.Percentage)
+        right.onAnswerChanged("33.33")
+        right.onCheck()
+        assertEquals(FeedbackType.Correct, right.state.value.feedback?.type)
+
+        val wrong = fractions(FractionChallenge.Percentage)
+        wrong.onAnswerChanged("34")
+        wrong.onCheck()
+        assertEquals(FeedbackType.Incorrect, wrong.state.value.feedback?.type)
+        assertEquals("33 1/3% \u2248 33.33%", wrong.state.value.feedback?.correctAnswer)
     }
 
     // ---- mistakes and slow answers come back (limited-number quizzes only) ----

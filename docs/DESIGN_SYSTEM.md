@@ -122,6 +122,19 @@ No new colours or shapes: everything is built from the tokens above.
 - **Challenge card** (single select, radio): full width, 24 dp radius, 18 dp padding, a 24 dp radio mark (2 dp ring, 12 dp dot) and the
   name only (16.32 sp Bold). Selection is the chip language: selected = `primary` fill, `onPrimary` text and the soft `primary@55%`
   shadow (`0 8 16 -6`); not selected = `surfaceContainer`. Press scale 0.96, 200 ms colour changes.
+  It lives in `ui/components/ChoiceCard.kt` (with `SectionTitle`) and is shared with the Fraction & Percentage setup screen.
+
+## Fraction & Percentage (setup and practice)
+
+No new colours or shapes either.
+
+- **Setup**: section title "Answer in" and two Challenge cards (Fraction, Percentage), then the usual timer footer.
+- **Question text**: a fraction is `1/25` with the slash in `primary` (like the other operators); a percentage ends with a `primary` `%`.
+  A mixed number (`33 1/3%`) is the whole part at full size followed by a small gap and the fraction at 50% size: numerator raised
+  (superscript), slash in `primary`, denominator lowered (subscript). The decimal writing (`33.33%`) is plain text.
+- **"/" key** (fraction answers only): a 48 dp circle at the end of the answer field, 12 dp from the field edge, `primaryContainer`
+  with the slash in `onPrimaryContainer` (24 sp). Press scale 0.88 like the small icon buttons, light tick haptic.
+- **Automatic `%` sign** (percentage answers only): shown after the typed digits in `onSurfaceVariant`, same size as the answer.
 
 ## Logo, launcher icon and splash
 

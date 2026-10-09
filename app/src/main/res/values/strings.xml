@@ -62,6 +62,11 @@
     <string name="challenge_find_letter">Find Letter</string>
     <string name="challenge_reverse_letter">Reverse Letter</string>
 
+    <!-- Fraction & Percentage configuration -->
+    <string name="answer_in">Answer in</string>
+    <string name="answer_in_fraction">Fraction</string>
+    <string name="answer_in_percentage">Percentage</string>
+
     <!-- Practice -->
     <string name="practice_title">Practice</string>
     <string name="seconds_short">%1$ds</string>
@@ -77,6 +82,14 @@
     <string name="question_spoken_letter">letter %1$s</string>
     <string name="question_spoken_position">position %1$d</string>
     <string name="question_spoken_opposite">opposite of letter %1$s</string>
+    <string name="answer_hint_fraction">Fraction</string>
+    <string name="answer_hint_percentage">Percentage</string>
+    <string name="question_spoken_fraction">1 over %1$d</string>
+    <string name="question_spoken_percent">%1$d percent</string>
+    <string name="question_spoken_percent_mixed">%1$d and %2$d over %3$d percent</string>
+    <string name="question_spoken_percent_decimal">%1$s percent</string>
+    <string name="cd_insert_slash">Insert slash</string>
+    <string name="slash_key">/</string>
     <string name="check">Check</string>
     <string name="feedback_correct_title">Correct!</string>
     <string name="feedback_correct_sub">Nice work — next question loading</string>

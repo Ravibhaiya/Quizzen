@@ -2,6 +2,7 @@ package com.ravibhaiya.quizzen.data
 
 import com.ravibhaiya.quizzen.domain.AlphabetChallenge
 import com.ravibhaiya.quizzen.domain.AlphabetRules
+import com.ravibhaiya.quizzen.domain.FractionChallenge
 import com.ravibhaiya.quizzen.domain.PowerRootType
 import com.ravibhaiya.quizzen.domain.PowersRootsRules
 import com.ravibhaiya.quizzen.domain.PracticeConfig
@@ -27,6 +28,9 @@ object SettingsCodec {
 
     fun encode(config: PracticeConfig.Alphabet): String =
         "ch=${config.challenge.code};l=${config.letters.first}-${config.letters.last};t=${config.timerSeconds}"
+
+    fun encode(config: PracticeConfig.Fractions): String =
+        "fc=${config.challenge.code};t=${config.timerSeconds}"
 
     fun decodeMultiply(text: String?, defaultTimer: Int): PracticeConfig.Multiply? {
         val values = parse(text) ?: return null
@@ -69,6 +73,14 @@ object SettingsCodec {
                 from = letters.getOrNull(0)?.toIntOrNull() ?: AlphabetRules.FIRST,
                 to = letters.getOrNull(1)?.toIntOrNull() ?: AlphabetRules.SIZE,
             ),
+            timerSeconds = timer(values["t"], defaultTimer),
+        )
+    }
+
+    fun decodeFractions(text: String?, defaultTimer: Int): PracticeConfig.Fractions? {
+        val values = parse(text) ?: return null
+        return PracticeConfig.Fractions(
+            challenge = FractionChallenge.fromCode(values["fc"]) ?: return null,
             timerSeconds = timer(values["t"], defaultTimer),
         )
     }
