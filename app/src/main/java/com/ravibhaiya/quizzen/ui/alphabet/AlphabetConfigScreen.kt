@@ -183,9 +183,9 @@ private fun LetterRangeCard(
             endThumbDescription = stringResource(R.string.letter_thumb_to),
             modifier = Modifier.padding(top = 12.dp),
         )
-        // The two end letters line up with the ends of the track (half a thumb in from the card edge).
+        // The two end letters line up with the ends of the track (half a handle in from the card edge).
         Row(
-            modifier = Modifier.fillMaxWidth().padding(horizontal = 15.dp),
+            modifier = Modifier.fillMaxWidth().padding(horizontal = 3.dp),
             horizontalArrangement = Arrangement.SpaceBetween,
         ) {
             val endStyle = MaterialTheme.typography.bodyMedium.copy(fontSize = 12.sp)

@@ -103,10 +103,13 @@ glow circles (280 dp top-right, 220 dp bottom-left, primaryContainer @ 35%, edge
 
 `QuizzenRangeSlider` (a styled Material 3 `RangeSlider`, whole-number steps, no tick marks) sits in a card per kind (24 dp
 radius, surfaceContainer, `2 6 0` neutral shadow at 5%). Card header: kind name (16 sp Bold) on the left, a pill with the range
-on the right (primaryContainer, onPrimaryContainer, 15 sp ExtraBold, `2–30`). Track: 10 dp tall, fully rounded, peach
-(`surfaceContainerHigh`) with the selected range in primary. Thumbs: 30 dp white circles with a 4 dp primary ring and a soft
-shadow, growing to 118% (spring) while held. Under the track, the two end numbers (1 and the limit, 12 sp onSurfaceVariant)
-line up with the track ends. A card whose kinds are not selected fades to 45% and is disabled.
+on the right (primaryContainer, onPrimaryContainer, 15 sp ExtraBold, `2–30`). The slider follows the Material 3 Expressive
+shape. Track: 16 dp tall and cut into three pieces: soft peach (`surfaceContainerHigh`) before the first handle, primary between the
+handles, soft peach after the second. Outer ends are fully round, the ends that face a handle have a 3 dp corner. Handles: slim
+vertical pills (6 dp wide, 40 dp tall, primary) with a 6 dp gap to the track on both sides; the pill narrows to 4 dp (spring) while
+held. A 4 dp primary dot sits near each end of the track while the range does not reach that end. Under the track, the two end
+numbers (1 and the limit, 12 sp onSurfaceVariant) line up with the track ends (3 dp in from the card padding). A card whose kinds
+are not selected fades to 45% and is disabled.
 
 ## Alphabet setup (letter range, challenge cards)
 
