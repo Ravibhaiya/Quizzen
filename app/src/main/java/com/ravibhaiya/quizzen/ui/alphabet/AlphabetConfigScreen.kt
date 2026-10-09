@@ -19,11 +19,11 @@ import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -34,7 +34,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
@@ -50,7 +49,6 @@ import com.ravibhaiya.quizzen.domain.AlphabetChallenge
 import com.ravibhaiya.quizzen.domain.AlphabetRules
 import com.ravibhaiya.quizzen.domain.PracticeConfig
 import com.ravibhaiya.quizzen.ui.components.NeutralShadowColor
-import com.ravibhaiya.quizzen.ui.components.QuizzenIcons
 import com.ravibhaiya.quizzen.ui.components.QuizzenRangeSlider
 import com.ravibhaiya.quizzen.ui.components.QuizzenScreen
 import com.ravibhaiya.quizzen.ui.components.ScreenHeader
@@ -139,8 +137,8 @@ private fun SectionTitle(@StringRes title: Int) {
 }
 
 /**
- * The letter range, laid out like the Powers & Roots range cards: the chosen range ("A -> X") at the left and how many letters it
- * holds in a pill at the right, then one two-thumb slider (A at one end, Z at the other) that moves both ends.
+ * The letter range, laid out like the Powers & Roots range cards: the letter picked with the left thumb in a pill at the left, the
+ * letter picked with the right thumb in a pill at the right, and one two-thumb slider (A at one end, Z at the other) under them.
  */
 @Composable
 private fun LetterRangeCard(
@@ -153,7 +151,6 @@ private fun LetterRangeCard(
     val shape = RoundedCornerShape(24.dp)
     val first = AlphabetRules.letterOf(range.first).toString()
     val last = AlphabetRules.letterOf(range.last).toString()
-    val count = range.last - range.first + 1
     val summary = stringResource(R.string.letter_range_summary, first, last)
 
     Column(
@@ -170,31 +167,11 @@ private fun LetterRangeCard(
             modifier = Modifier
                 .fillMaxWidth()
                 .semantics(mergeDescendants = true) { contentDescription = summary },
+            horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            Row(
-                modifier = Modifier.weight(1f),
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(12.dp),
-            ) {
-                val big = MaterialTheme.typography.headlineMedium.copy(fontSize = 34.sp, fontWeight = FontWeight.ExtraBold)
-                Text(first, style = big, color = colors.onSurface)
-                Icon(
-                    imageVector = QuizzenIcons.ArrowRight,
-                    contentDescription = null,
-                    tint = colors.primary,
-                    modifier = Modifier.size(22.dp),
-                )
-                Text(last, style = big, color = colors.onSurface)
-            }
-            Text(
-                text = LocalContext.current.resources.getQuantityString(R.plurals.letters_count, count, count),
-                style = MaterialTheme.typography.labelLarge.copy(fontWeight = FontWeight.Bold),
-                color = colors.onPrimaryContainer,
-                modifier = Modifier
-                    .background(colors.primaryContainer, RoundedCornerShape(50))
-                    .padding(horizontal = 12.dp, vertical = 6.dp),
-            )
+            LetterPill(first)
+            LetterPill(last)
         }
         QuizzenRangeSlider(
             range = range,
@@ -215,6 +192,24 @@ private fun LetterRangeCard(
             Text(AlphabetRules.letterOf(AlphabetRules.FIRST).toString(), style = endStyle, color = colors.onSurfaceVariant)
             Text(AlphabetRules.letterOf(AlphabetRules.SIZE).toString(), style = endStyle, color = colors.onSurfaceVariant)
         }
+    }
+}
+
+/** A picked letter in a pill: `primaryContainer`, fully rounded, wide enough that every letter gets the same pill. */
+@Composable
+private fun LetterPill(letter: String) {
+    Box(
+        modifier = Modifier
+            .widthIn(min = 56.dp)
+            .background(MaterialTheme.colorScheme.primaryContainer, RoundedCornerShape(50))
+            .padding(horizontal = 16.dp, vertical = 8.dp),
+        contentAlignment = Alignment.Center,
+    ) {
+        Text(
+            text = letter,
+            style = MaterialTheme.typography.titleMedium.copy(fontSize = 20.sp, fontWeight = FontWeight.ExtraBold),
+            color = MaterialTheme.colorScheme.onPrimaryContainer,
+        )
     }
 }
 

@@ -51,8 +51,8 @@ Normative description of the app. "Web" = the prototype in `docs/reference/quizz
 
 ## Alphabet configuration
 - Title "Alphabet", subtitle "Configure your challenge".
-- **Letter Range**: one card like the Powers & Roots range cards. At the top-left the chosen range as "A -> X" in big letters, at the
-  top-right a pill with how many letters it holds ("24 letters"). Under them one two-thumb slider that moves both ends (whole
+- **Letter Range**: one card like the Powers & Roots range cards. At the top-left a pill with the letter picked by the left thumb,
+  at the top-right a pill with the letter picked by the right thumb. Under them one two-thumb slider that moves both ends (whole
   letters, A to Z; the small letters under the slider show its ends). Starts at **A to Z**; one letter (From = To) is allowed.
   Releasing a thumb gives a light tick (haptics).
 - **Challenge Type** (single select, default **Find Position**): three full-width cards with a radio mark and just the name:

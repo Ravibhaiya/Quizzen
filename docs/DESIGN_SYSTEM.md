@@ -113,8 +113,8 @@ line up with the track ends. A card whose kinds are not selected fades to 45% an
 No new colours or shapes: everything is built from the tokens above.
 
 - **Letter range card**: same card as the Powers & Roots range cards (24 dp radius, `surfaceContainer`, `2 6 0` neutral shadow at 5%).
-  Top row: the range as "A -> X" (`headlineMedium` at 34 sp ExtraBold, `onSurface`, the arrow a 22 dp `ArrowRight` in `primary`) and,
-  right-aligned, a pill with the count ("24 letters": `labelLarge` Bold, `onPrimaryContainer` on `primaryContainer`). Under it
+  Top row: the picked letters as two pills, the left thumb's letter at the left and the right thumb's letter at the right (`primaryContainer`
+  with `onPrimaryContainer`, fully rounded, min 56 dp wide, 16 / 8 dp padding, letter in `titleMedium` at 20 sp ExtraBold). Under it
   `QuizzenRangeSlider` (1 to 26) and the two end letters (12 sp `onSurfaceVariant`).
 - **Challenge card** (single select, radio): full width, 24 dp radius, 18 dp padding, a 24 dp radio mark (2 dp ring, 12 dp dot) and the
   name only (16.32 sp Bold). Selection is the chip language: selected = `primary` fill, `onPrimary` text and the soft `primary@55%`

@@ -55,10 +55,6 @@
     <string name="alphabet_title">Alphabet</string>
     <string name="letter_range">Letter Range</string>
     <string name="letter_range_summary">From %1$s to %2$s</string>
-    <plurals name="letters_count">
-        <item quantity="one">%d letter</item>
-        <item quantity="other">%d letters</item>
-    </plurals>
     <string name="letter_thumb_from">First letter</string>
     <string name="letter_thumb_to">Last letter</string>
     <string name="challenge_type">Challenge Type</string>
