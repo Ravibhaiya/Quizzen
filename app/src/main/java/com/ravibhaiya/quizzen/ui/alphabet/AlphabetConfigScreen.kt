@@ -19,11 +19,11 @@ import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -36,10 +36,10 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.selected
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -49,7 +49,6 @@ import com.ravibhaiya.quizzen.domain.AlphabetChallenge
 import com.ravibhaiya.quizzen.domain.AlphabetRules
 import com.ravibhaiya.quizzen.domain.PracticeConfig
 import com.ravibhaiya.quizzen.ui.components.NeutralShadowColor
-import com.ravibhaiya.quizzen.ui.components.QuizzenIcons
 import com.ravibhaiya.quizzen.ui.components.QuizzenRangeSlider
 import com.ravibhaiya.quizzen.ui.components.QuizzenScreen
 import com.ravibhaiya.quizzen.ui.components.ScreenHeader
@@ -105,21 +104,15 @@ fun AlphabetConfigScreen(
                 )
 
                 SectionTitle(R.string.challenge_type)
-                Column(
-                    modifier = Modifier.padding(bottom = 18.dp),
-                    verticalArrangement = Arrangement.spacedBy(12.dp),
-                ) {
+                Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
                     AlphabetChallenge.entries.forEach { challenge ->
                         ChallengeCard(
                             title = stringResource(challenge.titleRes()),
-                            example = stringResource(challenge.exampleRes()),
                             selected = challenge == state.challenge,
                             onClick = { haptics.tick(); viewModel.selectChallenge(challenge) },
                         )
                     }
                 }
-
-                TipCard(text = stringResource(state.challenge.tipRes()))
             }
 
             TimerFooter(
@@ -144,8 +137,8 @@ private fun SectionTitle(@StringRes title: Int) {
 }
 
 /**
- * The letter range: the first and the last letter as two big tiles with an arrow between them, and one two-thumb slider under
- * them that moves both. The slider's ends are A and Z (the small letters under it), the tiles show what is chosen right now.
+ * The letter range, laid out like the Powers & Roots range cards: the letter picked with the left thumb in a pill at the left, the
+ * letter picked with the right thumb in a pill at the right, and one two-thumb slider (A at one end, Z at the other) under them.
  */
 @Composable
 private fun LetterRangeCard(
@@ -154,7 +147,12 @@ private fun LetterRangeCard(
     onRangeChangeFinished: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
+    val colors = MaterialTheme.colorScheme
     val shape = RoundedCornerShape(24.dp)
+    val first = AlphabetRules.letterOf(range.first).toString()
+    val last = AlphabetRules.letterOf(range.last).toString()
+    val summary = stringResource(R.string.letter_range_summary, first, last)
+
     Column(
         modifier = modifier
             .fillMaxWidth()
@@ -162,30 +160,18 @@ private fun LetterRangeCard(
                 NeutralShadowColor.copy(alpha = 0.05f),
                 offsetY = 2.dp, blur = 6.dp, spread = 0.dp, shape = shape,
             )
-            .background(MaterialTheme.colorScheme.surfaceContainer, shape)
+            .background(colors.surfaceContainer, shape)
             .padding(start = 18.dp, end = 18.dp, top = 16.dp, bottom = 14.dp),
     ) {
         Row(
-            modifier = Modifier.fillMaxWidth(),
-            verticalAlignment = Alignment.Bottom,
-            horizontalArrangement = Arrangement.spacedBy(12.dp),
+            modifier = Modifier
+                .fillMaxWidth()
+                .semantics(mergeDescendants = true) { contentDescription = summary },
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically,
         ) {
-            LetterTile(
-                label = stringResource(R.string.letter_from),
-                letter = AlphabetRules.letterOf(range.first),
-                modifier = Modifier.weight(1f),
-            )
-            Icon(
-                imageVector = QuizzenIcons.ArrowRight,
-                contentDescription = null,
-                tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                modifier = Modifier.padding(bottom = 18.dp).size(22.dp),
-            )
-            LetterTile(
-                label = stringResource(R.string.letter_to),
-                letter = AlphabetRules.letterOf(range.last),
-                modifier = Modifier.weight(1f),
-            )
+            LetterPill(first)
+            LetterPill(last)
         }
         QuizzenRangeSlider(
             range = range,
@@ -195,58 +181,45 @@ private fun LetterRangeCard(
             onRangeChangeFinished = onRangeChangeFinished,
             startThumbDescription = stringResource(R.string.letter_thumb_from),
             endThumbDescription = stringResource(R.string.letter_thumb_to),
-            modifier = Modifier.padding(top = 10.dp),
+            modifier = Modifier.padding(top = 12.dp),
         )
-        // The two end letters line up with the ends of the track (half a thumb in from the card edge).
+        // The two end letters line up with the ends of the track (half a handle in from the card edge).
         Row(
-            modifier = Modifier.fillMaxWidth().padding(horizontal = 15.dp),
+            modifier = Modifier.fillMaxWidth().padding(horizontal = 3.dp),
             horizontalArrangement = Arrangement.SpaceBetween,
         ) {
             val endStyle = MaterialTheme.typography.bodyMedium.copy(fontSize = 12.sp)
-            Text(AlphabetRules.letterOf(AlphabetRules.FIRST).toString(), style = endStyle, color = MaterialTheme.colorScheme.onSurfaceVariant)
-            Text(AlphabetRules.letterOf(AlphabetRules.SIZE).toString(), style = endStyle, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            Text(AlphabetRules.letterOf(AlphabetRules.FIRST).toString(), style = endStyle, color = colors.onSurfaceVariant)
+            Text(AlphabetRules.letterOf(AlphabetRules.SIZE).toString(), style = endStyle, color = colors.onSurfaceVariant)
         }
     }
 }
 
-/** A small caption and the letter in a rounded box, like the timer's value box. Read as one item: "From, A". */
+/** A picked letter in a pill: `primaryContainer`, fully rounded, wide enough that every letter gets the same pill. */
 @Composable
-private fun LetterTile(label: String, letter: Char, modifier: Modifier = Modifier) {
-    Column(
-        modifier = modifier.semantics(mergeDescendants = true) {},
-        horizontalAlignment = Alignment.CenterHorizontally,
+private fun LetterPill(letter: String) {
+    Box(
+        modifier = Modifier
+            .widthIn(min = 56.dp)
+            .background(MaterialTheme.colorScheme.primaryContainer, RoundedCornerShape(50))
+            .padding(horizontal = 16.dp, vertical = 8.dp),
+        contentAlignment = Alignment.Center,
     ) {
         Text(
-            text = label.uppercase(),
-            style = MaterialTheme.typography.labelSmall,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-            modifier = Modifier.padding(bottom = 6.dp),
+            text = letter,
+            style = MaterialTheme.typography.titleMedium.copy(fontSize = 20.sp, fontWeight = FontWeight.ExtraBold),
+            color = MaterialTheme.colorScheme.onPrimaryContainer,
         )
-        Box(
-            modifier = Modifier
-                .fillMaxWidth()
-                .background(MaterialTheme.colorScheme.surfaceContainerHigh, RoundedCornerShape(20.dp))
-                .padding(vertical = 14.dp),
-            contentAlignment = Alignment.Center,
-        ) {
-            Text(
-                text = letter.toString(),
-                style = MaterialTheme.typography.headlineLarge.copy(fontSize = 30.sp, letterSpacing = 0.sp),
-                color = MaterialTheme.colorScheme.onSurface,
-                textAlign = TextAlign.Center,
-            )
-        }
     }
 }
 
 /**
- * One full-width choice (single select). Same selection language as the option chips and the table cells: primary fill with a
- * soft coloured shadow when chosen, plain `surfaceContainer` otherwise; a radio mark on the left says "pick one".
+ * One full-width choice (single select), just its name. Same selection language as the option chips and the table cells: primary
+ * fill with a soft coloured shadow when chosen, plain `surfaceContainer` otherwise; a radio mark on the left says "pick one".
  */
 @Composable
 private fun ChallengeCard(
     title: String,
-    example: String,
     selected: Boolean,
     onClick: () -> Unit,
 ) {
@@ -261,11 +234,6 @@ private fun ChallengeCard(
         targetValue = if (selected) colors.onPrimary else colors.onSurface,
         animationSpec = tween(200),
         label = "challengeContent",
-    )
-    val secondary by animateColorAsState(
-        targetValue = if (selected) colors.onPrimary.copy(alpha = 0.85f) else colors.onSurfaceVariant,
-        animationSpec = tween(200),
-        label = "challengeSecondary",
     )
     val glow by animateColorAsState(
         targetValue = colors.primary.copy(alpha = if (selected) 0.55f else 0f),
@@ -288,24 +256,17 @@ private fun ChallengeCard(
                 onClick = onClick,
             )
             .semantics { this.selected = selected }
-            .padding(horizontal = 18.dp, vertical = 16.dp),
+            .padding(horizontal = 18.dp, vertical = 18.dp),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(16.dp),
     ) {
         RadioMark(selected = selected, color = content)
-        Column(Modifier.weight(1f)) {
-            Text(
-                text = title,
-                style = MaterialTheme.typography.bodyMedium.copy(fontSize = 16.32.sp, fontWeight = FontWeight.Bold),
-                color = content,
-            )
-            Text(
-                text = example,
-                style = MaterialTheme.typography.bodyMedium.copy(fontSize = 13.6.sp),
-                color = secondary,
-                modifier = Modifier.padding(top = 2.dp),
-            )
-        }
+        Text(
+            text = title,
+            style = MaterialTheme.typography.bodyMedium.copy(fontSize = 16.32.sp, fontWeight = FontWeight.Bold),
+            color = content,
+            modifier = Modifier.weight(1f),
+        )
     }
 }
 
@@ -319,46 +280,9 @@ private fun RadioMark(selected: Boolean, color: Color) {
     }
 }
 
-/** A short hint for the chosen challenge, so the setup screen explains the rule without a separate help page. */
-@Composable
-private fun TipCard(text: String, modifier: Modifier = Modifier) {
-    Column(
-        modifier = modifier
-            .fillMaxWidth()
-            .background(MaterialTheme.colorScheme.primaryContainer, RoundedCornerShape(24.dp))
-            .padding(horizontal = 18.dp, vertical = 16.dp),
-    ) {
-        Text(
-            text = stringResource(R.string.tip_title).uppercase(),
-            style = MaterialTheme.typography.labelSmall,
-            color = MaterialTheme.colorScheme.onPrimaryContainer,
-        )
-        Text(
-            text = text,
-            style = MaterialTheme.typography.bodyMedium.copy(fontSize = 14.4.sp),
-            color = MaterialTheme.colorScheme.onPrimaryContainer,
-            modifier = Modifier.padding(top = 4.dp),
-        )
-    }
-}
-
 @StringRes
 private fun AlphabetChallenge.titleRes(): Int = when (this) {
     AlphabetChallenge.FindPosition -> R.string.challenge_find_position
     AlphabetChallenge.FindLetter -> R.string.challenge_find_letter
     AlphabetChallenge.ReverseLetter -> R.string.challenge_reverse_letter
-}
-
-@StringRes
-private fun AlphabetChallenge.exampleRes(): Int = when (this) {
-    AlphabetChallenge.FindPosition -> R.string.challenge_find_position_example
-    AlphabetChallenge.FindLetter -> R.string.challenge_find_letter_example
-    AlphabetChallenge.ReverseLetter -> R.string.challenge_reverse_letter_example
-}
-
-@StringRes
-private fun AlphabetChallenge.tipRes(): Int = when (this) {
-    AlphabetChallenge.FindPosition -> R.string.tip_find_position
-    AlphabetChallenge.FindLetter -> R.string.tip_find_letter
-    AlphabetChallenge.ReverseLetter -> R.string.tip_reverse_letter
 }

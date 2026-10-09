@@ -103,23 +103,25 @@ glow circles (280 dp top-right, 220 dp bottom-left, primaryContainer @ 35%, edge
 
 `QuizzenRangeSlider` (a styled Material 3 `RangeSlider`, whole-number steps, no tick marks) sits in a card per kind (24 dp
 radius, surfaceContainer, `2 6 0` neutral shadow at 5%). Card header: kind name (16 sp Bold) on the left, a pill with the range
-on the right (primaryContainer, onPrimaryContainer, 15 sp ExtraBold, `2–30`). Track: 10 dp tall, fully rounded, peach
-(`surfaceContainerHigh`) with the selected range in primary. Thumbs: 30 dp white circles with a 4 dp primary ring and a soft
-shadow, growing to 118% (spring) while held. Under the track, the two end numbers (1 and the limit, 12 sp onSurfaceVariant)
-line up with the track ends. A card whose kinds are not selected fades to 45% and is disabled.
+on the right (primaryContainer, onPrimaryContainer, 15 sp ExtraBold, `2–30`). The slider follows the Material 3 Expressive
+shape. Track: 16 dp tall and cut into three pieces: soft peach (`surfaceContainerHigh`) before the first handle, primary between the
+handles, soft peach after the second. Outer ends are fully round, the ends that face a handle have a 3 dp corner. Handles: slim
+vertical pills (6 dp wide, 40 dp tall, primary) with a 6 dp gap to the track on both sides; the pill narrows to 4 dp (spring) while
+held. A 4 dp primary dot sits near each end of the track while the range does not reach that end. Under the track, the two end
+numbers (1 and the limit, 12 sp onSurfaceVariant) line up with the track ends (3 dp in from the card padding). A card whose kinds
+are not selected fades to 45% and is disabled.
 
-## Alphabet setup (letter range, challenge cards, tip)
+## Alphabet setup (letter range, challenge cards)
 
 No new colours or shapes: everything is built from the tokens above.
 
 - **Letter range card**: same card as the Powers & Roots range cards (24 dp radius, `surfaceContainer`, `2 6 0` neutral shadow at 5%).
-  Top row: two tiles, each a caption (`labelSmall`, uppercase, `onSurfaceVariant`: FROM / TO) over a 20 dp rounded box
-  (`surfaceContainerHigh`) holding the letter (`headlineLarge` at 30 sp, `onSurface`), with a 22 dp `ArrowRight` icon between them.
-  Under the tiles, `QuizzenRangeSlider` (1 to 26) and the two end letters (12 sp `onSurfaceVariant`).
-- **Challenge card** (single select, radio): full width, 24 dp radius, 18 dp / 16 dp padding, a 24 dp radio mark (2 dp ring, 12 dp dot)
-  and a title (16.32 sp Bold) over an example line (13.6 sp). Selection is the chip language: selected = `primary` fill, `onPrimary`
-  text and the soft `primary@55%` shadow (`0 8 16 -6`); not selected = `surfaceContainer`. Press scale 0.96, 200 ms colour changes.
-- **Tip card**: `primaryContainer` with `onPrimaryContainer` text, 24 dp radius, a small uppercase "TIP" label over one line of body text.
+  Top row: the picked letters as two pills, the left thumb's letter at the left and the right thumb's letter at the right (`primaryContainer`
+  with `onPrimaryContainer`, fully rounded, min 56 dp wide, 16 / 8 dp padding, letter in `titleMedium` at 20 sp ExtraBold). Under it
+  `QuizzenRangeSlider` (1 to 26) and the two end letters (12 sp `onSurfaceVariant`).
+- **Challenge card** (single select, radio): full width, 24 dp radius, 18 dp padding, a 24 dp radio mark (2 dp ring, 12 dp dot) and the
+  name only (16.32 sp Bold). Selection is the chip language: selected = `primary` fill, `onPrimary` text and the soft `primary@55%`
+  shadow (`0 8 16 -6`); not selected = `surfaceContainer`. Press scale 0.96, 200 ms colour changes.
 
 ## Logo, launcher icon and splash
 

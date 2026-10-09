@@ -51,15 +51,15 @@ Normative description of the app. "Web" = the prototype in `docs/reference/quizz
 
 ## Alphabet configuration
 - Title "Alphabet", subtitle "Configure your challenge".
-- **Letter Range**: one card with the first letter (**From**) and the last letter (**To**) as two big tiles with an arrow between them,
-  and one two-thumb slider under them that moves both (whole letters, A to Z; the small letters under the slider show its ends).
-  Starts at **A to Z**; one letter (From = To) is allowed. Releasing a thumb gives a light tick (haptics).
-- **Challenge Type** (single select, default **Find Position**), three full-width cards with a radio mark and an example line:
-  - **Find Position**: "Show A -> Type 1". A letter is shown, type its place in the alphabet (A = 1 ... Z = 26).
-  - **Find Letter**: "Show 1 -> Type A". A place is shown, type the letter.
-  - **Reverse Letter**: "Show A -> Type Z". A letter is shown, type the letter at the same place counted from the other end
+- **Letter Range**: one card like the Powers & Roots range cards. At the top-left a pill with the letter picked by the left thumb,
+  at the top-right a pill with the letter picked by the right thumb. Under them one two-thumb slider that moves both ends (whole
+  letters, A to Z; the small letters under the slider show its ends). Starts at **A to Z**; one letter (From = To) is allowed.
+  Releasing a thumb gives a light tick (haptics).
+- **Challenge Type** (single select, default **Find Position**): three full-width cards with a radio mark and just the name:
+  - **Find Position**: a letter is shown, type its place in the alphabet (A = 1 ... Z = 26).
+  - **Find Letter**: a place is shown, type the letter.
+  - **Reverse Letter**: a letter is shown, type the letter at the same place counted from the other end
     (A <-> Z, B <-> Y, ... M <-> N).
-- A **Tip** card under the choices explains the chosen challenge in one line and changes when the choice changes.
 - Timer field default **10** s (a blank or 0 uses the default, like every other screen). Start is always enabled.
 - Start -> Practice. Every letter of the range is one question; the quiz uses shuffled rounds and mistake repeats like Tables and
   Powers & Roots (see Practice).
@@ -121,7 +121,7 @@ Normative description of the app. "Web" = the prototype in `docs/reference/quizz
 
   | Effect | When |
   |---|---|
-  | Tick (light) | selecting a digit option, table number or challenge type, letter-range slider released, switching Math/Language, turning haptics off, "Coming soon" taps |
+  | Tick (light) | selecting a digit option, table number or challenge type, range slider released, switching Math/Language, turning haptics off, "Coming soon" taps |
   | Click (medium) | opening Multiply/Tables/Powers & Roots/Alphabet/Settings, Back, Select All, turning haptics on |
   | Heavy click (firm thump) | Start |
   | Success (two rising taps) | correct answer |
@@ -148,7 +148,7 @@ Normative description of the app. "Web" = the prototype in `docs/reference/quizz
 | Hero titles could wrap ("Vocabula/ry" on narrow phones) | Title shrinks to stay on one line | Owner request; same idea as the practice question auto-fit. |
 | "Time's Up" sheet was orange | Sky blue (`#2E9FE0`) | Owner request; orange was too close to the app's primary colour. |
 | Powers & Roots was a placeholder | Implemented (types, two range sliders, timer) in the Quizzen style, from a reference screenshot of another app | Owner request. The reference's "0 disables the timer" is **not** adopted: 0 or blank uses the default like every other screen. |
-| Alphabet Reasoning was a placeholder | Implemented (letter range, three challenge types, timer) in the Quizzen style, from a reference screenshot of another app | Owner request. The two letter pickers of the reference became tiles driven by one range slider (like the Powers & Roots ranges), the radio cards use the app's primary selection style, and the reference's "0 disables the timer" is **not** adopted. |
+| Alphabet Reasoning was a placeholder | Implemented (letter range, three challenge types, timer) in the Quizzen style, from a reference screenshot of another app | Owner request. The reference's two letter pickers became two pills (the picked letters) above one range slider (like the Powers & Roots ranges), the challenge cards use the app's primary selection style and show only the name, and the reference's "0 disables the timer" is **not** adopted. |
 | Followed `prefers-color-scheme` (light + dark) | Light only | Product decision: the app is light-only. |
 | Haptics toggle was not persisted or connected | Persisted (DataStore) and applied everywhere, with a distinct effect per action | Real feature. |
 | Option chips had 22 px side padding | 18 dp side padding | On 360 dp phones three chips need 326 dp but only 324 dp are available, so "4 Digits" wrapped and left a gap on the right. With 18 dp, three chips fit per row (2, 3, 4 Digits, then 5 Digits). |

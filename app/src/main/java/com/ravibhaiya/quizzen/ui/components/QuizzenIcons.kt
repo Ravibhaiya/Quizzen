@@ -49,7 +49,6 @@ object QuizzenIcons {
 
     val ChevronRight: ImageVector by lazy { strokeIcon("ChevronRight", 2.4f, "M9 6l6 6-6 6") }
     val ChevronLeft: ImageVector by lazy { strokeIcon("ChevronLeft", 2.4f, "M15 6l-6 6 6 6") }
-    val ArrowRight: ImageVector by lazy { strokeIcon("ArrowRight", 2.4f, "M5 12h14", "M13 6l6 6-6 6") }
 
     val Calculator: ImageVector by lazy {
         strokeIcon(
