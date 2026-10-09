@@ -183,20 +183,6 @@ class ConfigViewModelsTest {
     }
 
     @Test
-    fun alphabet_tappingLettersMovesTheRange_andPresetsSetIt() = runTest(dispatcher) {
-        val vm = AlphabetConfigViewModel(FakeRepository())
-        runCurrent()
-        vm.onLetterTapped(24) // inside A..Z, nearer Z: the end moves
-        assertEquals(1..24, vm.state.value.letters)
-        vm.onLetterTapped(1) // an end of a longer range: just that letter
-        assertEquals(1..1, vm.state.value.letters)
-        vm.onLetterTapped(8) // stretches it again
-        assertEquals(1..8, vm.state.value.letters)
-        vm.onLettersChanged(14..26) // a preset
-        assertEquals(14..26, vm.state.value.letters)
-    }
-
-    @Test
     fun alphabet_aRangeFromOutsideIsRepaired() = runTest(dispatcher) {
         val vm = AlphabetConfigViewModel(FakeRepository())
         runCurrent()

@@ -59,14 +59,12 @@
         <item quantity="one">%d letter</item>
         <item quantity="other">%d letters</item>
     </plurals>
+    <string name="letter_thumb_from">First letter</string>
+    <string name="letter_thumb_to">Last letter</string>
     <string name="challenge_type">Challenge Type</string>
     <string name="challenge_find_position">Find Position</string>
     <string name="challenge_find_letter">Find Letter</string>
     <string name="challenge_reverse_letter">Reverse Letter</string>
-    <string name="tip_title">Tip</string>
-    <string name="tip_find_position">A = 1, B = 2 … Z = 26. You see a letter and type its number.</string>
-    <string name="tip_find_letter">You see a number and type the letter in that place: 3 is C.</string>
-    <string name="tip_reverse_letter">Count from the other end: A is Z, B is Y, C is X.</string>
 
     <!-- Practice -->
     <string name="practice_title">Practice</string>
