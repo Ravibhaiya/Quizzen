@@ -75,6 +75,36 @@ class AlphabetRulesTest {
     }
 
     @Test
+    fun pick_aLetterBeforeOrAfterStretchesTheRange() {
+        assertEquals(3..9, AlphabetRules.pick(5..9, 3))
+        assertEquals(5..12, AlphabetRules.pick(5..9, 12))
+        assertEquals(1..26, AlphabetRules.pick(5..26, 1))
+    }
+
+    @Test
+    fun pick_anEndOfALongerRange_startsOverWithJustThatLetter() {
+        assertEquals(5..5, AlphabetRules.pick(5..9, 5))
+        assertEquals(9..9, AlphabetRules.pick(5..9, 9))
+        assertEquals(1..1, AlphabetRules.pick(1..26, 1))
+        assertEquals(26..26, AlphabetRules.pick(1..26, 26))
+    }
+
+    @Test
+    fun pick_aSingleLetter_staysUntilAnotherLetterStretchesIt() {
+        assertEquals(5..5, AlphabetRules.pick(5..5, 5))
+        assertEquals(5..9, AlphabetRules.pick(5..5, 9))
+        assertEquals(2..5, AlphabetRules.pick(5..5, 2))
+    }
+
+    @Test
+    fun pick_aLetterInside_movesTheNearerEnd() {
+        assertEquals(7..20, AlphabetRules.pick(5..20, 7)) // nearer the start
+        assertEquals(5..18, AlphabetRules.pick(5..20, 18)) // nearer the end
+        assertEquals(10..20, AlphabetRules.pick(5..20, 10)) // 5 away from the start, 10 from the end: the start moves
+        assertEquals(5..26, AlphabetRules.pick(5..9, 99))
+    }
+
+    @Test
     fun challengeCodes_roundTrip() {
         AlphabetChallenge.entries.forEach { assertEquals(it, AlphabetChallenge.fromCode(it.code)) }
         assertEquals(null, AlphabetChallenge.fromCode("nope"))

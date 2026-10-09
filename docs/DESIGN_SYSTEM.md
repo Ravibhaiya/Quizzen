@@ -108,18 +108,22 @@ on the right (primaryContainer, onPrimaryContainer, 15 sp ExtraBold, `2–30`). 
 shadow, growing to 118% (spring) while held. Under the track, the two end numbers (1 and the limit, 12 sp onSurfaceVariant)
 line up with the track ends. A card whose kinds are not selected fades to 45% and is disabled.
 
-## Alphabet setup (letter range, challenge cards, tip)
+## Alphabet setup (letter grid, challenge tiles, tip)
 
 No new colours or shapes: everything is built from the tokens above.
 
-- **Letter range card**: same card as the Powers & Roots range cards (24 dp radius, `surfaceContainer`, `2 6 0` neutral shadow at 5%).
-  Top row: one small tile at the left (FROM) and one at the right (TO) with a 22 dp `ArrowRight` icon between them. Each tile is the
-  timer's value box: min 64 dp wide, 18 dp radius, `surfaceContainerHigh`, 16 / 10 dp padding, the letter (`titleMedium`, 20 sp,
-  `onSurface`) over a caption (`labelSmall`, uppercase, `onSurfaceVariant`).
-  Under the tiles, `QuizzenRangeSlider` (1 to 26) and the two end letters (12 sp `onSurfaceVariant`).
-- **Challenge card** (single select, radio): full width, 24 dp radius, 18 dp / 16 dp padding, a 24 dp radio mark (2 dp ring, 12 dp dot)
-  and the title only (16.32 sp Bold). Selection is the chip language: selected = `primary` fill, `onPrimary`
-  text and the soft `primary@55%` shadow (`0 8 16 -6`); not selected = `surfaceContainer`. Press scale 0.96, 200 ms colour changes.
+- **Letter range card**: same card as the Powers & Roots range cards (24 dp radius, `surfaceContainer`, `2 6 0` neutral shadow at 5%,
+  18 dp padding). Top row: the range as "A -> X" (`headlineMedium` at 34 sp ExtraBold, `onSurface`, the arrow a 22 dp `ArrowRight` in
+  `primary`) and, right-aligned, a pill with the count ("24 letters": `labelLarge` Bold, `onPrimaryContainer` on `primaryContainer`).
+  16 dp below: the 26 letters as a grid, 7 per row, 8 dp gaps, square cells with a 14 dp radius and the letter in 16 sp Bold.
+  Ends of the range = `primary` fill, `onPrimary` text and the soft `primary@50%` shadow (`0 6 12 -4`); letters between = `primaryContainer`
+  / `onPrimaryContainer`; letters outside = `surfaceContainerHigh` / `onSurfaceVariant`. Press scale 0.96, 160 ms colour changes.
+  16 dp below the grid: three preset pills (A-Z, A-M, N-Z; `labelLarge` Bold, fully rounded, 16 / 8 dp padding; selected = `primary`
+  fill, otherwise `surfaceContainerHigh`).
+- **Challenge tiles** (single select): three equal tiles in a row (10 dp gap), 24 dp radius, 8 / 16 dp padding. Top: a small
+  symbol of the challenge (A->1, 1->A, A->Z; 18 sp ExtraBold) in a pill-shaped badge (`surfaceContainerHigh`, or `onPrimary@20%` when
+  selected); under it the name (13.6 sp Bold, centred, two lines high so the tiles are equal). Selection is the chip language:
+  selected = `primary` fill, `onPrimary` text and the soft `primary@55%` shadow (`0 8 16 -6`); not selected = `surfaceContainer`.
 - **Tip card**: `primaryContainer` with `onPrimaryContainer` text, 24 dp radius, a small uppercase "TIP" label over one line of body text.
 
 ## Logo, launcher icon and splash

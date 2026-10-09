@@ -52,7 +52,13 @@ class AlphabetConfigViewModel(
         _state.update { it.copy(challenge = challenge) }
     }
 
-    /** The slider can only produce valid ranges; [AlphabetRules.coerce] is the safety net. */
+    /** A letter of the grid was tapped: see [AlphabetRules.pick]. */
+    fun onLetterTapped(position: Int) {
+        edited = true
+        _state.update { it.copy(letters = AlphabetRules.pick(it.letters, position)) }
+    }
+
+    /** Sets the range directly (the quick presets); [AlphabetRules.coerce] is the safety net. */
     fun onLettersChanged(range: IntRange) {
         edited = true
         _state.update { it.copy(letters = AlphabetRules.coerce(range.first, range.last)) }
