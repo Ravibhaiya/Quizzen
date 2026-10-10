@@ -53,12 +53,19 @@ sealed interface PracticeConfig {
             if (type.family == PowerRootType.Family.Square) squares else cubes
     }
 
-    /** Alphabet Reasoning: one [challenge] over the letters at positions [letters] (1 = A ... 26 = Z). */
+    /**
+     * Alphabet Reasoning: the letters at positions [letters] (1 = A ... 26 = Z), asked in every way of [challenges] (one or more;
+     * with several, every letter is asked in each of them, mixed together).
+     */
     data class Alphabet(
-        val challenge: AlphabetChallenge,
+        val challenges: Set<AlphabetChallenge>,
         val letters: IntRange,
         override val timerSeconds: Int,
     ) : PracticeConfig {
+        init {
+            require(challenges.isNotEmpty()) { "at least one way to ask must be chosen" }
+        }
+
         override val repeatsMistakes: Boolean get() = true
     }
 

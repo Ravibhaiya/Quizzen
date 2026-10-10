@@ -1,6 +1,6 @@
 package com.ravibhaiya.quizzen.domain
 
-/** The three ways Alphabet Reasoning can ask. One of them is chosen per quiz. */
+/** The three ways Alphabet Reasoning can ask. One or more of them are chosen per quiz. */
 enum class AlphabetChallenge(val code: String) {
     /** A letter is shown, the answer is its place in the alphabet: `C` -> `3`. */
     FindPosition("pos"),
@@ -14,6 +14,12 @@ enum class AlphabetChallenge(val code: String) {
 
     companion object {
         fun fromCode(code: String?): AlphabetChallenge? = entries.firstOrNull { it.code == code }
+
+        /** The chosen ways as text (`pos`, `pos-let-rev` ...), in a fixed order; used by saved settings and routes. */
+        fun encode(challenges: Set<AlphabetChallenge>): String = entries.filter { it in challenges }.joinToString("-") { it.code }
+
+        /** The inverse of [encode]; codes that are not ways to ask are ignored, so damaged text gives an empty set. */
+        fun decode(text: String?): Set<AlphabetChallenge> = text.orEmpty().split('-').mapNotNull(::fromCode).toSet()
     }
 }
 

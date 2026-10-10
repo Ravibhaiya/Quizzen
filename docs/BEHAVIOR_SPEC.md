@@ -56,10 +56,13 @@ Normative description of the app. "Web" = the prototype in `docs/reference/quizz
   at the top-right a pill with the letter picked by the right thumb. Under them one two-thumb slider that moves both ends (whole
   letters, A to Z; the small letters under the slider show its ends). Starts at **A to Z**; one letter (From = To) is allowed.
   Releasing a thumb gives a light tick (haptics).
-- **Challenge Type** (single select, default **Find Position**): three full-width cards with a radio mark and just the name:
+- **Challenge Type** (multi select, default **Find Position**; at least one always stays chosen, the last one cannot be switched off):
+  three full-width cards with a check box and just the name:
   - **Find Position**: a letter is shown, type its place in the alphabet (A = 1 ... Z = 26).
   - **Find Letter**: a place is shown, type the letter.
   - **Reverse Letter**: a letter is shown, type the letter at the same place counted from the other end
+  - With several chosen, every letter of the range is asked once in each chosen way, all mixed together in the same shuffled
+    rounds (so 3 letters with two ways give 6 questions). Each letter-and-way is its own question.
     (A <-> Z, B <-> Y, ... M <-> N).
 - Timer field default **10** s (a blank or 0 uses the default, like every other screen). Start is always enabled.
 - Start -> Practice. Every letter of the range is one question; the quiz uses shuffled rounds and mistake repeats like Tables and
@@ -72,7 +75,7 @@ Normative description of the app. "Web" = the prototype in `docs/reference/quizz
   every position is a fraction that is asked; default is the whole chart. One place (both thumbs together) is allowed: then that one
   fraction is asked again and again.
 - **Answer in** (multi select, default **Fraction**; at least one always stays chosen, the last one cannot be switched off): two
-  full-width cards (the Alphabet challenge cards, with a check box instead of a radio mark) with just the name:
+  full-width cards (the same check-box cards as the Alphabet challenge types) with just the name:
   - **Fraction**: a percentage is shown, type the fraction (`33⅓%` or `33.33%` -> `1/3`).
   - **Percentage**: a fraction is shown, type the percentage (`1/3` -> `33.33`; the `%` sign is added by the app).
 - With both chosen, every fraction of the range is asked once in each direction, all mixed together in the same shuffled rounds

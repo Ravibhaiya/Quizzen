@@ -17,7 +17,8 @@ import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 
 data class AlphabetConfigUiState(
-    val challenge: AlphabetChallenge = AlphabetChallenge.FindPosition,
+    /** The ways to ask, one or more. Never empty. */
+    val challenges: Set<AlphabetChallenge> = setOf(AlphabetChallenge.FindPosition),
     /** Positions of the first and last letter (1 = A ... 26 = Z). */
     val letters: IntRange = AlphabetRules.FULL,
     /** False until the last-used setting has been read, so the screen can wait instead of flashing the defaults. */
@@ -40,16 +41,24 @@ class AlphabetConfigViewModel(
             val saved = repository.loadAlphabet(DEFAULT_TIMER_SECONDS)
             // Anything the user already touched while this was loading wins over the saved value.
             if (saved != null && !edited) {
-                _state.update { it.copy(challenge = saved.challenge, letters = saved.letters) }
+                _state.update { it.copy(challenges = saved.challenges, letters = saved.letters) }
                 timer.set(saved.timerSeconds)
             }
             _state.update { it.copy(loaded = true) }
         }
     }
 
-    fun selectChallenge(challenge: AlphabetChallenge) {
+    /** Adds or removes [challenge]; the last chosen one cannot be removed, so there is always something to ask. */
+    fun toggleChallenge(challenge: AlphabetChallenge) {
         edited = true
-        _state.update { it.copy(challenge = challenge) }
+        _state.update { state ->
+            val chosen = state.challenges
+            when {
+                challenge !in chosen -> state.copy(challenges = chosen + challenge)
+                chosen.size > 1 -> state.copy(challenges = chosen - challenge)
+                else -> state
+            }
+        }
     }
 
     /** The slider can only produce valid ranges; [AlphabetRules.coerce] is the safety net. */
@@ -66,7 +75,7 @@ class AlphabetConfigViewModel(
     fun buildConfig(): PracticeConfig.Alphabet {
         val current = _state.value
         return PracticeConfig.Alphabet(
-            challenge = current.challenge,
+            challenges = current.challenges,
             letters = current.letters,
             timerSeconds = timer.resolvedSeconds(),
         )

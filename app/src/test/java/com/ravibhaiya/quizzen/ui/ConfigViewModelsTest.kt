@@ -162,27 +162,40 @@ class ConfigViewModelsTest {
 
     @Test
     fun alphabet_opensWithTheLastUsedSetting_andSavesOnStart() = runTest(dispatcher) {
-        val saved = PracticeConfig.Alphabet(AlphabetChallenge.FindLetter, letters = 3..18, timerSeconds = 25)
+        val saved = PracticeConfig.Alphabet(setOf(AlphabetChallenge.FindLetter), letters = 3..18, timerSeconds = 25)
         val repository = FakeRepository(alphabet = saved)
         val vm = AlphabetConfigViewModel(repository)
         runCurrent()
-        assertEquals(AlphabetChallenge.FindLetter, vm.state.value.challenge)
+        assertEquals(setOf(AlphabetChallenge.FindLetter), vm.state.value.challenges)
         assertEquals(3..18, vm.state.value.letters)
         assertEquals("25", vm.timer.state.value.text)
 
-        vm.selectChallenge(AlphabetChallenge.ReverseLetter)
+        vm.toggleChallenge(AlphabetChallenge.ReverseLetter) // now two ways are chosen
         vm.onLettersChanged(5..9)
         val config = vm.startQuiz()
         runCurrent()
-        assertEquals(PracticeConfig.Alphabet(AlphabetChallenge.ReverseLetter, 5..9, 25), config)
+        assertEquals(PracticeConfig.Alphabet(setOf(AlphabetChallenge.FindLetter, AlphabetChallenge.ReverseLetter), 5..9, 25), config)
         assertEquals(config, repository.savedAlphabet)
+    }
+
+    @Test
+    fun alphabet_waysAreMultiSelect_butOneAlwaysStays() = runTest(dispatcher) {
+        val vm = AlphabetConfigViewModel(FakeRepository())
+        runCurrent()
+        vm.toggleChallenge(AlphabetChallenge.FindPosition) // the only one chosen: it stays
+        assertEquals(setOf(AlphabetChallenge.FindPosition), vm.state.value.challenges)
+        vm.toggleChallenge(AlphabetChallenge.FindLetter)
+        vm.toggleChallenge(AlphabetChallenge.ReverseLetter)
+        assertEquals(AlphabetChallenge.entries.toSet(), vm.state.value.challenges)
+        vm.toggleChallenge(AlphabetChallenge.FindPosition)
+        assertEquals(setOf(AlphabetChallenge.FindLetter, AlphabetChallenge.ReverseLetter), vm.buildConfig().challenges)
     }
 
     @Test
     fun alphabet_withNothingSaved_usesTheDefaults() = runTest(dispatcher) {
         val vm = AlphabetConfigViewModel(FakeRepository())
         runCurrent()
-        assertEquals(AlphabetChallenge.FindPosition, vm.state.value.challenge)
+        assertEquals(setOf(AlphabetChallenge.FindPosition), vm.state.value.challenges)
         assertEquals(1..26, vm.state.value.letters)
         assertEquals("10", vm.timer.state.value.text)
         assertTrue(vm.state.value.loaded)
