@@ -39,7 +39,7 @@ private val RootIndexNudge = (-0.15).em
  *  - square root / cube root: `√784` and a raised `3` in front of the root sign for cube roots
  *  - alphabet: just the letter (`C`) or the place (`3`), in the text colour
  *  - fraction: `1/25` for a fraction to turn into a percentage; for a percentage to turn into a fraction a mixed number
- *    (`33 1/3%`, drawn stacked by MixedPercentText on the Practice screen; this is its plain-text form) or the decimal (`33.33%`),
+ *    (`33 1/3%`, drawn stacked by StackedFractionText on the Practice screen; this is its plain-text form) or the decimal (`33.33%`),
  *    as the question was worded
  *  The slash and the percent sign are tinted with [accent], like the other operators.
  *
@@ -67,7 +67,7 @@ fun Question.toDisplayText(accent: Color): AnnotatedString = buildAnnotatedStrin
                 if (question.decimal) {
                     append(FractionRules.decimalOf(question.denominator))
                 } else {
-                    // Drawn as a stacked fraction by MixedPercentText; this is its plain-text form.
+                    // Drawn as a stacked fraction by StackedFractionText; this is its plain-text form.
                     append(percent.whole.toString())
                     if (percent.hasFraction) append(" ${percent.numerator}/${percent.denominator}")
                 }
