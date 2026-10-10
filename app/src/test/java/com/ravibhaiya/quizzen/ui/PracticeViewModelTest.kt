@@ -241,10 +241,13 @@ class PracticeViewModelTest {
 
     @Test
     fun fractionsRouteRoundTrips() {
-        val config = PracticeConfig.Fractions(FractionChallenge.Percentage, timerSeconds = 15)
+        val config = PracticeConfig.Fractions(FractionChallenge.Percentage, timerSeconds = 15, range = 3..10)
         val route = Routes.practice(config)
-        assertEquals("practice/fractions?ch=per&seconds=15", route)
-        assertEquals(config, PracticeArgs.decode("fractions", null, null, null, 15, challenge = "per"))
+        assertEquals("practice/fractions?ch=per&ffrom=3&fto=10&seconds=15", route)
+        assertEquals(
+            config,
+            PracticeArgs.decode("fractions", null, null, null, 15, challenge = "per", fractionFrom = 3, fractionTo = 10),
+        )
     }
 
     @Test
@@ -253,6 +256,9 @@ class PracticeViewModelTest {
         decoded as PracticeConfig.Fractions
         assertEquals(FractionChallenge.Fraction, decoded.challenge)
         assertEquals(20, decoded.timerSeconds)
+        assertEquals(1..24, decoded.range) // no range in the route: every fraction
+        val repaired = PracticeArgs.decode("fractions", null, null, null, 10, fractionFrom = 30, fractionTo = 2)
+        assertEquals(24..24, (repaired as PracticeConfig.Fractions).range)
     }
 
     @Test

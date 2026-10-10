@@ -3,6 +3,7 @@ package com.ravibhaiya.quizzen.data
 import com.ravibhaiya.quizzen.domain.AlphabetChallenge
 import com.ravibhaiya.quizzen.domain.AlphabetRules
 import com.ravibhaiya.quizzen.domain.FractionChallenge
+import com.ravibhaiya.quizzen.domain.FractionRules
 import com.ravibhaiya.quizzen.domain.PowerRootType
 import com.ravibhaiya.quizzen.domain.PowersRootsRules
 import com.ravibhaiya.quizzen.domain.PracticeConfig
@@ -30,7 +31,7 @@ object SettingsCodec {
         "ch=${config.challenge.code};l=${config.letters.first}-${config.letters.last};t=${config.timerSeconds}"
 
     fun encode(config: PracticeConfig.Fractions): String =
-        "fc=${config.challenge.code};t=${config.timerSeconds}"
+        "fc=${config.challenge.code};f=${config.range.first}-${config.range.last};t=${config.timerSeconds}"
 
     fun decodeMultiply(text: String?, defaultTimer: Int): PracticeConfig.Multiply? {
         val values = parse(text) ?: return null
@@ -79,9 +80,15 @@ object SettingsCodec {
 
     fun decodeFractions(text: String?, defaultTimer: Int): PracticeConfig.Fractions? {
         val values = parse(text) ?: return null
+        val places = values["f"].orEmpty().split('-')
         return PracticeConfig.Fractions(
             challenge = FractionChallenge.fromCode(values["fc"]) ?: return null,
             timerSeconds = timer(values["t"], defaultTimer),
+            // A save from before the range existed has no "f": every fraction.
+            range = FractionRules.coerce(
+                from = places.getOrNull(0)?.toIntOrNull() ?: FractionRules.FIRST,
+                to = places.getOrNull(1)?.toIntOrNull() ?: FractionRules.SIZE,
+            ),
         )
     }
 

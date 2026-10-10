@@ -33,6 +33,28 @@ object FractionRules {
     val DENOMINATORS: List<Int> = (2..20).toList() + listOf(24, 25, 30, 40, 50)
 
     /**
+     * The range slider works on the *places* of the fractions in [DENOMINATORS] (1 = 1/2 ... [SIZE] = 1/50), so every position of
+     * the slider is a fraction of the chart. [coerce] repairs anything that arrives from elsewhere (saved settings, route arguments).
+     */
+    const val FIRST = 1
+    val SIZE: Int = DENOMINATORS.size
+
+    /** Every fraction of the chart, 1/2 to 1/50. */
+    val FULL: IntRange = FIRST..SIZE
+
+    /** The n of the fraction at [position] (1 = 2, 2 = 3, ... [SIZE] = 50). */
+    fun denominatorAt(position: Int): Int = DENOMINATORS[position - FIRST]
+
+    /** The denominators of the fractions in [range] (positions), smallest n first. */
+    fun denominatorsIn(range: IntRange): List<Int> = coerce(range.first, range.last).map(::denominatorAt)
+
+    /** A valid range: inside `FIRST..SIZE`, and never ending before it starts. */
+    fun coerce(from: Int, to: Int): IntRange {
+        val low = from.coerceIn(FIRST, SIZE)
+        return low..to.coerceIn(low, SIZE)
+    }
+
+    /**
      * How far a typed percentage may be from the exact value when that value has endless decimals (1/3 = 33.333...). It lets
      * the answer be rounded or cut: 33.3, 33.33 and 33.34 are all right for 33 1/3. Percentages that end (25, 12.5, 6.25)
      * must be typed exactly.

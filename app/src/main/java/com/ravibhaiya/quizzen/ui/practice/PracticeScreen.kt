@@ -66,8 +66,10 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.ravibhaiya.quizzen.R
 import com.ravibhaiya.quizzen.domain.AnswerKind
+import com.ravibhaiya.quizzen.domain.FractionQuestion
 import com.ravibhaiya.quizzen.domain.FeedbackType
 import com.ravibhaiya.quizzen.ui.components.FitText
+import com.ravibhaiya.quizzen.ui.components.MixedPercentText
 import com.ravibhaiya.quizzen.ui.components.NeutralShadowColor
 import com.ravibhaiya.quizzen.ui.components.PrimaryButton
 import com.ravibhaiya.quizzen.ui.components.QuizzenScreen
@@ -145,16 +147,34 @@ fun PracticeScreen(
                 )
 
                 val spoken = spokenQuestion(state.question)
-                FitText(
-                    text = questionText(state.question),
-                    style = MaterialTheme.typography.displayLarge.copy(color = MaterialTheme.colorScheme.onSurface),
-                    maxFontSize = 49.6.sp,
-                    minFontSize = 24.sp,
-                    step = 1.6.sp,
-                    modifier = Modifier
-                        .padding(top = 46.dp, bottom = 46.dp)
-                        .clearAndSetSemantics { contentDescription = spoken },
-                )
+                val questionStyle = MaterialTheme.typography.displayLarge.copy(color = MaterialTheme.colorScheme.onSurface)
+                val questionModifier = Modifier
+                    .padding(top = 46.dp, bottom = 46.dp)
+                    .clearAndSetSemantics { contentDescription = spoken }
+                val question = state.question
+                if (question is FractionQuestion && question.showsMixedNumber) {
+                    // A mixed number such as 33 1/3% is drawn with the fraction stacked (number over bar over number).
+                    MixedPercentText(
+                        whole = question.percent.whole.toString(),
+                        numerator = question.percent.numerator.toString(),
+                        denominator = question.percent.denominator.toString(),
+                        style = questionStyle,
+                        percentColor = MaterialTheme.colorScheme.primary,
+                        maxFontSize = 49.6.sp,
+                        minFontSize = 24.sp,
+                        step = 1.6.sp,
+                        modifier = questionModifier,
+                    )
+                } else {
+                    FitText(
+                        text = questionText(question),
+                        style = questionStyle,
+                        maxFontSize = 49.6.sp,
+                        minFontSize = 24.sp,
+                        step = 1.6.sp,
+                        modifier = questionModifier,
+                    )
+                }
 
                 AnswerField(
                     value = state.answer,

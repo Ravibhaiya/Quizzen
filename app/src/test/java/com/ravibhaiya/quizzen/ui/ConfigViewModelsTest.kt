@@ -202,18 +202,20 @@ class ConfigViewModelsTest {
 
     @Test
     fun fractions_opensWithTheLastUsedSetting_andSavesOnStart() = runTest(dispatcher) {
-        val saved = PracticeConfig.Fractions(FractionChallenge.Percentage, timerSeconds = 25)
+        val saved = PracticeConfig.Fractions(FractionChallenge.Percentage, timerSeconds = 25, range = 4..12)
         val repository = FakeRepository(fractions = saved)
         val vm = FractionsConfigViewModel(repository)
         runCurrent()
         assertEquals(FractionChallenge.Percentage, vm.state.value.challenge)
+        assertEquals(4..12, vm.state.value.range)
         assertEquals("25", vm.timer.state.value.text)
         assertTrue(vm.state.value.loaded)
 
         vm.selectChallenge(FractionChallenge.Fraction)
+        vm.onRangeChanged(2..8)
         val config = vm.startQuiz()
         runCurrent()
-        assertEquals(PracticeConfig.Fractions(FractionChallenge.Fraction, 25), config)
+        assertEquals(PracticeConfig.Fractions(FractionChallenge.Fraction, 25, range = 2..8), config)
         assertEquals(config, repository.savedFractions)
     }
 
@@ -222,8 +224,19 @@ class ConfigViewModelsTest {
         val vm = FractionsConfigViewModel(FakeRepository())
         runCurrent()
         assertEquals(FractionChallenge.Fraction, vm.state.value.challenge)
+        assertEquals(1..24, vm.state.value.range) // every fraction, 1/2 to 1/50
         assertEquals("10", vm.timer.state.value.text)
         assertTrue(vm.state.value.loaded)
+    }
+
+    @Test
+    fun fractions_aBadRangeIsRepaired() = runTest(dispatcher) {
+        val vm = FractionsConfigViewModel(FakeRepository())
+        runCurrent()
+        vm.onRangeChanged(0..99)
+        assertEquals(1..24, vm.state.value.range)
+        vm.onRangeChanged(9..3)
+        assertEquals(9..9, vm.state.value.range)
     }
 
     // ---- loading ----

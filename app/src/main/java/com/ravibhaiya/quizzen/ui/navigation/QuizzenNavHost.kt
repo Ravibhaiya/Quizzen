@@ -17,6 +17,7 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
 import com.ravibhaiya.quizzen.domain.AlphabetRules
+import com.ravibhaiya.quizzen.domain.FractionRules
 import com.ravibhaiya.quizzen.domain.PowersRootsRules
 import com.ravibhaiya.quizzen.ui.components.EmphasizedEasing
 import com.ravibhaiya.quizzen.ui.alphabet.AlphabetConfigScreen
@@ -118,6 +119,8 @@ fun QuizzenNavHost(
                 navArgument(Routes.ARG_CHALLENGE) { type = NavType.StringType; defaultValue = "" },
                 navArgument(Routes.ARG_LETTER_FROM) { type = NavType.IntType; defaultValue = AlphabetRules.FIRST },
                 navArgument(Routes.ARG_LETTER_TO) { type = NavType.IntType; defaultValue = AlphabetRules.SIZE },
+                navArgument(Routes.ARG_FRACTION_FROM) { type = NavType.IntType; defaultValue = FractionRules.FIRST },
+                navArgument(Routes.ARG_FRACTION_TO) { type = NavType.IntType; defaultValue = FractionRules.SIZE },
             ),
         ) {
             PracticeScreen(

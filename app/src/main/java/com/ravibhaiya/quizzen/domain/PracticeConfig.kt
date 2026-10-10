@@ -62,10 +62,14 @@ sealed interface PracticeConfig {
         override val repeatsMistakes: Boolean get() = true
     }
 
-    /** Fraction & Percentage: every unit fraction of the chart ([FractionRules.DENOMINATORS]), always in one [challenge] direction. */
+    /**
+     * Fraction & Percentage: the unit fractions of the chart ([FractionRules.DENOMINATORS]) at the places [range] (1 = 1/2 ...
+     * [FractionRules.SIZE] = 1/50), always in one [challenge] direction.
+     */
     data class Fractions(
         val challenge: FractionChallenge,
         override val timerSeconds: Int,
+        val range: IntRange = FractionRules.FULL,
     ) : PracticeConfig {
         override val repeatsMistakes: Boolean get() = true
     }

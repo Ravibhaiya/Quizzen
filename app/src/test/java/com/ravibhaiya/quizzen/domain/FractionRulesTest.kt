@@ -162,6 +162,42 @@ class FractionRulesTest {
     }
 
     @Test
+    fun rangePlaces_areThePositionsOfTheChart() {
+        assertEquals(1..24, FractionRules.FULL)
+        assertEquals(2, FractionRules.denominatorAt(1))
+        assertEquals(20, FractionRules.denominatorAt(19))
+        assertEquals(24, FractionRules.denominatorAt(20))
+        assertEquals(50, FractionRules.denominatorAt(24))
+        assertEquals(listOf(2, 3, 4), FractionRules.denominatorsIn(1..3))
+        assertEquals(listOf(20, 24, 25, 30), FractionRules.denominatorsIn(19..22))
+        assertEquals(listOf(7), FractionRules.denominatorsIn(6..6))
+    }
+
+    @Test
+    fun coerce_repairsAnyRange() {
+        assertEquals(1..24, FractionRules.coerce(0, 99))
+        assertEquals(1..24, FractionRules.coerce(-5, 24))
+        assertEquals(5..5, FractionRules.coerce(5, 2)) // never ends before it starts
+        assertEquals(24..24, FractionRules.coerce(30, 40))
+        assertEquals(3..9, FractionRules.coerce(3, 9))
+    }
+
+    @Test
+    fun pool_followsTheChosenRange() {
+        val config = PracticeConfig.Fractions(FractionChallenge.Percentage, timerSeconds = 10, range = 2..5)
+        val pool = QuestionPool.of(config)!!
+        assertEquals(listOf(3, 4, 5, 6), pool.map { (it as FractionQuestion).denominator })
+    }
+
+    @Test
+    fun theMixedNumberIsOnlyDrawnForAPercentageWithAFractionInThatWording() {
+        assertTrue(FractionQuestion(FractionChallenge.Fraction, 3).showsMixedNumber)
+        assertFalse(FractionQuestion(FractionChallenge.Fraction, 3, decimal = true).showsMixedNumber)
+        assertFalse(FractionQuestion(FractionChallenge.Fraction, 4).showsMixedNumber) // 25%: nothing to stack
+        assertFalse(FractionQuestion(FractionChallenge.Percentage, 3).showsMixedNumber) // a fraction is shown
+    }
+
+    @Test
     fun session_asksEveryFractionOncePerRound_andSaysWhichWordingEachTime() {
         val config = PracticeConfig.Fractions(FractionChallenge.Fraction, timerSeconds = 10)
         val session = PracticeSession(RandomQuestionGenerator(Random(3)), config, Random(3))

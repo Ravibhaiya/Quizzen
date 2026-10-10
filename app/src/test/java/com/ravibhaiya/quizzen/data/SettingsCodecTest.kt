@@ -31,14 +31,23 @@ class SettingsCodecTest {
         val alphabet = PracticeConfig.Alphabet(AlphabetChallenge.ReverseLetter, letters = 4..20, timerSeconds = 15)
         assertEquals(alphabet, SettingsCodec.decodeAlphabet(SettingsCodec.encode(alphabet), defaultTimer = 10))
 
-        val fractions = PracticeConfig.Fractions(FractionChallenge.Percentage, timerSeconds = 15)
+        val fractions = PracticeConfig.Fractions(FractionChallenge.Percentage, timerSeconds = 15, range = 3..12)
         assertEquals(fractions, SettingsCodec.decodeFractions(SettingsCodec.encode(fractions), defaultTimer = 10))
     }
 
     @Test
     fun fractions_textIsShort_andDecodingRepairsTheTimer() {
-        assertEquals("fc=fra;t=10", SettingsCodec.encode(PracticeConfig.Fractions(FractionChallenge.Fraction, 10)))
-        assertEquals("fc=per;t=25", SettingsCodec.encode(PracticeConfig.Fractions(FractionChallenge.Percentage, 25)))
+        assertEquals("fc=fra;f=1-24;t=10", SettingsCodec.encode(PracticeConfig.Fractions(FractionChallenge.Fraction, 10)))
+        assertEquals(
+            "fc=per;f=4-9;t=25",
+            SettingsCodec.encode(PracticeConfig.Fractions(FractionChallenge.Percentage, 25, range = 4..9)),
+        )
+        // A save from before the range existed has no "f": every fraction.
+        assertEquals(1..24, SettingsCodec.decodeFractions("fc=per;t=10", 10)!!.range)
+        // A damaged range is repaired.
+        assertEquals(1..24, SettingsCodec.decodeFractions("fc=per;f=0-99;t=10", 10)!!.range)
+        assertEquals(7..7, SettingsCodec.decodeFractions("fc=per;f=7-2;t=10", 10)!!.range)
+        assertEquals(1..24, SettingsCodec.decodeFractions("fc=per;f=x-y;t=10", 10)!!.range)
         assertEquals(10, SettingsCodec.decodeFractions("fc=per;t=999", 10)!!.timerSeconds)
         assertEquals(10, SettingsCodec.decodeFractions("fc=per", 10)!!.timerSeconds)
         assertNull(SettingsCodec.decodeFractions("fc=unknown;t=10", 10)) // not a challenge: use the defaults

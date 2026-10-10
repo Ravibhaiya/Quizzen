@@ -63,6 +63,10 @@
     <string name="challenge_reverse_letter">Reverse Letter</string>
 
     <!-- Fraction & Percentage configuration -->
+    <string name="fraction_range">Fraction Range</string>
+    <string name="fraction_range_summary">From %1$s to %2$s</string>
+    <string name="fraction_thumb_from">First fraction</string>
+    <string name="fraction_thumb_to">Last fraction</string>
     <string name="answer_in">Answer in</string>
     <string name="answer_in_fraction">Fraction</string>
     <string name="answer_in_percentage">Percentage</string>
