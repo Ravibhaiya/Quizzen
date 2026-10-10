@@ -93,6 +93,9 @@ data class FractionQuestion(
 ) : Question {
     val percent: MixedPercent get() = FractionRules.percentOf(denominator)
 
+    /** True when the question is the fraction `1/denominator` itself (drawn as a stacked fraction: 1 over the denominator). */
+    val showsFraction: Boolean get() = challenge == FractionChallenge.Percentage
+
     /** True when the question is a percentage with a fractional part written as a mixed number (drawn as a stacked fraction). */
     val showsMixedNumber: Boolean
         get() = challenge == FractionChallenge.Fraction && !decimal && percent.hasFraction

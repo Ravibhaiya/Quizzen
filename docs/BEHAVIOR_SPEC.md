@@ -71,10 +71,12 @@ Normative description of the app. "Web" = the prototype in `docs/reference/quizz
   ends of the track). The slider works on the places of the 24 fractions of the chart (1 = 1/2 ... 24 = 1/50, in the order below), so
   every position is a fraction that is asked; default is the whole chart. One place (both thumbs together) is allowed: then that one
   fraction is asked again and again.
-- **Answer in** (single select, default **Fraction**): two full-width cards (the same cards as the Alphabet challenge types) with a
-  radio mark and just the name:
+- **Answer in** (multi select, default **Fraction**; at least one always stays chosen, the last one cannot be switched off): two
+  full-width cards (the Alphabet challenge cards, with a check box instead of a radio mark) with just the name:
   - **Fraction**: a percentage is shown, type the fraction (`33⅓%` or `33.33%` -> `1/3`).
   - **Percentage**: a fraction is shown, type the percentage (`1/3` -> `33.33`; the `%` sign is added by the app).
+- With both chosen, every fraction of the range is asked once in each direction, all mixed together in the same shuffled rounds
+  (so 24 fractions give 48 questions). The two directions of one fraction are different questions.
 - Timer field default **10** s. Start is always enabled. Start -> Practice.
 - The questions are exactly the 24 unit fractions of the reference chart, nothing else: 1/2 to 1/20, then 1/24, 1/25, 1/30, 1/40
   and 1/50. Every one is one question; the quiz uses shuffled rounds and mistake repeats like Tables (see Practice). The
@@ -123,11 +125,15 @@ Normative description of the app. "Web" = the prototype in `docs/reference/quizz
     keyboard has no slash, so a round **"/" key** sits at the end of the answer field: it adds one slash after the digits typed (it
     does nothing on an empty field or when there already is a slash) and gives a light tick. A fraction with the same value
     counts (`2/6` for 1/3).
-  - **Answer in Percentage**: the question is the fraction (`1/25`, the slash tinted). The decimal keyboard is used and the answer is
+  - **Answer in Percentage**: the question is the fraction, drawn stacked as well: `1` over a bar over `25`, as big as the other
+    questions' text. The decimal keyboard is used and the answer is
     typed as digits with at most one decimal point (a decimal comma counts as the point; at most 7 characters). The **`%` sign is
     shown automatically** after what is typed (`33.33` reads `33.33%`) and is never typed. A percentage that ends (25, 12.5,
     6.25, 2.5, 2) must be exact; one with endless decimals (33⅓, 16⅔, 5¹⁵⁄₁₇ ...) is right when within 0.05 of the exact
     value, so it may be rounded or cut (`33.3`, `33.33` and `33.34` are all right for 33⅓; `33` and `33.5` are not).
+  - The keyboard, the placeholder, the "/" key and the automatic `%` sign follow each question, so with both directions chosen they
+    change from question to question.
+  - The answer field always keeps its cursor at the end of what is typed, also after the "/" key (typing `1`, `/`, `3` gives `1/3`).
   - The placeholder says "Fraction" or "Percentage". The feedback sheet shows the correct answer as `1/3`, or for a percentage in
     both writings (`33 1/3% ≈ 33.33%`, `6 1/4% = 6.25%`, `25%`). Screen readers say "1 over 25", "33 and 1 over 3 percent",
     "33.33 percent".

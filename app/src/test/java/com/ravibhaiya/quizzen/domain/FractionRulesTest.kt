@@ -154,7 +154,7 @@ class FractionRulesTest {
     @Test
     fun pool_hasEveryFractionOnce() {
         listOf(FractionChallenge.Fraction, FractionChallenge.Percentage).forEach { challenge ->
-            val pool = QuestionPool.of(PracticeConfig.Fractions(challenge, timerSeconds = 10))!!
+            val pool = QuestionPool.of(PracticeConfig.Fractions(setOf(challenge), timerSeconds = 10))!!
             assertEquals(24, pool.size)
             assertEquals(FractionRules.DENOMINATORS, pool.map { (it as FractionQuestion).denominator })
             assertTrue(pool.all { (it as FractionQuestion).challenge == challenge })
@@ -184,9 +184,46 @@ class FractionRulesTest {
 
     @Test
     fun pool_followsTheChosenRange() {
-        val config = PracticeConfig.Fractions(FractionChallenge.Percentage, timerSeconds = 10, range = 2..5)
+        val config = PracticeConfig.Fractions(setOf(FractionChallenge.Percentage), timerSeconds = 10, range = 2..5)
         val pool = QuestionPool.of(config)!!
         assertEquals(listOf(3, 4, 5, 6), pool.map { (it as FractionQuestion).denominator })
+    }
+
+    @Test
+    fun pool_withBothDirections_hasEveryFractionInEachDirection() {
+        val both = PracticeConfig.Fractions(
+            setOf(FractionChallenge.Fraction, FractionChallenge.Percentage), timerSeconds = 10, range = 1..3,
+        )
+        val pool = QuestionPool.of(both)!!.map { it as FractionQuestion }
+        assertEquals(6, pool.size)
+        assertEquals(setOf(2, 3, 4), pool.map { it.denominator }.toSet())
+        FractionChallenge.entries.forEach { challenge ->
+            assertEquals(listOf(2, 3, 4), pool.filter { it.challenge == challenge }.map { it.denominator })
+        }
+        assertEquals(6, pool.toSet().size) // the two directions of one fraction are different questions
+    }
+
+    @Test
+    fun anEmptyChoiceOfDirectionsIsRefused() {
+        val result = runCatching { PracticeConfig.Fractions(emptySet(), timerSeconds = 10) }
+        assertTrue(result.exceptionOrNull() is IllegalArgumentException)
+    }
+
+    @Test
+    fun directions_areWrittenInAFixedOrder_andDamagedTextGivesNothing() {
+        val both = setOf(FractionChallenge.Percentage, FractionChallenge.Fraction)
+        assertEquals("fra-per", FractionChallenge.encode(both))
+        assertEquals("per", FractionChallenge.encode(setOf(FractionChallenge.Percentage)))
+        assertEquals(both, FractionChallenge.decode("per-fra"))
+        assertEquals(setOf(FractionChallenge.Fraction), FractionChallenge.decode("fra-nonsense"))
+        assertTrue(FractionChallenge.decode("nonsense").isEmpty())
+        assertTrue(FractionChallenge.decode(null).isEmpty())
+    }
+
+    @Test
+    fun theFractionItselfIsDrawnStackedOnlyWhenItIsTheQuestion() {
+        assertTrue(FractionQuestion(FractionChallenge.Percentage, 9).showsFraction)
+        assertFalse(FractionQuestion(FractionChallenge.Fraction, 9).showsFraction)
     }
 
     @Test
@@ -199,7 +236,7 @@ class FractionRulesTest {
 
     @Test
     fun session_asksEveryFractionOncePerRound_andSaysWhichWordingEachTime() {
-        val config = PracticeConfig.Fractions(FractionChallenge.Fraction, timerSeconds = 10)
+        val config = PracticeConfig.Fractions(setOf(FractionChallenge.Fraction), timerSeconds = 10)
         val session = PracticeSession(RandomQuestionGenerator(Random(3)), config, Random(3))
         val round = List(24) { session.next() as FractionQuestion }
         assertEquals(FractionRules.DENOMINATORS, round.map { it.denominator }.sorted())
@@ -211,7 +248,7 @@ class FractionRulesTest {
 
     @Test
     fun aMissedQuestion_comesBackWordedAsItWasMissed() {
-        val config = PracticeConfig.Fractions(FractionChallenge.Fraction, timerSeconds = 10)
+        val config = PracticeConfig.Fractions(setOf(FractionChallenge.Fraction), timerSeconds = 10)
         val session = PracticeSession(RandomQuestionGenerator(Random(4)), config, Random(4))
         var missed: FractionQuestion? = null
         repeat(40) {

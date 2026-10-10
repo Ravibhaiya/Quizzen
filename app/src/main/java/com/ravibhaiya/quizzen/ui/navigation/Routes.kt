@@ -63,7 +63,7 @@ object Routes {
                 "&$ARG_SECONDS=${config.timerSeconds}"
         // The challenge travels in the same argument as Alphabet's (the mode says which codes to read).
         is PracticeConfig.Fractions ->
-            "practice/$MODE_FRACTIONS?$ARG_CHALLENGE=${config.challenge.code}" +
+            "practice/$MODE_FRACTIONS?$ARG_CHALLENGE=${FractionChallenge.encode(config.challenges)}" +
                 "&$ARG_FRACTION_FROM=${config.range.first}&$ARG_FRACTION_TO=${config.range.last}" +
                 "&$ARG_SECONDS=${config.timerSeconds}"
     }
@@ -139,7 +139,7 @@ object PracticeArgs {
                 timerSeconds = timer,
             )
             Routes.MODE_FRACTIONS -> PracticeConfig.Fractions(
-                challenge = FractionChallenge.fromCode(challenge) ?: FractionChallenge.Fraction,
+                challenges = FractionChallenge.decode(challenge).ifEmpty { setOf(FractionChallenge.Fraction) },
                 timerSeconds = timer,
                 range = FractionRules.coerce(fractionFrom ?: FractionRules.FIRST, fractionTo ?: FractionRules.SIZE),
             )

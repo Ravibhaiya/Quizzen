@@ -33,7 +33,7 @@ import com.ravibhaiya.quizzen.ui.components.SectionTitle
 import com.ravibhaiya.quizzen.ui.components.TimerFooter
 import com.ravibhaiya.quizzen.ui.components.rememberHaptics
 
-/** Setup of Fraction & Percentage: which fractions (a two-thumb range, 1/2 to 1/50), what to answer in (two choices) and the timer. */
+/** Setup of Fraction & Percentage: which fractions (a two-thumb range, 1/2 to 1/50), what to answer in (one or both) and the timer. */
 @Composable
 fun FractionsConfigScreen(
     hapticEnabled: Boolean,
@@ -96,8 +96,9 @@ fun FractionsConfigScreen(
                     FractionChallenge.entries.forEach { challenge ->
                         ChoiceCard(
                             title = stringResource(challenge.titleRes()),
-                            selected = challenge == state.challenge,
-                            onClick = { haptics.tick(); viewModel.selectChallenge(challenge) },
+                            selected = challenge in state.challenges,
+                            onClick = { haptics.tick(); viewModel.toggleChallenge(challenge) },
+                            multiSelect = true,
                         )
                     }
                 }

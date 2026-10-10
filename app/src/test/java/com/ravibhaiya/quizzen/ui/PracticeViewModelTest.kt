@@ -234,27 +234,30 @@ class PracticeViewModelTest {
 
     /** A quiz that only ever asks 1/[denominator], so the question and its answer are known. */
     private fun fractions(challenge: FractionChallenge, denominator: Int = 3) = PracticeViewModel(
-        PracticeConfig.Fractions(challenge, timerSeconds = 10),
+        PracticeConfig.Fractions(setOf(challenge), timerSeconds = 10),
         SequenceGenerator(),
         questions = listOf(FractionQuestion(challenge, denominator)),
     )
 
     @Test
     fun fractionsRouteRoundTrips() {
-        val config = PracticeConfig.Fractions(FractionChallenge.Percentage, timerSeconds = 15, range = 3..10)
+        val config = PracticeConfig.Fractions(setOf(FractionChallenge.Percentage), timerSeconds = 15, range = 3..10)
         val route = Routes.practice(config)
         assertEquals("practice/fractions?ch=per&ffrom=3&fto=10&seconds=15", route)
         assertEquals(
             config,
             PracticeArgs.decode("fractions", null, null, null, 15, challenge = "per", fractionFrom = 3, fractionTo = 10),
         )
+        val both = PracticeConfig.Fractions(setOf(FractionChallenge.Fraction, FractionChallenge.Percentage), timerSeconds = 10)
+        assertEquals("practice/fractions?ch=fra-per&ffrom=1&fto=24&seconds=10", Routes.practice(both))
+        assertEquals(both, PracticeArgs.decode("fractions", null, null, null, 10, challenge = "fra-per"))
     }
 
     @Test
     fun fractionsDecodingRepairsBadArguments() {
         val decoded = PracticeArgs.decode("fractions", null, null, null, 0, challenge = "nonsense")
         decoded as PracticeConfig.Fractions
-        assertEquals(FractionChallenge.Fraction, decoded.challenge)
+        assertEquals(setOf(FractionChallenge.Fraction), decoded.challenges)
         assertEquals(20, decoded.timerSeconds)
         assertEquals(1..24, decoded.range) // no range in the route: every fraction
         val repaired = PracticeArgs.decode("fractions", null, null, null, 10, fractionFrom = 30, fractionTo = 2)

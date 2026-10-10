@@ -17,8 +17,11 @@ import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 
 data class FractionsConfigUiState(
-    /** What the player answers in: a fraction (the question is a percentage) or a percentage (the question is a fraction). */
-    val challenge: FractionChallenge = FractionChallenge.Fraction,
+    /**
+     * What the player answers in, one or both: a fraction (the question is a percentage) and / or a percentage (the question is a
+     * fraction). Never empty.
+     */
+    val challenges: Set<FractionChallenge> = setOf(FractionChallenge.Fraction),
     /** Places of the first and last fraction asked (1 = 1/2 ... 24 = 1/50, see [FractionRules]). */
     val range: IntRange = FractionRules.FULL,
     /** False until the last-used setting has been read, so the screen can wait instead of flashing the defaults. */
@@ -41,16 +44,24 @@ class FractionsConfigViewModel(
             val saved = repository.loadFractions(DEFAULT_TIMER_SECONDS)
             // Anything the user already touched while this was loading wins over the saved value.
             if (saved != null && !edited) {
-                _state.update { it.copy(challenge = saved.challenge, range = saved.range) }
+                _state.update { it.copy(challenges = saved.challenges, range = saved.range) }
                 timer.set(saved.timerSeconds)
             }
             _state.update { it.copy(loaded = true) }
         }
     }
 
-    fun selectChallenge(challenge: FractionChallenge) {
+    /** Adds or removes [challenge]; the last chosen one cannot be removed, so there is always something to ask. */
+    fun toggleChallenge(challenge: FractionChallenge) {
         edited = true
-        _state.update { it.copy(challenge = challenge) }
+        _state.update { state ->
+            val chosen = state.challenges
+            when {
+                challenge !in chosen -> state.copy(challenges = chosen + challenge)
+                chosen.size > 1 -> state.copy(challenges = chosen - challenge)
+                else -> state
+            }
+        }
     }
 
     /** The slider can only produce valid ranges; [FractionRules.coerce] is the safety net. */
@@ -66,7 +77,7 @@ class FractionsConfigViewModel(
 
     fun buildConfig(): PracticeConfig.Fractions =
         PracticeConfig.Fractions(
-            challenge = _state.value.challenge,
+            challenges = _state.value.challenges,
             timerSeconds = timer.resolvedSeconds(),
             range = _state.value.range,
         )

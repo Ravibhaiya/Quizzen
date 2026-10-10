@@ -50,7 +50,9 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.buildAnnotatedString
+import androidx.compose.ui.text.TextRange
 import androidx.compose.ui.text.input.OffsetMapping
+import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.text.input.TransformedText
 import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.text.font.FontWeight
@@ -69,7 +71,7 @@ import com.ravibhaiya.quizzen.domain.AnswerKind
 import com.ravibhaiya.quizzen.domain.FractionQuestion
 import com.ravibhaiya.quizzen.domain.FeedbackType
 import com.ravibhaiya.quizzen.ui.components.FitText
-import com.ravibhaiya.quizzen.ui.components.MixedPercentText
+import com.ravibhaiya.quizzen.ui.components.StackedFractionText
 import com.ravibhaiya.quizzen.ui.components.NeutralShadowColor
 import com.ravibhaiya.quizzen.ui.components.PrimaryButton
 import com.ravibhaiya.quizzen.ui.components.QuizzenScreen
@@ -154,12 +156,25 @@ fun PracticeScreen(
                 val question = state.question
                 if (question is FractionQuestion && question.showsMixedNumber) {
                     // A mixed number such as 33 1/3% is drawn with the fraction stacked (number over bar over number).
-                    MixedPercentText(
+                    StackedFractionText(
                         whole = question.percent.whole.toString(),
                         numerator = question.percent.numerator.toString(),
                         denominator = question.percent.denominator.toString(),
+                        suffix = "%",
+                        suffixColor = MaterialTheme.colorScheme.primary,
+                        fractionScale = 0.5f,
                         style = questionStyle,
-                        percentColor = MaterialTheme.colorScheme.primary,
+                        maxFontSize = 49.6.sp,
+                        minFontSize = 24.sp,
+                        step = 1.6.sp,
+                        modifier = questionModifier,
+                    )
+                } else if (question is FractionQuestion && question.showsFraction) {
+                    // The fraction to turn into a percentage: 1 over the denominator, as big as the other questions.
+                    StackedFractionText(
+                        numerator = "1",
+                        denominator = question.denominator.toString(),
+                        style = questionStyle,
                         maxFontSize = 49.6.sp,
                         minFontSize = 24.sp,
                         step = 1.6.sp,
@@ -271,8 +286,10 @@ private fun AnswerField(
     }
 
     BasicTextField(
-        value = value,
-        onValueChange = onValueChange,
+        // The cursor always stays at the end of the answer, also after the on-screen "/" key added a character: otherwise the
+        // next digit would be typed before the slash (1, /, 3 must give 1/3, not 13/).
+        value = TextFieldValue(text = value, selection = TextRange(value.length)),
+        onValueChange = { onValueChange(it.text) },
         readOnly = readOnly,
         singleLine = true,
         interactionSource = source,

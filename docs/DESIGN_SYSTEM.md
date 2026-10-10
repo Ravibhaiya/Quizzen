@@ -128,13 +128,15 @@ No new colours or shapes: everything is built from the tokens above.
 
 No new colours or shapes either.
 
-- **Setup**: section title "Answer in" and two Challenge cards (Fraction, Percentage), then the usual timer footer.
+- **Setup**: section title "Answer in" and two Challenge cards (Fraction, Percentage) in multi-select form (a rounded-square check
+  box, 24 dp, 7 dp corners, 2 dp border in the content colour; chosen = filled with a bold check in the card colour), then the usual
+  timer footer.
 - **Range**: the `PillRangeCard` (`ui/components/PillRangeCard.kt`, shared with the Alphabet letter range): a pill per thumb (`1/2` ...
   `1/50`), the two-thumb slider and the end labels under it.
-- **Question text**: a fraction is `1/25` with the slash in `primary` (like the other operators); a percentage ends with a `primary` `%`.
-  A mixed number (`33 1/3%`, `MixedPercentText`) is the whole part at full size, a gap of 10% of its size, a stacked fraction (numerator
-  over a bar over denominator, both at 50% size, bar 12% of the fraction size thick, centred on the whole part, reaching a little past
-  the digits) and the `%`. The decimal writing (`33.33%`) is plain text.
+- **Question text** (`StackedFractionText`): a fraction is drawn stacked, `1` over a bar over the denominator, at the size of the
+  other question texts (bar in the text colour, 10% of the digit size thick, reaching a little past the digits). A percentage ends
+  with a `primary` `%`. A mixed number (`33 1/3%`) is the whole part at full size, a gap of 10% of its size, the same stacked fraction
+  at 50% size centred on the whole part, and the `%`. The decimal writing (`33.33%`) is plain text.
 - **"/" key** (fraction answers only): a 48 dp circle at the end of the answer field, 12 dp from the field edge, `primaryContainer`
   with the slash in `onPrimaryContainer` (24 sp). Press scale 0.88 like the small icon buttons, light tick haptic.
 - **Automatic `%` sign** (percentage answers only): shown after the typed digits in `onSurfaceVariant`, same size as the answer.
