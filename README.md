@@ -14,7 +14,7 @@ springy press animations. It is a native re-implementation of the original singl
   roots up to 30, cubes and cube roots up to 20) and a timer.
 - **Alphabet Reasoning**: pick a letter range (first and last letter, one slider), one of three challenges (find a letter's
   position, find the letter at a position, or the opposite letter from the other end of the alphabet) and a timer.
-- **Fraction & Percentage**: the 24 unit fractions of the chart (1/2 ... 1/50). Answer in **Fraction** (a percentage such as `33⅓%` or
+- **Fraction & Percentage**: the 24 unit fractions of the chart (1/2 ... 1/50, choose the range with a two-thumb slider). Answer in **Fraction** (a percentage such as `33⅓%` or
   `33.33%` is shown, type `1/3` with the on-screen "/" key) or in **Percentage** (a fraction is shown, type `33.33`; the `%` sign is
   added for you), and a timer.
 - **Shuffled rounds** (Tables, Powers & Roots, Alphabet, Fraction & Percentage): every question is asked once in a random order before any repeats, then a new

@@ -23,15 +23,17 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.ravibhaiya.quizzen.R
 import com.ravibhaiya.quizzen.domain.FractionChallenge
+import com.ravibhaiya.quizzen.domain.FractionRules
 import com.ravibhaiya.quizzen.domain.PracticeConfig
 import com.ravibhaiya.quizzen.ui.components.ChoiceCard
+import com.ravibhaiya.quizzen.ui.components.PillRangeCard
 import com.ravibhaiya.quizzen.ui.components.QuizzenScreen
 import com.ravibhaiya.quizzen.ui.components.ScreenHeader
 import com.ravibhaiya.quizzen.ui.components.SectionTitle
 import com.ravibhaiya.quizzen.ui.components.TimerFooter
 import com.ravibhaiya.quizzen.ui.components.rememberHaptics
 
-/** Setup of Fraction & Percentage: what to answer in (two choices) and the timer. */
+/** Setup of Fraction & Percentage: which fractions (a two-thumb range, 1/2 to 1/50), what to answer in (two choices) and the timer. */
 @Composable
 fun FractionsConfigScreen(
     hapticEnabled: Boolean,
@@ -68,6 +70,25 @@ fun FractionsConfigScreen(
                     style = MaterialTheme.typography.bodyLarge,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     modifier = Modifier.padding(bottom = 20.dp),
+                )
+
+                SectionTitle(R.string.fraction_range)
+                val first = "1/${FractionRules.denominatorAt(state.range.first)}"
+                val last = "1/${FractionRules.denominatorAt(state.range.last)}"
+                PillRangeCard(
+                    range = state.range,
+                    lowest = FractionRules.FIRST,
+                    highest = FractionRules.SIZE,
+                    firstLabel = first,
+                    lastLabel = last,
+                    lowestLabel = "1/${FractionRules.denominatorAt(FractionRules.FIRST)}",
+                    highestLabel = "1/${FractionRules.denominatorAt(FractionRules.SIZE)}",
+                    summary = stringResource(R.string.fraction_range_summary, first, last),
+                    startThumbDescription = stringResource(R.string.fraction_thumb_from),
+                    endThumbDescription = stringResource(R.string.fraction_thumb_to),
+                    onRangeChange = viewModel::onRangeChanged,
+                    onRangeChangeFinished = { haptics.tick() },
+                    modifier = Modifier.padding(bottom = 28.dp),
                 )
 
                 SectionTitle(R.string.answer_in)

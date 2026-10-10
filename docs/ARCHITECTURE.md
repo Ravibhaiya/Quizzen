@@ -25,7 +25,7 @@ Single Gradle module `:app`, single Activity, Compose UI, MVVM with unidirection
 | Multiply config | `MultiplyConfigViewModel` | `firstDigits`, `secondDigits`, `TimerFieldState` | `buildConfig()` -> `PracticeConfig.Multiply`. |
 | Tables config | `TablesConfigViewModel` | `selected: Set<Int>`, `TimerFieldState` | Start disabled until >= 1 number selected. |
 | Powers & Roots config | `PowersRootsConfigViewModel` | selected `PowerRootType`s, one `IntRange` per kind (squares & roots, cubes & roots), `TimerFieldState` | Limits live in `domain/PowersRoots.kt`; the sliders can only make valid ranges, so Start needs just one selected type. |
-| Fractions config | `FractionsConfigViewModel` | `FractionChallenge`, `TimerFieldState` | Two choices (`ChoiceCard`), so Start is always enabled. |
+| Fractions config | `FractionsConfigViewModel` | `FractionChallenge`, `FractionRules` (range places), `TimerFieldState` | Range slider (`PillRangeCard`) and two choices (`ChoiceCard`), so Start is always enabled. |
 | Alphabet config | `AlphabetConfigViewModel` | `AlphabetChallenge`, one `IntRange` of letter positions (A = 1 ... Z = 26), `TimerFieldState` | The slider can only make valid ranges (`AlphabetRules.coerce` is the safety net), so Start is always enabled. |
 | Practice | `PracticeViewModel` | `PracticeUiState` (question, remainingSeconds, answer, feedback, isLocked, shakeCount) | Created with `PracticeViewModel.Factory` reading nav args via `SavedStateHandle`. |
 | App-wide | `SettingsViewModel` (Activity scoped) | `hapticEnabled` | Passed down as a plain `Boolean` + callback. |

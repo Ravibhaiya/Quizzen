@@ -4,6 +4,7 @@ import androidx.lifecycle.SavedStateHandle
 import com.ravibhaiya.quizzen.domain.AlphabetChallenge
 import com.ravibhaiya.quizzen.domain.AlphabetRules
 import com.ravibhaiya.quizzen.domain.FractionChallenge
+import com.ravibhaiya.quizzen.domain.FractionRules
 import com.ravibhaiya.quizzen.domain.PowerRootType
 import com.ravibhaiya.quizzen.domain.PowersRootsRules
 import com.ravibhaiya.quizzen.domain.PracticeConfig
@@ -29,6 +30,8 @@ object Routes {
     const val ARG_CHALLENGE = "ch"
     const val ARG_LETTER_FROM = "lfrom"
     const val ARG_LETTER_TO = "lto"
+    const val ARG_FRACTION_FROM = "ffrom"
+    const val ARG_FRACTION_TO = "fto"
 
     const val MODE_MULTIPLY = "multiply"
     const val MODE_TABLES = "tables"
@@ -40,7 +43,8 @@ object Routes {
         "&$ARG_NUMBERS={$ARG_NUMBERS}&$ARG_SECONDS={$ARG_SECONDS}" +
         "&$ARG_TYPES={$ARG_TYPES}&$ARG_SQ_MIN={$ARG_SQ_MIN}&$ARG_SQ_MAX={$ARG_SQ_MAX}" +
         "&$ARG_CU_MIN={$ARG_CU_MIN}&$ARG_CU_MAX={$ARG_CU_MAX}" +
-        "&$ARG_CHALLENGE={$ARG_CHALLENGE}&$ARG_LETTER_FROM={$ARG_LETTER_FROM}&$ARG_LETTER_TO={$ARG_LETTER_TO}"
+        "&$ARG_CHALLENGE={$ARG_CHALLENGE}&$ARG_LETTER_FROM={$ARG_LETTER_FROM}&$ARG_LETTER_TO={$ARG_LETTER_TO}" +
+        "&$ARG_FRACTION_FROM={$ARG_FRACTION_FROM}&$ARG_FRACTION_TO={$ARG_FRACTION_TO}"
 
     fun practice(config: PracticeConfig): String = when (config) {
         is PracticeConfig.Multiply ->
@@ -59,7 +63,9 @@ object Routes {
                 "&$ARG_SECONDS=${config.timerSeconds}"
         // The challenge travels in the same argument as Alphabet's (the mode says which codes to read).
         is PracticeConfig.Fractions ->
-            "practice/$MODE_FRACTIONS?$ARG_CHALLENGE=${config.challenge.code}&$ARG_SECONDS=${config.timerSeconds}"
+            "practice/$MODE_FRACTIONS?$ARG_CHALLENGE=${config.challenge.code}" +
+                "&$ARG_FRACTION_FROM=${config.range.first}&$ARG_FRACTION_TO=${config.range.last}" +
+                "&$ARG_SECONDS=${config.timerSeconds}"
     }
 }
 
@@ -80,6 +86,8 @@ object PracticeArgs {
         challenge = handle.get<String>(Routes.ARG_CHALLENGE),
         letterFrom = handle.get<Int>(Routes.ARG_LETTER_FROM),
         letterTo = handle.get<Int>(Routes.ARG_LETTER_TO),
+        fractionFrom = handle.get<Int>(Routes.ARG_FRACTION_FROM),
+        fractionTo = handle.get<Int>(Routes.ARG_FRACTION_TO),
     )
 
     fun decode(
@@ -96,6 +104,8 @@ object PracticeArgs {
         challenge: String? = null,
         letterFrom: Int? = null,
         letterTo: Int? = null,
+        fractionFrom: Int? = null,
+        fractionTo: Int? = null,
     ): PracticeConfig {
         val timer = (seconds ?: 0).takeIf { it > 0 } ?: 20
         return when (mode) {
@@ -131,6 +141,7 @@ object PracticeArgs {
             Routes.MODE_FRACTIONS -> PracticeConfig.Fractions(
                 challenge = FractionChallenge.fromCode(challenge) ?: FractionChallenge.Fraction,
                 timerSeconds = timer,
+                range = FractionRules.coerce(fractionFrom ?: FractionRules.FIRST, fractionTo ?: FractionRules.SIZE),
             )
             else -> PracticeConfig.Multiply(
                 firstDigits = (d1 ?: 3).coerceIn(1, 5),

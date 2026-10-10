@@ -31,12 +31,6 @@ private val ScriptSize = 0.55.em
  */
 private val RootIndexNudge = (-0.15).em
 
-/** Size of the numerator and denominator of a mixed number (`33 1/3`) relative to its whole part. */
-private val FractionScriptSize = 0.5.em
-
-/** The gap between the whole part and the small fraction of a mixed number. */
-private val MixedGapSize = 0.25.em
-
 /**
  * How a question is drawn on the Practice screen. The operator (the multiplication sign, the exponent, the root sign) is
  * tinted with [accent], exactly like the orange "x" in the original design:
@@ -44,8 +38,9 @@ private val MixedGapSize = 0.25.em
  *  - square / cube: `17` with a raised `2` / `3`
  *  - square root / cube root: `√784` and a raised `3` in front of the root sign for cube roots
  *  - alphabet: just the letter (`C`) or the place (`3`), in the text colour
- *  - fraction: `1/25` for a fraction to turn into a percentage; for a percentage to turn into a fraction a mixed number with a
- *    small raised numerator and lowered denominator (`33 1/3%`) or the decimal (`33.33%`), as the question was worded
+ *  - fraction: `1/25` for a fraction to turn into a percentage; for a percentage to turn into a fraction a mixed number
+ *    (`33 1/3%`, drawn stacked by MixedPercentText on the Practice screen; this is its plain-text form) or the decimal (`33.33%`),
+ *    as the question was worded
  *  The slash and the percent sign are tinted with [accent], like the other operators.
  *
  * Exponents use a real superscript style instead of the `²` `³` characters so they scale with the text.
@@ -72,17 +67,9 @@ fun Question.toDisplayText(accent: Color): AnnotatedString = buildAnnotatedStrin
                 if (question.decimal) {
                     append(FractionRules.decimalOf(question.denominator))
                 } else {
+                    // Drawn as a stacked fraction by MixedPercentText; this is its plain-text form.
                     append(percent.whole.toString())
-                    if (percent.hasFraction) {
-                        withStyle(SpanStyle(fontSize = MixedGapSize)) { append(" ") }
-                        withStyle(SpanStyle(baselineShift = BaselineShift.Superscript, fontSize = FractionScriptSize)) {
-                            append(percent.numerator.toString())
-                        }
-                        withStyle(SpanStyle(color = accent, fontSize = FractionScriptSize)) { append("/") }
-                        withStyle(SpanStyle(baselineShift = BaselineShift.Subscript, fontSize = FractionScriptSize)) {
-                            append(percent.denominator.toString())
-                        }
-                    }
+                    if (percent.hasFraction) append(" ${percent.numerator}/${percent.denominator}")
                 }
                 withStyle(SpanStyle(color = accent)) { append("%") }
             }

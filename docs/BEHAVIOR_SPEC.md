@@ -41,7 +41,7 @@ Normative description of the app. "Web" = the prototype in `docs/reference/quizz
 ## Remembered settings
 - Each quiz's setup screen opens with the settings it was **last started with**: Multiply (digits of both numbers, timer), Tables
   (selected numbers, timer), Powers & Roots (selected types, both ranges, timer), Alphabet (challenge type, letter range, timer)
-  and Fraction & Percentage (what to answer in, timer).
+  and Fraction & Percentage (fraction range, what to answer in, timer).
   They are saved when **Start** is pressed.
 - The first time (nothing saved) the screen shows its defaults. A saved value that is no longer valid is repaired or replaced by the
   default, and a damaged or unreadable save is treated as "nothing saved"; saving can never crash the app.
@@ -67,6 +67,10 @@ Normative description of the app. "Web" = the prototype in `docs/reference/quizz
 
 ## Fraction & Percentage configuration
 - Title "Fraction & Percentage", subtitle "Configure your challenge".
+- **Fraction Range**: a two-thumb slider (same card as the Alphabet letter range: a pill for each thumb, `1/2` and `1/50` under the
+  ends of the track). The slider works on the places of the 24 fractions of the chart (1 = 1/2 ... 24 = 1/50, in the order below), so
+  every position is a fraction that is asked; default is the whole chart. One place (both thumbs together) is allowed: then that one
+  fraction is asked again and again.
 - **Answer in** (single select, default **Fraction**): two full-width cards (the same cards as the Alphabet challenge types) with a
   radio mark and just the name:
   - **Fraction**: a percentage is shown, type the fraction (`33⅓%` or `33.33%` -> `1/3`).
@@ -111,7 +115,8 @@ Normative description of the app. "Web" = the prototype in `docs/reference/quizz
   shows the correct answer as the number or the capital letter. Screen readers say "letter C", "position 3", "opposite of letter C".
 - Fraction & Percentage quizzes:
   - **Answer in Fraction**: the question is the percentage in the primary-tinted `%` style. A percentage with a fractional part is
-    written either as a mixed number (`33 1/3%`, the fraction small: raised numerator, lowered denominator) or as a decimal
+    written either as a mixed number (`33 1/3%` drawn with a stacked fraction: the whole part, then a half-size numerator over a
+    bar over a half-size denominator centred on it, then `%`) or as a decimal
     rounded to two places (`33.33%`); one of the two is picked at random each time a question is asked (whole percentages such
     as `25%` have only one writing). A question that comes back after a mistake is written exactly as it was missed. The
     answer is typed as digits around one slash (`1/3`, at most 7 characters, never starting with the slash). The number
