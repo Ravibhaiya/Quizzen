@@ -28,7 +28,7 @@ object SettingsCodec {
             "t=${config.timerSeconds}"
 
     fun encode(config: PracticeConfig.Alphabet): String =
-        "ch=${config.challenge.code};l=${config.letters.first}-${config.letters.last};t=${config.timerSeconds}"
+        "ch=${AlphabetChallenge.encode(config.challenges)};l=${config.letters.first}-${config.letters.last};t=${config.timerSeconds}"
 
     fun encode(config: PracticeConfig.Fractions): String =
         "fc=${FractionChallenge.encode(config.challenges)};f=${config.range.first}-${config.range.last};t=${config.timerSeconds}"
@@ -68,8 +68,10 @@ object SettingsCodec {
     fun decodeAlphabet(text: String?, defaultTimer: Int): PracticeConfig.Alphabet? {
         val values = parse(text) ?: return null
         val letters = values["l"].orEmpty().split('-')
+        val challenges = AlphabetChallenge.decode(values["ch"])
+        if (challenges.isEmpty()) return null
         return PracticeConfig.Alphabet(
-            challenge = AlphabetChallenge.fromCode(values["ch"]) ?: return null,
+            challenges = challenges,
             letters = AlphabetRules.coerce(
                 from = letters.getOrNull(0)?.toIntOrNull() ?: AlphabetRules.FIRST,
                 to = letters.getOrNull(1)?.toIntOrNull() ?: AlphabetRules.SIZE,

@@ -17,9 +17,26 @@ class QuestionPoolTest {
 
     @Test
     fun alphabet_isEveryLetterOfTheRange_eachOnce() {
-        val pool = QuestionPool.of(PracticeConfig.Alphabet(AlphabetChallenge.FindLetter, letters = 5..9, timerSeconds = 10))!!
+        val pool = QuestionPool.of(PracticeConfig.Alphabet(setOf(AlphabetChallenge.FindLetter), letters = 5..9, timerSeconds = 10))!!
         assertEquals((5..9).map { AlphabetQuestion(AlphabetChallenge.FindLetter, it) }, pool)
-        assertEquals(26, QuestionPool.of(PracticeConfig.Alphabet(AlphabetChallenge.FindPosition, AlphabetRules.FULL, 10))!!.size)
+        assertEquals(26, QuestionPool.of(PracticeConfig.Alphabet(setOf(AlphabetChallenge.FindPosition), AlphabetRules.FULL, 10))!!.size)
+    }
+
+    @Test
+    fun alphabet_withSeveralWays_everyLetterIsAskedInEachWay() {
+        val config = PracticeConfig.Alphabet(
+            setOf(AlphabetChallenge.FindPosition, AlphabetChallenge.ReverseLetter), letters = 5..7, timerSeconds = 10,
+        )
+        val pool = QuestionPool.of(config)!!
+        assertEquals(6, pool.size)
+        assertEquals(setOf(5, 6, 7), pool.map { (it as AlphabetQuestion).position }.toSet())
+        assertEquals(3, pool.count { (it as AlphabetQuestion).challenge == AlphabetChallenge.FindPosition })
+        assertEquals(3, pool.count { (it as AlphabetQuestion).challenge == AlphabetChallenge.ReverseLetter })
+    }
+
+    @Test
+    fun alphabet_needsAtLeastOneWay() {
+        assertTrue(runCatching { PracticeConfig.Alphabet(emptySet(), AlphabetRules.FULL, 10) }.exceptionOrNull() is IllegalArgumentException)
     }
 
     @Test

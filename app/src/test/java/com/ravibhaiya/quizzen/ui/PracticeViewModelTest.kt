@@ -174,13 +174,16 @@ class PracticeViewModelTest {
     // ---- Alphabet Reasoning ----
 
     private fun alphabet(challenge: AlphabetChallenge, letters: IntRange = 3..3) =
-        PracticeViewModel(PracticeConfig.Alphabet(challenge, letters, timerSeconds = 10), SequenceGenerator())
+        PracticeViewModel(PracticeConfig.Alphabet(setOf(challenge), letters, timerSeconds = 10), SequenceGenerator())
 
     @Test
     fun alphabetRouteRoundTrips() {
-        val config = PracticeConfig.Alphabet(AlphabetChallenge.ReverseLetter, letters = 4..20, timerSeconds = 15)
+        val config = PracticeConfig.Alphabet(setOf(AlphabetChallenge.ReverseLetter), letters = 4..20, timerSeconds = 15)
         val route = Routes.practice(config)
         assertEquals("practice/alphabet?ch=rev&lfrom=4&lto=20&seconds=15", route)
+        val both = PracticeConfig.Alphabet(setOf(AlphabetChallenge.ReverseLetter, AlphabetChallenge.FindLetter), 1..26, 10)
+        assertEquals("practice/alphabet?ch=let-rev&lfrom=1&lto=26&seconds=10", Routes.practice(both))
+        assertEquals(both, PracticeArgs.decode("alphabet", null, null, null, 10, challenge = "rev-let", letterFrom = 1, letterTo = 26))
 
         val decoded = PracticeArgs.decode("alphabet", null, null, null, 15, challenge = "rev", letterFrom = 4, letterTo = 20)
         assertEquals(config, decoded)
@@ -190,7 +193,7 @@ class PracticeViewModelTest {
     fun alphabetDecodingRepairsBadArguments() {
         val decoded = PracticeArgs.decode("alphabet", null, null, null, 0, challenge = "nonsense", letterFrom = 99, letterTo = 1)
         decoded as PracticeConfig.Alphabet
-        assertEquals(AlphabetChallenge.FindPosition, decoded.challenge)
+        assertEquals(setOf(AlphabetChallenge.FindPosition), decoded.challenges)
         assertEquals(26..26, decoded.letters) // start pulled inside the alphabet, end never before it
         assertEquals(20, decoded.timerSeconds)
     }

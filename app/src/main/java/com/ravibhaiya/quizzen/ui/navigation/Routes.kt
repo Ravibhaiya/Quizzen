@@ -58,7 +58,7 @@ object Routes {
                 "&$ARG_SQ_MIN=${config.squares.first}&$ARG_SQ_MAX=${config.squares.last}" +
                 "&$ARG_CU_MIN=${config.cubes.first}&$ARG_CU_MAX=${config.cubes.last}&$ARG_SECONDS=${config.timerSeconds}"
         is PracticeConfig.Alphabet ->
-            "practice/$MODE_ALPHABET?$ARG_CHALLENGE=${config.challenge.code}" +
+            "practice/$MODE_ALPHABET?$ARG_CHALLENGE=${AlphabetChallenge.encode(config.challenges)}" +
                 "&$ARG_LETTER_FROM=${config.letters.first}&$ARG_LETTER_TO=${config.letters.last}" +
                 "&$ARG_SECONDS=${config.timerSeconds}"
         // The challenge travels in the same argument as Alphabet's (the mode says which codes to read).
@@ -134,7 +134,7 @@ object PracticeArgs {
                 )
             }
             Routes.MODE_ALPHABET -> PracticeConfig.Alphabet(
-                challenge = AlphabetChallenge.fromCode(challenge) ?: AlphabetChallenge.FindPosition,
+                challenges = AlphabetChallenge.decode(challenge).ifEmpty { setOf(AlphabetChallenge.FindPosition) },
                 letters = AlphabetRules.coerce(letterFrom ?: AlphabetRules.FIRST, letterTo ?: AlphabetRules.SIZE),
                 timerSeconds = timer,
             )

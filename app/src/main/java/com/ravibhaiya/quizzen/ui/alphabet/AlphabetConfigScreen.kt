@@ -96,8 +96,9 @@ fun AlphabetConfigScreen(
                     AlphabetChallenge.entries.forEach { challenge ->
                         ChoiceCard(
                             title = stringResource(challenge.titleRes()),
-                            selected = challenge == state.challenge,
-                            onClick = { haptics.tick(); viewModel.selectChallenge(challenge) },
+                            selected = challenge in state.challenges,
+                            onClick = { haptics.tick(); viewModel.toggleChallenge(challenge) },
+                            multiSelect = true,
                         )
                     }
                 }
