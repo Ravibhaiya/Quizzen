@@ -7,7 +7,7 @@ object QuestionPool {
      * All questions of [config], each exactly once, or `null` when there are too many to list (Multiply) or nothing is
      * selected. Tables: every chosen table number times 1 to 10. Powers & Roots: every base number in the kind's range, for
      * every chosen kind. Alphabet: every letter of the range, once.
-     * Fractions: every unit fraction of the chart inside the chosen range, once.
+     * Fractions: every unit fraction of the chart inside the chosen range, once in each chosen direction.
      */
     fun of(config: PracticeConfig): List<Question>? {
         val questions: List<Question> = when (config) {
@@ -18,7 +18,12 @@ object QuestionPool {
                 }
             }
             is PracticeConfig.Alphabet -> config.letters.map { AlphabetQuestion(config.challenge, it) }
-            is PracticeConfig.Fractions -> FractionRules.denominatorsIn(config.range).map { FractionQuestion(config.challenge, it) }
+            is PracticeConfig.Fractions -> {
+                val denominators = FractionRules.denominatorsIn(config.range)
+                FractionChallenge.entries.filter { it in config.challenges }.flatMap { challenge ->
+                    denominators.map { FractionQuestion(challenge, it) }
+                }
+            }
             is PracticeConfig.PowersRoots -> config.types.flatMap { type ->
                 config.rangeOf(type).map { base ->
                     when (type) {

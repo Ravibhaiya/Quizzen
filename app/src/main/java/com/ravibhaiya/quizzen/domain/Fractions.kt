@@ -15,6 +15,12 @@ enum class FractionChallenge(val code: String) {
 
     companion object {
         fun fromCode(code: String?): FractionChallenge? = entries.firstOrNull { it.code == code }
+
+        /** The chosen directions as text (`fra`, `per` or `fra-per`), in a fixed order; used by saved settings and routes. */
+        fun encode(challenges: Set<FractionChallenge>): String = entries.filter { it in challenges }.joinToString("-") { it.code }
+
+        /** The inverse of [encode]; codes that are not directions are ignored, so a damaged text gives an empty set. */
+        fun decode(text: String?): Set<FractionChallenge> = text.orEmpty().split('-').mapNotNull(::fromCode).toSet()
     }
 }
 

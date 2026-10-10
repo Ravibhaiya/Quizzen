@@ -16,6 +16,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -45,9 +46,10 @@ fun SectionTitle(@StringRes title: Int) {
 }
 
 /**
- * One full-width choice (single select), just its name: the Alphabet challenge types and the Fraction & Percentage direction.
- * Same selection language as the option chips and the table cells: primary fill with a soft coloured shadow when chosen,
- * plain `surfaceContainer` otherwise; a radio mark on the left says "pick one".
+ * One full-width choice, just its name: the Alphabet challenge types (pick one) and the Fraction & Percentage directions (pick
+ * one or more, [multiSelect]). Same selection language as the option chips and the table cells: primary fill with a soft
+ * coloured shadow when chosen, plain `surfaceContainer` otherwise; a radio mark on the left says "pick one", a check box says
+ * "pick any".
  */
 @Composable
 fun ChoiceCard(
@@ -55,6 +57,7 @@ fun ChoiceCard(
     selected: Boolean,
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
+    multiSelect: Boolean = false,
 ) {
     val colors = MaterialTheme.colorScheme
     val shape = RoundedCornerShape(24.dp)
@@ -85,7 +88,7 @@ fun ChoiceCard(
             .clickable(
                 interactionSource = source,
                 indication = LocalIndication.current,
-                role = Role.RadioButton,
+                role = if (multiSelect) Role.Checkbox else Role.RadioButton,
                 onClick = onClick,
             )
             .semantics { this.selected = selected }
@@ -93,13 +96,32 @@ fun ChoiceCard(
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(16.dp),
     ) {
-        RadioMark(selected = selected, color = content)
+        if (multiSelect) {
+            CheckMark(selected = selected, color = content, checkTint = container)
+        } else {
+            RadioMark(selected = selected, color = content)
+        }
         Text(
             text = title,
             style = MaterialTheme.typography.bodyMedium.copy(fontSize = 16.32.sp, fontWeight = FontWeight.Bold),
             color = content,
             modifier = Modifier.weight(1f),
         )
+    }
+}
+
+/** The check box of a multi-select card: a rounded square, filled with a check when chosen. */
+@Composable
+private fun CheckMark(selected: Boolean, color: Color, checkTint: Color) {
+    val shape = RoundedCornerShape(7.dp)
+    Box(
+        modifier = Modifier
+            .size(24.dp)
+            .border(2.dp, color, shape)
+            .background(if (selected) color else Color.Transparent, shape),
+        contentAlignment = Alignment.Center,
+    ) {
+        if (selected) Icon(QuizzenIcons.CheckBold, contentDescription = null, tint = checkTint, modifier = Modifier.size(14.dp))
     }
 }
 

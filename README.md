@@ -15,8 +15,8 @@ springy press animations. It is a native re-implementation of the original singl
 - **Alphabet Reasoning**: pick a letter range (first and last letter, one slider), one of three challenges (find a letter's
   position, find the letter at a position, or the opposite letter from the other end of the alphabet) and a timer.
 - **Fraction & Percentage**: the 24 unit fractions of the chart (1/2 ... 1/50, choose the range with a two-thumb slider). Answer in **Fraction** (a percentage such as `33⅓%` or
-  `33.33%` is shown, type `1/3` with the on-screen "/" key) or in **Percentage** (a fraction is shown, type `33.33`; the `%` sign is
-  added for you), and a timer.
+  `33.33%` is shown, type `1/3` with the on-screen "/" key), in **Percentage** (a fraction is shown, type `33.33`; the `%` sign is
+  added for you) or in both mixed together, and a timer.
 - **Shuffled rounds** (Tables, Powers & Roots, Alphabet, Fraction & Percentage): every question is asked once in a random order before any repeats, then a new
   shuffle, forever.
 - **Mistake repeats** (Tables, Powers & Roots, Alphabet, Fraction & Percentage): a wrong answer brings the same question back 3 times, a slow one 2 times, within

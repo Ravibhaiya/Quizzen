@@ -64,13 +64,18 @@ sealed interface PracticeConfig {
 
     /**
      * Fraction & Percentage: the unit fractions of the chart ([FractionRules.DENOMINATORS]) at the places [range] (1 = 1/2 ...
-     * [FractionRules.SIZE] = 1/50), always in one [challenge] direction.
+     * [FractionRules.SIZE] = 1/50), asked in the directions of [challenges] (one or both; with both every fraction is asked in
+     * each direction, mixed together).
      */
     data class Fractions(
-        val challenge: FractionChallenge,
+        val challenges: Set<FractionChallenge>,
         override val timerSeconds: Int,
         val range: IntRange = FractionRules.FULL,
     ) : PracticeConfig {
+        init {
+            require(challenges.isNotEmpty()) { "at least one direction must be chosen" }
+        }
+
         override val repeatsMistakes: Boolean get() = true
     }
 }

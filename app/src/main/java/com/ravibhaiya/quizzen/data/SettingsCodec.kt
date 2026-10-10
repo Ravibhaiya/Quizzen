@@ -31,7 +31,7 @@ object SettingsCodec {
         "ch=${config.challenge.code};l=${config.letters.first}-${config.letters.last};t=${config.timerSeconds}"
 
     fun encode(config: PracticeConfig.Fractions): String =
-        "fc=${config.challenge.code};f=${config.range.first}-${config.range.last};t=${config.timerSeconds}"
+        "fc=${FractionChallenge.encode(config.challenges)};f=${config.range.first}-${config.range.last};t=${config.timerSeconds}"
 
     fun decodeMultiply(text: String?, defaultTimer: Int): PracticeConfig.Multiply? {
         val values = parse(text) ?: return null
@@ -81,8 +81,10 @@ object SettingsCodec {
     fun decodeFractions(text: String?, defaultTimer: Int): PracticeConfig.Fractions? {
         val values = parse(text) ?: return null
         val places = values["f"].orEmpty().split('-')
+        val challenges = FractionChallenge.decode(values["fc"])
+        if (challenges.isEmpty()) return null
         return PracticeConfig.Fractions(
-            challenge = FractionChallenge.fromCode(values["fc"]) ?: return null,
+            challenges = challenges,
             timerSeconds = timer(values["t"], defaultTimer),
             // A save from before the range existed has no "f": every fraction.
             range = FractionRules.coerce(
