@@ -21,12 +21,14 @@ import com.ravibhaiya.quizzen.domain.FractionRules
 import com.ravibhaiya.quizzen.domain.PowersRootsRules
 import com.ravibhaiya.quizzen.ui.components.EmphasizedEasing
 import com.ravibhaiya.quizzen.ui.alphabet.AlphabetConfigScreen
+import com.ravibhaiya.quizzen.ui.database.DatabaseManagerScreen
 import com.ravibhaiya.quizzen.ui.fractions.FractionsConfigScreen
 import com.ravibhaiya.quizzen.ui.home.HomeScreen
 import com.ravibhaiya.quizzen.ui.multiply.MultiplyConfigScreen
 import com.ravibhaiya.quizzen.ui.powers.PowersRootsConfigScreen
 import com.ravibhaiya.quizzen.ui.practice.PracticeScreen
 import com.ravibhaiya.quizzen.ui.tables.TablesConfigScreen
+import com.ravibhaiya.quizzen.ui.vocabulary.VocabularyManagerScreen
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.ui.unit.dp
 
@@ -66,6 +68,20 @@ fun QuizzenNavHost(
                 onOpenPowers = { navController.navigate(Routes.POWERS) },
                 onOpenFractions = { navController.navigate(Routes.FRACTIONS) },
                 onOpenAlphabet = { navController.navigate(Routes.ALPHABET) },
+                onOpenDatabaseManager = { navController.navigate(Routes.DATABASE_MANAGER) },
+            )
+        }
+        composable(Routes.DATABASE_MANAGER) {
+            DatabaseManagerScreen(
+                hapticEnabled = hapticEnabled,
+                onBack = { navController.popBackStack() },
+                onOpenVocabulary = { navController.navigate(Routes.VOCABULARY_MANAGER) },
+            )
+        }
+        composable(Routes.VOCABULARY_MANAGER) {
+            VocabularyManagerScreen(
+                hapticEnabled = hapticEnabled,
+                onBack = { navController.popBackStack() },
             )
         }
         composable(Routes.MULTIPLY) {

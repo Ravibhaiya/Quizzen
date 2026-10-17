@@ -101,4 +101,50 @@
     <string name="feedback_incorrect_sub">The correct answer was %1$s</string>
     <string name="feedback_timeout_title">Time\'s Up</string>
     <string name="feedback_timeout_sub">The answer was %1$s — here\'s a fresh one</string>
+
+    <!-- Database Manager -->
+    <string name="database_manager_subtitle">Select a category to manage data</string>
+
+    <!-- Vocabulary Manager -->
+    <string name="vocabulary_subtitle">Manage words, synonyms, and antonyms</string>
+    <string name="vocabulary_search_placeholder">Search words, meanings, or synonyms…</string>
+    <string name="cd_search_words">Search words</string>
+    <string name="cd_close_search">Close search</string>
+    <string name="cd_clear_search">Clear search</string>
+    <string name="cd_dismiss_error">Dismiss error</string>
+    <string name="cd_edit_word">Edit %1$s</string>
+    <string name="cd_delete_word">Delete %1$s</string>
+    <string name="cd_expand_word">Expand %1$s</string>
+    <string name="cd_collapse_word">Collapse %1$s</string>
+    <string name="cd_close_sheet">Close</string>
+    <string name="add_word">Add Word</string>
+    <string name="save_word">Save Word</string>
+    <string name="save_words">Save Words</string>
+    <string name="add_words_json_title">Add Words (JSON)</string>
+    <string name="add_words_json_subtitle">Paste a JSON array of words or a single word JSON object</string>
+    <string name="edit_word_json_title">Edit \"%1$s\" (JSON)</string>
+    <string name="edit_word_json_subtitle">Edit the JSON for this specific word</string>
+    <string name="json_payload_label">JSON Data</string>
+    <string name="insert_json_template">Insert Template</string>
+    <string name="hint_bulk_words_json">[\n  {\n    \"word\": \"Diligent\",\n    \"meaningEnglish\": \"Hard-working\",\n    \"meaningHinglish\": \"Mehanti\",\n    \"exampleSentence\": \"She is a diligent student.\",\n    \"synonyms\": [\n      {\n        \"word\": \"Industrious\",\n        \"meaningEnglish\": \"Assiduous\",\n        \"meaningHinglish\": \"Parishrami\",\n        \"exampleSentence\": \"An industrious team.\"\n      }\n    ],\n    \"antonyms\": [\n      {\n        \"word\": \"Lazy\",\n        \"meaningEnglish\": \"Idle\",\n        \"meaningHinglish\": \"Aalsi\",\n        \"exampleSentence\": \"Do not be lazy.\"\n      }\n    ]\n  }\n]</string>
+    <string name="hint_single_word_json">{\n  \"word\": \"\",\n  \"meaningEnglish\": \"\",\n  \"meaningHinglish\": \"\",\n  \"exampleSentence\": \"\",\n  \"synonyms\": [],\n  \"antonyms\": []\n}</string>
+    <string name="word_count_badge">%1$d</string>
+    <string name="vocabulary_empty_title">No words yet</string>
+    <string name="vocabulary_empty_subtitle">Add your vocabulary words in JSON format with English and Hinglish meanings, example sentence, synonyms, and antonyms.</string>
+    <string name="vocabulary_no_matches_title">No matching words</string>
+    <string name="vocabulary_no_matches_subtitle">Try searching with a different word or meaning.</string>
+    <string name="field_word">Word</string>
+    <string name="field_meaning_english">Meaning in English</string>
+    <string name="field_meaning_hinglish">Meaning in Hinglish</string>
+    <string name="field_example_sentence">Example sentence</string>
+    <string name="section_word_details">Word Details</string>
+    <string name="section_synonyms">Synonyms</string>
+    <string name="section_antonyms">Antonyms</string>
+    <string name="no_synonyms_added">No synonyms added</string>
+    <string name="no_antonyms_added">No antonyms added</string>
+    <string name="value_not_provided">—</string>
+    <string name="delete_word_title">Delete \"%1$s\"?</string>
+    <string name="delete_word_message">This will permanently remove this word along with its synonyms and antonyms.</string>
+    <string name="cancel">Cancel</string>
+    <string name="delete">Delete</string>
 </resources>

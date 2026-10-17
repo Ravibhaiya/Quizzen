@@ -16,6 +16,8 @@ object Routes {
     const val POWERS = "powers"
     const val ALPHABET = "alphabet"
     const val FRACTIONS = "fractions"
+    const val DATABASE_MANAGER = "database_manager"
+    const val VOCABULARY_MANAGER = "vocabulary_manager"
 
     const val ARG_MODE = "mode"
     const val ARG_D1 = "d1"

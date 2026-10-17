@@ -55,6 +55,7 @@ fun HomeScreen(
     onOpenPowers: () -> Unit,
     onOpenFractions: () -> Unit,
     onOpenAlphabet: () -> Unit,
+    onOpenDatabaseManager: () -> Unit = {},
 ) {
     var showSettings by rememberSaveable { mutableStateOf(false) }
     val pagerState = rememberPagerState { 2 }
@@ -141,8 +142,9 @@ fun HomeScreen(
                 if (enabled) confirmHaptics.click() else haptics.tick()
             },
             onDatabaseManager = {
+                haptics.click()
                 showSettings = false
-                notify()
+                onOpenDatabaseManager()
             },
             onDismiss = { showSettings = false },
         )

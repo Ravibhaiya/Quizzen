@@ -102,4 +102,41 @@ object QuizzenIcons {
             "M4 11v6c0 1.7 3.6 3 8 3s8-1.3 8-3v-6",
         )
     }
+
+    val Plus: ImageVector by lazy { strokeIcon("Plus", 2.4f, "M12 5v14", "M5 12h14") }
+    val ChevronDown: ImageVector by lazy { strokeIcon("ChevronDown", 2.4f, "M6 9l6 6 6-6") }
+
+    val Search: ImageVector by lazy {
+        strokeIcon(
+            "Search", 2f,
+            "M3 11a8 8 0 1 0 16 0a8 8 0 1 0-16 0",
+            "M21 21l-4.35-4.35",
+        )
+    }
+
+    val Edit: ImageVector by lazy {
+        strokeIcon(
+            "Edit", 2f,
+            "M17 3a2.83 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z",
+        )
+    }
+
+    val Trash: ImageVector by lazy {
+        strokeIcon(
+            "Trash", 2f,
+            "M3 6h18",
+            "M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2",
+            "M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6",
+            "M10 11v6",
+            "M14 11v6",
+        )
+    }
+
+    val BookOpen: ImageVector by lazy {
+        strokeIcon(
+            "BookOpen", 2f,
+            "M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z",
+            "M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z",
+        )
+    }
 }

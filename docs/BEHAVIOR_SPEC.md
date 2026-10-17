@@ -26,8 +26,24 @@ Normative description of the app. "Web" = the prototype in `docs/reference/quizz
 
 ## Settings sheet (modal bottom sheet)
 - **Haptic Feedback** switch, default on, persisted. Toggling on gives a confirmation tick.
-- **Database Manager** row (placeholder: closes the sheet, shows "Coming soon").
+- **Database Manager** row -> closes the sheet and navigates to the **Database Manager** screen.
 - Dismiss by scrim tap, drag down, or back.
+
+## Database Manager
+- Header: back, "Database Manager", subtitle "Select a category to manage data".
+- Shows all options from the Language section:
+  - Hero card **Vocabulary** ("V") -> opens **Vocabulary** manager screen.
+  - Tiles **Fixed Preposition** ("F") and **Phrasal Verb** ("P") -> show the "Coming soon" snackbar.
+
+## Vocabulary Manager
+- Header: back, "Vocabulary", word count pill, and a Search icon button in the top-right (where the `+` icon used to be) that toggles the search bar; sticky bottom "Add Word" button.
+- Search bar (when toggled open from the top header) filters words in real time across the headword, meanings (English/Hinglish), example sentence, and any synonym or antonym.
+- Word cards remain collapsed by default (even right after adding or editing) and show only the word with its initial badge, edit button, delete button, and expand/collapse arrow button. Tapping the arrow button opens or closes the card to reveal full **Word**, **Meaning in English**, **Meaning in Hinglish**, and **Example sentence** for the main word and for each synonym and antonym.
+- Add / Edit modal bottom sheet uses JSON format:
+  - **Add Words (JSON)**: accepts a JSON array (`[...]`) or single JSON object (`{...}`) to save multiple words (along with their synonyms and antonyms) at once, with an "Insert Template" shortcut.
+  - **Edit Word (JSON)**: shows and edits only the JSON object for that specific word.
+- Delete button opens a confirmation sheet before removing the word.
+- Stored in Cloud Firestore (`vocabulary` collection) with a versioned, future-proof schema (`schemaVersion`, `category`, normalized search/index fields, nested `wordDetails`, `synonyms`, `antonyms`, `createdAt`, `updatedAt`), post-write verification checks, and an inline error banner if saving or fetching from Firebase fails.
 
 ## Multiply configuration
 - "Digits in 1st Number": 2/3/4/5 (default **3**). "Digits in 2nd Number": 2/3/4/5 (default **2**). Single choice each.
