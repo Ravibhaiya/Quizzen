@@ -14,7 +14,7 @@ Single Gradle module `:app`, single Activity, Compose UI, MVVM with unidirection
 | Layer | Package | Rules |
 |-------|---------|-------|
 | domain | `domain/` | Pure Kotlin. `Question` (sealed: `ProductQuestion`, `PowerQuestion`, `RootQuestion`, `AlphabetQuestion`, `FractionQuestion`; `answerKind` / `answerText` / `isCorrect` say what is typed and how it is checked, `asked(random)` lets a question pick its wording), `Feedback`, `PracticeConfig` (Multiply / Tables / PowersRoots / Alphabet / Fractions), `QuestionGenerator`, `TimerInput`, `PowersRootsRules` (limits 30 / 20, validation), `AlphabetChallenge` + `AlphabetRules` (letters as positions 1..26, opposite letter, range validation), `FractionChallenge` + `FractionRules` (the 24 denominators, percentage as a mixed number or decimal worked out from n, fraction and percentage answer checking). No Android imports. |
-| data | `data/` | One DataStore file (`QuizzenDataStore`). `SettingsRepository` (`haptic_enabled`, default `true`) and `QuizSettingsRepository`: the last-used setup of each quiz, one short text per quiz written by `SettingsCodec` (pure Kotlin, repairs bad values on read). |
+| data | `data/` | `VocabularyRepository` (Cloud Firestore + a versioned JSON offline cache file). One DataStore file (`QuizzenDataStore`). `SettingsRepository` (`haptic_enabled`, default `true`) and `QuizSettingsRepository`: the last-used setup of each quiz, one short text per quiz written by `SettingsCodec` (pure Kotlin, repairs bad values on read). |
 | ui | `ui/*` | Feature packages with `Screen` + `ViewModel`. `components/` shared widgets. `theme/` design tokens. `navigation/` routes + NavHost. |
 
 ## Screens and state

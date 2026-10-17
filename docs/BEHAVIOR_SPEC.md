@@ -38,12 +38,14 @@ Normative description of the app. "Web" = the prototype in `docs/reference/quizz
 ## Vocabulary Manager
 - Header: back, "Vocabulary", word count pill, and a Search icon button in the top-right (where the `+` icon used to be) that toggles the search bar; sticky bottom "Add Word" button.
 - Search bar (when toggled open from the top header) filters words in real time across the headword, meanings (English/Hinglish), example sentence, and any synonym or antonym.
-- Word cards remain collapsed by default (even right after adding or editing) and show only the word with its initial badge, edit button, delete button, and expand/collapse arrow button. Tapping the arrow button opens or closes the card to reveal full **Word**, **Meaning in English**, **Meaning in Hinglish**, and **Example sentence** for the main word and for each synonym and antonym.
+- Word cards remain collapsed by default (even right after adding or editing) and show only the word with its initial badge, two small count pills under the word (e.g. "2 synonyms", "0 antonyms"), edit button, delete button, and expand/collapse arrow button. Tapping the arrow button opens or closes the card to reveal full **Word**, **Meaning in English**, **Meaning in Hinglish**, and **Example sentence** for the main word and for each synonym and antonym.
 - Add / Edit modal bottom sheet uses JSON format:
   - **Add Words (JSON)**: accepts a JSON array (`[...]`) or single JSON object (`{...}`) to save multiple words (along with their synonyms and antonyms) at once, with an "Insert Template" shortcut.
   - **Edit Word (JSON)**: shows and edits only the JSON object for that specific word.
 - Delete button opens a confirmation sheet before removing the word.
-- Stored in Cloud Firestore (`vocabulary` collection) with a versioned, future-proof schema (`schemaVersion`, `category`, normalized search/index fields, nested `wordDetails`, `synonyms`, `antonyms`, `createdAt`, `updatedAt`), post-write verification checks, and an inline error banner if saving or fetching from Firebase fails.
+- Stored in Cloud Firestore (`vocabulary` collection), one document per word, with a versioned schema (`schemaVersion` = 2; `category`; search/index fields `wordLowercase`, `synonymWords`, `antonymWords`; the word fields only inside nested `wordDetails`, `synonyms`, `antonyms`; `createdAt`/`updatedAt` stamped by the Firestore server). Version 1 documents (with duplicated top-level word fields) are still read and are upgraded the next time they are saved.
+- Saving: words repeated inside one import (same word, any capitalization) are merged into one (the last one wins), and repeated synonyms/antonyms inside a word are collapsed. Writes go out in batches of at most 400 documents (Firestore's limit is 500), each with its own timeout, and every batch is read back and verified in parallel. An inline error banner shows if saving or fetching fails. Stored synonym/antonym items that cannot be read are skipped and logged.
+- Offline copy: a versioned JSON file in app storage (`vocabulary_cache.json`); the older DataStore text copy is read once and then removed.
 
 ## Multiply configuration
 - "Digits in 1st Number": 2/3/4/5 (default **3**). "Digits in 2nd Number": 2/3/4/5 (default **2**). Single choice each.

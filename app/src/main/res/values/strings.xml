@@ -142,6 +142,14 @@
     <string name="section_antonyms">Antonyms</string>
     <string name="no_synonyms_added">No synonyms added</string>
     <string name="no_antonyms_added">No antonyms added</string>
+    <plurals name="synonym_count">
+        <item quantity="one">%1$d synonym</item>
+        <item quantity="other">%1$d synonyms</item>
+    </plurals>
+    <plurals name="antonym_count">
+        <item quantity="one">%1$d antonym</item>
+        <item quantity="other">%1$d antonyms</item>
+    </plurals>
     <string name="value_not_provided">—</string>
     <string name="delete_word_title">Delete \"%1$s\"?</string>
     <string name="delete_word_message">This will permanently remove this word along with its synonyms and antonyms.</string>

@@ -63,6 +63,33 @@ object VocabularyRules {
     }
 
     /**
+     * Collapses entries that share the same word (case-insensitive) into one: the last occurrence wins,
+     * it keeps the position of the first, and it inherits a missing id / earlier creation time.
+     * Duplicate synonyms and antonyms inside an entry (same word, case-insensitive) are also collapsed,
+     * keeping the first. Used before saving so one import can never create two documents for a word.
+     */
+    fun mergeDuplicateWords(entries: List<VocabularyEntry>): List<VocabularyEntry> {
+        val byWord = LinkedHashMap<String, VocabularyEntry>()
+        for (raw in entries) {
+            val entry = raw.copy(
+                synonyms = raw.synonyms.distinctBy { it.word.trim().lowercase() },
+                antonyms = raw.antonyms.distinctBy { it.word.trim().lowercase() },
+            )
+            val key = entry.wordDetails.word.trim().lowercase()
+            val previous = byWord[key]
+            byWord[key] = if (previous == null) {
+                entry
+            } else {
+                entry.copy(
+                    id = entry.id.ifBlank { previous.id },
+                    createdAt = listOf(entry.createdAt, previous.createdAt).filter { it > 0L }.minOrNull() ?: 0L,
+                )
+            }
+        }
+        return byWord.values.toList()
+    }
+
+    /**
      * Case-insensitive search across the primary word, its meanings/example, and all synonyms and antonyms.
      */
     fun matchesSearch(entry: VocabularyEntry, query: String): Boolean {
@@ -344,7 +371,14 @@ object VocabularyJsonFormat {
         return sb.toString()
     }
 
-    private fun escapeJson(value: String): String = buildString {
+    /** Parses any JSON text into Map / List / String / Number / Boolean / null, or returns null if invalid. */
+    internal fun parseTree(text: String): Any? = try {
+        JsonTokenizer(text.trim()).parseValue()
+    } catch (e: JsonSyntaxException) {
+        null
+    }
+
+    internal fun escapeJson(value: String): String = buildString {
         append('"')
         for (ch in value) {
             when (ch) {

@@ -204,4 +204,46 @@ class VocabularyRulesTest {
         assertEquals(entries[0].synonyms, singleEntry.synonyms)
         assertEquals(entries[0].antonyms, singleEntry.antonyms)
     }
+
+    @Test
+    fun `mergeDuplicateWords keeps one entry per word and the last one wins`() {
+        val first = VocabularyEntry(
+            id = "a",
+            wordDetails = WordDetails(word = "Diligent", meaningEnglish = "Hard-working"),
+            createdAt = 5L,
+        )
+        val other = VocabularyEntry(wordDetails = WordDetails(word = "Lazy", meaningEnglish = "Idle"))
+        val repeat = VocabularyEntry(
+            wordDetails = WordDetails(word = "  diligent ", meaningEnglish = "Industrious"),
+            createdAt = 9L,
+        )
+
+        val merged = VocabularyRules.mergeDuplicateWords(listOf(first, other, repeat))
+
+        assertEquals(listOf("diligent ", "Lazy").map { it.trim().lowercase() }, merged.map { it.wordDetails.word.trim().lowercase() })
+        assertEquals("Industrious", merged[0].wordDetails.meaningEnglish)
+        assertEquals("a", merged[0].id)
+        assertEquals(5L, merged[0].createdAt)
+    }
+
+    @Test
+    fun `mergeDuplicateWords drops repeated synonyms and antonyms inside an entry`() {
+        val entry = VocabularyEntry(
+            wordDetails = WordDetails(word = "Quick", meaningEnglish = "Fast"),
+            synonyms = listOf(
+                WordDetails(word = "Fast", meaningEnglish = "Rapid"),
+                WordDetails(word = "FAST", meaningEnglish = "Rapid again"),
+                WordDetails(word = "Swift", meaningEnglish = "Speedy"),
+            ),
+            antonyms = listOf(
+                WordDetails(word = "Slow", meaningEnglish = "Not fast"),
+                WordDetails(word = "slow", meaningEnglish = "Not fast"),
+            ),
+        )
+
+        val merged = VocabularyRules.mergeDuplicateWords(listOf(entry)).single()
+
+        assertEquals(listOf("Fast", "Swift"), merged.synonyms.map { it.word })
+        assertEquals(listOf("Slow"), merged.antonyms.map { it.word })
+    }
 }

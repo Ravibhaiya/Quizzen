@@ -21,9 +21,14 @@ android {
         resourceConfigurations += listOf("en")
     }
 
+    // A shared debug key (`debug.keystore` in the project root, never committed) keeps debug APKs signed the same on every
+    // machine. When the file is absent (CI, fresh clones) the debug build falls back to Android's automatically generated
+    // debug key instead of failing with "Keystore file not found".
+    val sharedDebugKeystore = file("${rootDir}/debug.keystore")
+
     signingConfigs {
         create("debugConfig") {
-            storeFile = file("${rootDir}/debug.keystore")
+            storeFile = sharedDebugKeystore
             storePassword = "android"
             keyAlias = "androiddebugkey"
             keyPassword = "android"
@@ -32,7 +37,9 @@ android {
 
     buildTypes {
         debug {
-            signingConfig = signingConfigs.getByName("debugConfig")
+            signingConfig = signingConfigs.getByName(
+                if (sharedDebugKeystore.exists()) "debugConfig" else "debug",
+            )
         }
         release {
             isMinifyEnabled = true
