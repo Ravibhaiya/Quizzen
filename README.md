@@ -61,6 +61,11 @@ plan gets 2,000 minutes and 500 MB of storage a month, and this setup uses rough
 | `release-check.yml` | pull requests that change build settings, dependencies or shrinker rules | optimized (R8) release build |
 | `apk.yml` | only when you press **Run workflow** in the Actions tab, or push a `v*` tag | optimized APK, kept 14 days (debug APK optional) |
 
+Firebase: the Google Services plugin needs `app/google-services.json`, which is not stored in the repository. Add its full content as the
+repository secret `GOOGLE_SERVICES_JSON` (Settings, Secrets and variables, Actions). `ci.yml` and `release-check.yml` fall back to a placeholder
+file when the secret is missing (enough for tests, lint and compiling); `apk.yml` refuses to build without the real one so a broken APK is never
+published. Local builds need the real file in `app/`.
+
 To get an APK to install: Actions tab, **Build APK**, **Run workflow**, then download `quizzen-release-apk` from the finished run.
 
 ## Project layout
