@@ -38,7 +38,7 @@ Normative description of the app. "Web" = the prototype in `docs/reference/quizz
 ## Vocabulary Manager
 - Header: back, "Vocabulary", word count pill, and a Search icon button in the top-right (where the `+` icon used to be) that toggles the search bar; sticky bottom "Add Word" button.
 - Search bar (when toggled open from the top header) filters words in real time across the headword, meanings (English/Hinglish), example sentence, and any synonym or antonym.
-- Word cards remain collapsed by default (even right after adding or editing) and show only the word with its initial badge, edit button, delete button, and expand/collapse arrow button. Tapping the arrow button opens or closes the card to reveal full **Word**, **Meaning in English**, **Meaning in Hinglish**, and **Example sentence** for the main word and for each synonym and antonym.
+- Word cards remain collapsed by default (even right after adding or editing) and show only the word with its initial badge, two small count pills under the word (e.g. "2 synonyms", "0 antonyms"), edit button, delete button, and expand/collapse arrow button. Tapping the arrow button opens or closes the card to reveal full **Word**, **Meaning in English**, **Meaning in Hinglish**, and **Example sentence** for the main word and for each synonym and antonym.
 - Add / Edit modal bottom sheet uses JSON format:
   - **Add Words (JSON)**: accepts a JSON array (`[...]`) or single JSON object (`{...}`) to save multiple words (along with their synonyms and antonyms) at once, with an "Insert Template" shortcut.
   - **Edit Word (JSON)**: shows and edits only the JSON object for that specific word.

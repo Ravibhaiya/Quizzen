@@ -13,6 +13,8 @@ import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -50,6 +52,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.RectangleShape
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
@@ -470,6 +473,7 @@ private fun VocabularyEmptyState(
     }
 }
 
+@OptIn(ExperimentalLayoutApi::class)
 @Composable
 private fun VocabularyWordCard(
     entry: VocabularyEntry,
@@ -484,6 +488,7 @@ private fun VocabularyWordCard(
         animationSpec = tween(250, easing = EmphasizedEasing),
         label = "chevronRotation",
     )
+    val resources = LocalContext.current.resources
     val initial = entry.wordDetails.word.firstOrNull()?.uppercaseChar()?.toString() ?: "V"
 
     Column(
@@ -507,12 +512,37 @@ private fun VocabularyWordCard(
                 textStyle = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.Bold),
             )
 
-            Text(
-                text = entry.wordDetails.word,
-                style = MaterialTheme.typography.titleLarge,
-                color = MaterialTheme.colorScheme.onSurface,
+            Column(
                 modifier = Modifier.weight(1f),
-            )
+                verticalArrangement = Arrangement.spacedBy(6.dp),
+            ) {
+                Text(
+                    text = entry.wordDetails.word,
+                    style = MaterialTheme.typography.titleLarge,
+                    color = MaterialTheme.colorScheme.onSurface,
+                )
+                FlowRow(
+                    horizontalArrangement = Arrangement.spacedBy(6.dp),
+                    verticalArrangement = Arrangement.spacedBy(6.dp),
+                ) {
+                    RelationCountPill(
+                        text = resources.getQuantityString(
+                            R.plurals.synonym_count,
+                            entry.synonyms.size,
+                            entry.synonyms.size,
+                        ),
+                        modifier = Modifier.testTag("synonym_count_${entry.id}"),
+                    )
+                    RelationCountPill(
+                        text = resources.getQuantityString(
+                            R.plurals.antonym_count,
+                            entry.antonyms.size,
+                            entry.antonyms.size,
+                        ),
+                        modifier = Modifier.testTag("antonym_count_${entry.id}"),
+                    )
+                }
+            }
 
             Row(
                 verticalAlignment = Alignment.CenterVertically,
@@ -594,6 +624,24 @@ private fun VocabularyWordCard(
                 )
             }
         }
+    }
+}
+
+@Composable
+private fun RelationCountPill(
+    text: String,
+    modifier: Modifier = Modifier,
+) {
+    Box(
+        modifier = modifier
+            .background(MaterialTheme.colorScheme.surfaceContainerHigh, CircleShape)
+            .padding(horizontal = 10.dp, vertical = 3.dp),
+    ) {
+        Text(
+            text = text,
+            style = MaterialTheme.typography.labelSmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
     }
 }
 
