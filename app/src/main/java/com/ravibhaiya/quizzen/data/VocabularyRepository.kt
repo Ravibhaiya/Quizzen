@@ -26,6 +26,7 @@ import java.nio.file.AtomicMoveNotSupportedException
 import java.nio.file.Files
 import java.nio.file.StandardCopyOption
 import java.util.Base64
+import java.util.Date
 import java.util.UUID
 import java.util.concurrent.ConcurrentHashMap
 import kotlinx.coroutines.CancellationException
@@ -161,7 +162,7 @@ class FirestoreVocabularyRepository(context: Context) : VocabularyRepository {
                         withTimeout(FIREBASE_TIMEOUT_MS) {
                             db.collection(COLLECTION_VOCABULARY)
                                 .document(local.id)
-                                .set(entryToMap(local), SetOptions.merge())
+                                .set(entryToBackfillMap(local), SetOptions.merge())
                                 .await()
                         }
                     }.onFailure { e ->
@@ -426,14 +427,24 @@ class FirestoreVocabularyRepository(context: Context) : VocabularyRepository {
         }
     }
 
-    private fun entryToMap(entry: VocabularyEntry): Map<String, Any> =
-        VocabularyFirestoreMapper.entryToMap(entry)
-
-    /** Same as [entryToMap] but lets the Firestore server stamp `updatedAt` (and `createdAt` for new words). */
+    /**
+     * Same as [entryToMap] but every stored timestamp is a Firestore [Timestamp] (never a plain number), so the
+     * fields have one type across all documents. The server stamps `updatedAt` (and `createdAt` for new words);
+     * an existing word keeps its stored creation time.
+     */
     private fun entryToWriteMap(entry: VocabularyEntry, isNew: Boolean): Map<String, Any> {
         val map = VocabularyFirestoreMapper.entryToMap(entry).toMutableMap()
         map[VocabularyFirestoreMapper.FIELD_UPDATED_AT] = FieldValue.serverTimestamp()
-        if (isNew) map[VocabularyFirestoreMapper.FIELD_CREATED_AT] = FieldValue.serverTimestamp()
+        map[VocabularyFirestoreMapper.FIELD_CREATED_AT] =
+            if (isNew) FieldValue.serverTimestamp() else Timestamp(Date(entry.createdAt))
+        return map
+    }
+
+    /** Map for copying a local-only word to the server unchanged (keeps its own times, as Timestamps). */
+    private fun entryToBackfillMap(entry: VocabularyEntry): Map<String, Any> {
+        val map = VocabularyFirestoreMapper.entryToMap(entry).toMutableMap()
+        map[VocabularyFirestoreMapper.FIELD_UPDATED_AT] = Timestamp(Date(entry.updatedAt))
+        map[VocabularyFirestoreMapper.FIELD_CREATED_AT] = Timestamp(Date(entry.createdAt))
         return map
     }
 
