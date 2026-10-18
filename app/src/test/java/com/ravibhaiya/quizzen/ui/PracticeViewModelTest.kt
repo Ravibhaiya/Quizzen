@@ -461,4 +461,23 @@ class PracticeViewModelTest {
         second.onPause()
         assertEquals(15, shown.toSet().size) // no comebacks: nothing was carried over
     }
+
+    @Test
+    fun `active question, typed answer, and remaining timer survive process death via SavedStateHandle`() = runTest(dispatcher) {
+        val handle = androidx.lifecycle.SavedStateHandle()
+        val first = PracticeViewModel(config, SequenceGenerator(), savedStateHandle = handle)
+        first.onResume()
+        first.onAnswerChanged("13")
+        advanceTimeBy(5_100)
+        assertEquals(12L, first.leftOperand)
+        assertEquals("13", first.state.value.answer)
+        assertEquals(15, first.state.value.remainingSeconds)
+        first.onPause()
+
+        // Recreate ViewModel with the same SavedStateHandle (simulating Android process death recovery)
+        val restored = PracticeViewModel(config, SequenceGenerator(), savedStateHandle = handle)
+        assertEquals(12L, restored.leftOperand)
+        assertEquals("13", restored.state.value.answer)
+        assertEquals(15, restored.state.value.remainingSeconds)
+    }
 }

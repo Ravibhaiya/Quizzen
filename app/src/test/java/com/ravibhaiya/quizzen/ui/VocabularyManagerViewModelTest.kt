@@ -193,6 +193,8 @@ class VocabularyManagerViewModelTest {
     ) : VocabularyRepository {
         private val flow = MutableStateFlow<List<VocabularyEntry>>(emptyList())
         override val entries: Flow<List<VocabularyEntry>> = flow
+        private val mistakesFlow = MutableStateFlow<Set<String>>(emptySet())
+        override val mistakeWords: Flow<Set<String>> = mistakesFlow
         private val errorFlow = MutableStateFlow<String?>(null)
         override val syncError: Flow<String?> = errorFlow
         private var counter = 0
@@ -223,6 +225,14 @@ class VocabularyManagerViewModelTest {
             }
             flow.value = flow.value.filterNot { it.id == id }
             return Result.success(Unit)
+        }
+
+        override suspend fun recordMistakeWords(wordKeys: Set<String>) {
+            mistakesFlow.value = mistakesFlow.value + wordKeys
+        }
+
+        override suspend fun removeMistakeWords(wordKeys: Set<String>) {
+            mistakesFlow.value = mistakesFlow.value - wordKeys
         }
 
         override fun clearSyncError() {

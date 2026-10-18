@@ -95,7 +95,6 @@ dependencies {
     debugImplementation(libs.androidx.compose.ui.tooling)
 
     implementation(platform(libs.firebase.bom))
-    implementation(libs.firebase.analytics)
     implementation(libs.firebase.firestore)
     implementation(libs.kotlinx.coroutines.play.services)
 

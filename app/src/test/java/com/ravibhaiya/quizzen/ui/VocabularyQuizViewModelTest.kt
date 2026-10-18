@@ -277,5 +277,53 @@ class VocabularyQuizViewModelTest {
         assertFalse(missedWordLower in repo.currentMistakes)
         assertFalse(missedClusterId.lowercase() in repo.currentMistakes)
     }
+
+    @Test
+    fun `quiz progress, timer, and mistake tracking survive background process death via SavedStateHandle`() = runTest(dispatcher) {
+        val repo = FakeVocabularyRepo(sampleEntries)
+        val config = VocabularyQuizConfig(
+            modes = setOf(VocabularyQuizMode.Synonyms, VocabularyQuizMode.Antonyms),
+            wordCount = 5,
+            timerSeconds = 12,
+        )
+        val savedStateHandle = androidx.lifecycle.SavedStateHandle()
+
+        val vm1 = VocabularyQuizViewModel(
+            config = config,
+            repository = repo,
+            random = Random(42),
+            savedStateHandle = savedStateHandle,
+        )
+        runCurrent()
+        vm1.startQuiz()
+        vm1.onResume()
+
+        // Answer question 0 right, advance to question 1, and let 4 seconds elapse before backgrounding
+        val q0 = vm1.state.value.currentQuestion!!
+        vm1.selectOption(q0.correctAnswer)
+        vm1.nextQuestion()
+        advanceTimeBy(4_100)
+        assertEquals(1, vm1.state.value.currentIndex)
+        assertEquals(8, vm1.state.value.remainingSeconds)
+        val expectedQuestions = vm1.state.value.questions
+        vm1.onPause()
+
+        // Simulate Android recreating the ViewModel after process death with the same SavedStateHandle
+        val vm2 = VocabularyQuizViewModel(
+            config = config,
+            repository = repo,
+            random = Random(999),
+            savedStateHandle = savedStateHandle,
+        )
+        runCurrent()
+
+        assertEquals(VocabularyQuizPhase.Quiz, vm2.state.value.phase)
+        assertEquals(expectedQuestions, vm2.state.value.questions)
+        assertEquals(1, vm2.state.value.currentIndex)
+        assertEquals(1, vm2.state.value.attemptedCount)
+        assertEquals(1, vm2.state.value.correctCount)
+        assertEquals(8, vm2.state.value.remainingSeconds)
+        assertFalse(vm2.state.value.isLocked)
+    }
 }
 

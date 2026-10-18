@@ -49,13 +49,15 @@ class PracticeViewModel(
     generator: QuestionGenerator = RandomQuestionGenerator(),
     random: Random = Random.Default,
     questions: List<Question>? = QuestionPool.of(config),
+    private val savedStateHandle: SavedStateHandle = SavedStateHandle(),
 ) : ViewModel() {
 
     /** Picks the questions and brings mistakes back. Lives and dies with this ViewModel, so every new quiz starts empty. */
     private val session = PracticeSession(generator, config, random, questions)
 
     private val _state = MutableStateFlow(
-        PracticeUiState(question = session.next(), remainingSeconds = config.timerSeconds),
+        PracticeSavedState.restore(savedStateHandle, config)
+            ?: PracticeUiState(question = session.next(), remainingSeconds = config.timerSeconds),
     )
     val state: StateFlow<PracticeUiState> = _state.asStateFlow()
 
@@ -63,9 +65,13 @@ class PracticeViewModel(
     private var feedbackJob: Job? = null
     private var inForeground = false
 
+    init {
+        PracticeSavedState.save(savedStateHandle, _state.value)
+    }
+
     fun onAnswerChanged(raw: String) {
         if (_state.value.isLocked) return
-        _state.update { it.copy(answer = cleanAnswer(it.question.answerKind, raw)) }
+        updateAndPersist { it.copy(answer = cleanAnswer(it.question.answerKind, raw)) }
     }
 
     /**
@@ -105,6 +111,7 @@ class PracticeViewModel(
     fun onPause() {
         inForeground = false
         tickJob?.cancel()
+        PracticeSavedState.save(savedStateHandle, _state.value)
     }
 
     private fun startTicking() {
@@ -113,7 +120,7 @@ class PracticeViewModel(
             while (true) {
                 delay(TICK_MS)
                 val next = (_state.value.remainingSeconds - 1).coerceAtLeast(0)
-                _state.update { it.copy(remainingSeconds = next) }
+                updateAndPersist { it.copy(remainingSeconds = next) }
                 if (next == 0) {
                     showFeedback(FeedbackType.Timeout)
                     return@launch
@@ -145,7 +152,7 @@ class PracticeViewModel(
             delay(FEEDBACK_VISIBLE_MS)
             _state.update { it.copy(feedback = null) }
             delay(SHEET_EXIT_MS)
-            _state.update {
+            updateAndPersist {
                 it.copy(
                     question = session.next(),
                     answer = "",
@@ -155,6 +162,11 @@ class PracticeViewModel(
             }
             if (inForeground) startTicking()
         }
+    }
+
+    private inline fun updateAndPersist(transform: (PracticeUiState) -> PracticeUiState) {
+        _state.update(transform)
+        PracticeSavedState.save(savedStateHandle, _state.value)
     }
 
     companion object {
@@ -168,7 +180,10 @@ class PracticeViewModel(
         val Factory = viewModelFactory {
             initializer {
                 val handle: SavedStateHandle = createSavedStateHandle()
-                PracticeViewModel(PracticeArgs.fromSavedState(handle))
+                PracticeViewModel(
+                    config = PracticeArgs.fromSavedState(handle),
+                    savedStateHandle = handle,
+                )
             }
         }
     }

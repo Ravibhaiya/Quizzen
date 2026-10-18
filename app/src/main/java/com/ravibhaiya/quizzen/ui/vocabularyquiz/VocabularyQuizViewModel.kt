@@ -1,9 +1,7 @@
 package com.ravibhaiya.quizzen.ui.vocabularyquiz
 
-import android.app.Application
 import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
-import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.createSavedStateHandle
 import androidx.lifecycle.viewModelScope
 import androidx.lifecycle.viewmodel.initializer
@@ -73,15 +71,27 @@ class VocabularyQuizViewModel(
     private val config: VocabularyQuizConfig,
     private val repository: VocabularyRepository,
     private val random: Random = Random.Default,
+    private val savedStateHandle: SavedStateHandle = SavedStateHandle(),
 ) : ViewModel() {
 
     private var allEntries: List<VocabularyEntry> = emptyList()
     private var savedMistakeWords: Set<String> = emptySet()
-    private var usedFallbackForStudy: Boolean = true
-    private var mistakeTracker: VocabularyMistakeTracker? = null
+    private val restoredSnapshot = VocabularyQuizSavedState.restore(savedStateHandle, config)
+    private var usedFallbackForStudy: Boolean = restoredSnapshot == null
+    private var mistakeTracker: VocabularyMistakeTracker? = restoredSnapshot?.let { snapshot ->
+        if (snapshot.uiState.questions.isNotEmpty()) {
+            VocabularyMistakeTracker(
+                questions = snapshot.uiState.questions,
+                studyEntries = snapshot.uiState.studyEntries,
+                initialOutcomes = snapshot.outcomes,
+            )
+        } else {
+            null
+        }
+    }
 
     private val _state = MutableStateFlow(
-        VocabularyQuizUiState(
+        restoredSnapshot?.uiState ?: VocabularyQuizUiState(
             config = config,
             studyEntries = VocabularyQuizRules.selectStudyWords(
                 entries = emptyList(),
@@ -114,12 +124,13 @@ class VocabularyQuizViewModel(
                     previousMistakes != savedMistakeWords && _state.value.questions.isEmpty()
 
                 // If the study screen initially loaded before repository emissions arrived, refresh with real user words
-                // and locally saved mistake words.
+                // and locally saved mistake words (unless restored from process death).
                 if (_state.value.phase == VocabularyQuizPhase.Study &&
-                    (((usedFallbackForStudy || !hadUserEligible) && nowHasUserEligible) || mistakesChangedBeforeQuiz)
+                    (((usedFallbackForStudy || !hadUserEligible) && nowHasUserEligible) ||
+                        (mistakesChangedBeforeQuiz && usedFallbackForStudy))
                 ) {
                     if (nowHasUserEligible) usedFallbackForStudy = false
-                    _state.update {
+                    updateAndPersistState {
                         it.copy(
                             studyEntries = VocabularyQuizRules.selectStudyWords(
                                 entries = repoEntries,
@@ -148,7 +159,7 @@ class VocabularyQuizViewModel(
             random = random,
             mistakeWords = savedMistakeWords,
         )
-        _state.update {
+        updateAndPersistState {
             it.copy(
                 phase = VocabularyQuizPhase.Study,
                 studyEntries = nextStudy,
@@ -191,7 +202,7 @@ class VocabularyQuizViewModel(
             studyEntries = study,
         )
 
-        _state.update {
+        updateAndPersistState {
             it.copy(
                 phase = VocabularyQuizPhase.Quiz,
                 studyEntries = study,
@@ -216,7 +227,7 @@ class VocabularyQuizViewModel(
     /** Returns to the Study screen to review the selected words. */
     fun backToStudy() {
         tickJob?.cancel()
-        _state.update {
+        updateAndPersistState {
             it.copy(
                 phase = VocabularyQuizPhase.Study,
                 selectedOption = null,
@@ -245,7 +256,7 @@ class VocabularyQuizViewModel(
         if (current.phase != VocabularyQuizPhase.Quiz || !current.isLocked) return
         val nextIndex = current.currentIndex + 1
         if (nextIndex >= current.questions.size) {
-            _state.update {
+            updateAndPersistState {
                 it.copy(
                     phase = VocabularyQuizPhase.Finished,
                     selectedOption = null,
@@ -254,7 +265,7 @@ class VocabularyQuizViewModel(
                 )
             }
         } else {
-            _state.update {
+            updateAndPersistState {
                 it.copy(
                     currentIndex = nextIndex,
                     selectedOption = null,
@@ -278,6 +289,7 @@ class VocabularyQuizViewModel(
     fun onPause() {
         inForeground = false
         tickJob?.cancel()
+        persistSnapshot()
     }
 
     private fun startTicking() {
@@ -286,7 +298,7 @@ class VocabularyQuizViewModel(
             while (true) {
                 delay(TICK_MS)
                 val next = (_state.value.remainingSeconds - 1).coerceAtLeast(0)
-                _state.update { it.copy(remainingSeconds = next) }
+                updateAndPersistState { it.copy(remainingSeconds = next) }
                 if (next == 0) {
                     resolveQuestion(type = FeedbackType.Timeout, selected = null)
                     return@launch
@@ -320,7 +332,7 @@ class VocabularyQuizViewModel(
             VocabularyMistakeAction.None -> Unit
         }
 
-        _state.update {
+        updateAndPersistState {
             it.copy(
                 selectedOption = selected,
                 attemptedCount = it.attemptedCount + 1,
@@ -334,6 +346,19 @@ class VocabularyQuizViewModel(
         }
     }
 
+    private inline fun updateAndPersistState(transform: (VocabularyQuizUiState) -> VocabularyQuizUiState) {
+        _state.update(transform)
+        persistSnapshot()
+    }
+
+    private fun persistSnapshot() {
+        VocabularyQuizSavedState.save(
+            handle = savedStateHandle,
+            state = _state.value,
+            outcomes = mistakeTracker?.outcomesSnapshot().orEmpty(),
+        )
+    }
+
     companion object {
         const val TICK_MS = 1_000L
 
@@ -343,6 +368,7 @@ class VocabularyQuizViewModel(
                 VocabularyQuizViewModel(
                     config = VocabularyQuizArgs.fromSavedState(handle),
                     repository = vocabularyRepository(),
+                    savedStateHandle = handle,
                 )
             }
         }

@@ -1,0 +1,42 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function isValidWordDetails(details) {
+      return details is map
+        && details.word is string
+        && details.word.size() > 0
+        && details.word.size() <= 120
+        && (!('meaningEnglish' in details) || (details.meaningEnglish is string && details.meaningEnglish.size() <= 500))
+        && (!('meaningHinglish' in details) || (details.meaningHinglish is string && details.meaningHinglish.size() <= 500))
+        && (!('exampleSentence' in details) || (details.exampleSentence is string && details.exampleSentence.size() <= 600));
+    }
+
+    function isValidVocabularyEntry(data) {
+      return data.category == 'vocabulary'
+        && data.schemaVersion is int
+        && data.id is string
+        && data.id.size() > 0
+        && data.id.size() <= 128
+        && isValidWordDetails(data.wordDetails)
+        && data.synonyms is list
+        && data.synonyms.size() <= 30
+        && data.antonyms is list
+        && data.antonyms.size() <= 30
+        && data.createdAt is int
+        && data.updatedAt is int;
+    }
+
+    match /vocabulary/{entryId} {
+      allow read: if true;
+      allow create, update: if entryId == request.resource.data.id
+        && isValidVocabularyEntry(request.resource.data);
+      allow delete: if true;
+    }
+
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}
