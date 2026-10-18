@@ -83,6 +83,8 @@ fun VocabularyQuizScreen(
 
     QuizzenScreen(modifier = modifier) {
         Box(modifier = Modifier.fillMaxSize()) {
+            // A saved quiz is being read from the device (a few milliseconds): show nothing rather than a flash of Study.
+            if (state.isRestoring) return@Box
             when (state.phase) {
                 VocabularyQuizPhase.Study -> VocabularyStudyView(
                     entries = state.studyEntries,

@@ -4,8 +4,11 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import androidx.lifecycle.viewmodel.initializer
 import androidx.lifecycle.viewmodel.viewModelFactory
+import com.ravibhaiya.quizzen.data.NoVocabularySessionStore
 import com.ravibhaiya.quizzen.data.QuizSettingsRepository
+import com.ravibhaiya.quizzen.data.VocabularySessionStore
 import com.ravibhaiya.quizzen.data.quizSettingsRepository
+import com.ravibhaiya.quizzen.data.vocabularySessionStore
 import com.ravibhaiya.quizzen.domain.VocabularyQuizConfig
 import com.ravibhaiya.quizzen.domain.VocabularyQuizMode
 import com.ravibhaiya.quizzen.domain.VocabularyQuizRules
@@ -21,12 +24,15 @@ data class VocabularyConfigUiState(
     val modes: Set<VocabularyQuizMode> = VocabularyQuizMode.DEFAULT,
     /** Number of words to study and attempt (5..25). */
     val wordCount: Int = VocabularyQuizRules.DEFAULT_WORDS,
-    /** False until the last-used setting has been read from DataStore. */
+    /** An unfinished quiz kept on the device (the app was closed or left mid-quiz), or null when there is none. */
+    val resume: VocabularyResumeInfo? = null,
+    /** False until the last-used setting (and any unfinished quiz) has been read from the device. */
     val loaded: Boolean = false,
 )
 
 class VocabularyConfigViewModel(
     private val repository: QuizSettingsRepository,
+    private val sessionStore: VocabularySessionStore = NoVocabularySessionStore,
 ) : ViewModel() {
 
     private val _state = MutableStateFlow(VocabularyConfigUiState())
@@ -48,8 +54,31 @@ class VocabularyConfigViewModel(
                 }
                 timer.set(saved.timerSeconds)
             }
-            _state.update { it.copy(loaded = true) }
+            val resume = readSavedQuiz()
+            _state.update { it.copy(resume = resume, loaded = true) }
         }
+    }
+
+    /** Looks again for an unfinished quiz; the screen calls it whenever it comes back to the front (e.g. after a quiz). */
+    fun refreshSavedQuiz() {
+        viewModelScope.launch {
+            val resume = readSavedQuiz()
+            _state.update { if (it.loaded) it.copy(resume = resume) else it }
+        }
+    }
+
+    /** Throws the unfinished quiz away ("Discard"): the next quiz starts from the setup below. */
+    fun discardSavedQuiz() {
+        sessionStore.clear()
+        _state.update { it.copy(resume = null) }
+    }
+
+    /** An unreadable stored quiz is dropped, so it can never block the screen. */
+    private suspend fun readSavedQuiz(): VocabularyResumeInfo? {
+        val text = sessionStore.load() ?: return null
+        val info = VocabularyQuizSavedState.summarize(text)
+        if (info == null) sessionStore.clear()
+        return info
     }
 
     /** Toggles [mode] while ensuring at least one mode remains selected. */
@@ -95,7 +124,7 @@ class VocabularyConfigViewModel(
         const val DEFAULT_TIMER_SECONDS = VocabularyQuizRules.DEFAULT_TIMER_SECONDS
 
         val Factory = viewModelFactory {
-            initializer { VocabularyConfigViewModel(quizSettingsRepository()) }
+            initializer { VocabularyConfigViewModel(quizSettingsRepository(), vocabularySessionStore()) }
         }
     }
 }

@@ -6,8 +6,11 @@ import androidx.lifecycle.createSavedStateHandle
 import androidx.lifecycle.viewModelScope
 import androidx.lifecycle.viewmodel.initializer
 import androidx.lifecycle.viewmodel.viewModelFactory
+import com.ravibhaiya.quizzen.data.NoVocabularySessionStore
 import com.ravibhaiya.quizzen.data.VocabularyRepository
+import com.ravibhaiya.quizzen.data.VocabularySessionStore
 import com.ravibhaiya.quizzen.data.vocabularyRepository
+import com.ravibhaiya.quizzen.data.vocabularySessionStore
 import com.ravibhaiya.quizzen.domain.Feedback
 import com.ravibhaiya.quizzen.domain.FeedbackType
 import com.ravibhaiya.quizzen.domain.VocabularyEntry
@@ -17,6 +20,7 @@ import com.ravibhaiya.quizzen.domain.VocabularyQuizConfig
 import com.ravibhaiya.quizzen.domain.VocabularyQuizEngine
 import com.ravibhaiya.quizzen.domain.VocabularyQuizItem
 import com.ravibhaiya.quizzen.domain.VocabularyQuizRules
+import com.ravibhaiya.quizzen.ui.navigation.Routes
 import com.ravibhaiya.quizzen.ui.navigation.VocabularyQuizArgs
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
@@ -49,6 +53,8 @@ data class VocabularyQuizUiState(
     val feedback: Feedback? = null,
     val isLocked: Boolean = false,
     val shakeCount: Int = 0,
+    /** True while an unfinished quiz is being read from the device (resume); the screen shows nothing until it is ready. */
+    val isRestoring: Boolean = false,
 ) {
     val currentQuestion: VocabularyQuizItem?
         get() = questions.getOrNull(currentIndex)
@@ -72,6 +78,8 @@ class VocabularyQuizViewModel(
     private val repository: VocabularyRepository,
     private val random: Random = Random.Default,
     private val savedStateHandle: SavedStateHandle = SavedStateHandle(),
+    private val sessionStore: VocabularySessionStore = NoVocabularySessionStore,
+    resumeSavedQuiz: Boolean = false,
 ) : ViewModel() {
 
     private var allEntries: List<VocabularyEntry> = emptyList()
@@ -100,6 +108,7 @@ class VocabularyQuizViewModel(
                 random = random,
             ),
             remainingSeconds = config.timerSeconds,
+            isRestoring = resumeSavedQuiz && restoredSnapshot == null,
         ),
     )
     val state: StateFlow<VocabularyQuizUiState> = _state.asStateFlow()
@@ -108,6 +117,7 @@ class VocabularyQuizViewModel(
     private var inForeground = false
 
     init {
+        if (_state.value.isRestoring) restoreFromDevice()
         viewModelScope.launch {
             combine(repository.entries, repository.mistakeWords) { repoEntries, repoMistakes ->
                 repoEntries to repoMistakes
@@ -143,6 +153,31 @@ class VocabularyQuizViewModel(
                     }
                 }
             }
+        }
+    }
+
+    /**
+     * Continues the unfinished quiz kept on the device (Vocabulary only): same questions, same position, same score. If it
+     * cannot be read any more it is dropped and the normal Study screen is shown instead. A question that was still open
+     * starts again with a full timer, one that was already answered shows its result with **Next** ready.
+     */
+    private fun restoreFromDevice() {
+        viewModelScope.launch {
+            val snapshot = VocabularyQuizSavedState.decodeSession(sessionStore.load())
+            if (snapshot == null) {
+                sessionStore.clear()
+                _state.update { it.copy(isRestoring = false) }
+                return@launch
+            }
+            mistakeTracker = VocabularyMistakeTracker(
+                questions = snapshot.uiState.questions,
+                studyEntries = snapshot.uiState.studyEntries,
+                initialOutcomes = snapshot.outcomes,
+            )
+            usedFallbackForStudy = false
+            _state.value = snapshot.uiState.copy(config = config)
+            persistSnapshot()
+            if (inForeground && !snapshot.uiState.isLocked) startTicking()
         }
     }
 
@@ -218,6 +253,7 @@ class VocabularyQuizViewModel(
                 isLocked = false,
             )
         }
+        persistSession()
         if (inForeground) startTicking()
     }
 
@@ -264,6 +300,7 @@ class VocabularyQuizViewModel(
                     isLocked = false,
                 )
             }
+            sessionStore.clear() // a finished quiz has nothing left to resume
         } else {
             updateAndPersistState {
                 it.copy(
@@ -274,6 +311,7 @@ class VocabularyQuizViewModel(
                     isLocked = false,
                 )
             }
+            persistSession()
             if (inForeground) startTicking()
         }
     }
@@ -290,6 +328,7 @@ class VocabularyQuizViewModel(
         inForeground = false
         tickJob?.cancel()
         persistSnapshot()
+        persistSession()
     }
 
     private fun startTicking() {
@@ -344,6 +383,7 @@ class VocabularyQuizViewModel(
                 shakeCount = if (type == FeedbackType.Incorrect) it.shakeCount + 1 else it.shakeCount,
             )
         }
+        persistSession()
     }
 
     private inline fun updateAndPersistState(transform: (VocabularyQuizUiState) -> VocabularyQuizUiState) {
@@ -352,11 +392,25 @@ class VocabularyQuizViewModel(
     }
 
     private fun persistSnapshot() {
+        // While a resume is still loading, the placeholder Study state must not replace what process-death restore would use.
+        if (_state.value.isRestoring) return
         VocabularyQuizSavedState.save(
             handle = savedStateHandle,
             state = _state.value,
             outcomes = mistakeTracker?.outcomesSnapshot().orEmpty(),
         )
+    }
+
+    /**
+     * Keeps the unfinished quiz on the device so it can be resumed after the app is closed. Only a running **Quiz** is kept
+     * (Study has nothing to lose, Finished is cleared) and not on every tick: when a quiz starts, when a question is
+     * answered, when the next one opens and when the screen is paused. Nothing is written while a resume is still loading.
+     */
+    private fun persistSession() {
+        val current = _state.value
+        if (current.isRestoring || current.phase != VocabularyQuizPhase.Quiz) return
+        VocabularyQuizSavedState.encodeSession(current, mistakeTracker?.outcomesSnapshot().orEmpty())
+            ?.let(sessionStore::save)
     }
 
     companion object {
@@ -369,6 +423,8 @@ class VocabularyQuizViewModel(
                     config = VocabularyQuizArgs.fromSavedState(handle),
                     repository = vocabularyRepository(),
                     savedStateHandle = handle,
+                    sessionStore = vocabularySessionStore(),
+                    resumeSavedQuiz = handle.get<Int>(Routes.ARG_RESUME) == 1,
                 )
             }
         }

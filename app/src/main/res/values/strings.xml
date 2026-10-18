@@ -181,4 +181,8 @@
     <string name="vocabulary_next_question">Next</string>
     <string name="vocabulary_retry_quiz">Retry Quiz</string>
     <string name="vocabulary_review_words">Review Words</string>
+    <string name="vocabulary_resume_title">Resume your quiz</string>
+    <string name="vocabulary_resume_progress">Question %1$d of %2$d</string>
+    <string name="vocabulary_resume_action">Resume</string>
+    <string name="vocabulary_resume_discard">Discard</string>
 </resources>

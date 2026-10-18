@@ -6,13 +6,18 @@ import com.ravibhaiya.quizzen.domain.FractionChallenge
 import com.ravibhaiya.quizzen.domain.PowerRootType
 import com.ravibhaiya.quizzen.domain.PracticeConfig
 import com.ravibhaiya.quizzen.domain.VocabularyQuizConfig
+import com.ravibhaiya.quizzen.domain.VocabularyQuizEngine
 import com.ravibhaiya.quizzen.domain.VocabularyQuizMode
+import com.ravibhaiya.quizzen.domain.VocabularyQuizRules
 import com.ravibhaiya.quizzen.ui.alphabet.AlphabetConfigViewModel
 import com.ravibhaiya.quizzen.ui.fractions.FractionsConfigViewModel
 import com.ravibhaiya.quizzen.ui.multiply.MultiplyConfigViewModel
 import com.ravibhaiya.quizzen.ui.powers.PowersRootsConfigViewModel
 import com.ravibhaiya.quizzen.ui.tables.TablesConfigViewModel
 import com.ravibhaiya.quizzen.ui.vocabularyquiz.VocabularyConfigViewModel
+import com.ravibhaiya.quizzen.ui.vocabularyquiz.VocabularyQuizPhase
+import com.ravibhaiya.quizzen.ui.vocabularyquiz.VocabularyQuizSavedState
+import com.ravibhaiya.quizzen.ui.vocabularyquiz.VocabularyQuizUiState
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -27,6 +32,7 @@ import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Test
+import kotlin.random.Random
 
 @OptIn(ExperimentalCoroutinesApi::class)
 class ConfigViewModelsTest {
@@ -353,5 +359,52 @@ class ConfigViewModelsTest {
         assertEquals(5, vm.state.value.wordCount)
         vm.onWordCountChanged(40)
         assertEquals(25, vm.state.value.wordCount)
+    }
+
+    @Test
+    fun vocabulary_offersAnUnfinishedQuiz_andDiscardForgetsIt() = runTest(dispatcher) {
+        val config = VocabularyQuizConfig(
+            modes = setOf(VocabularyQuizMode.Synonyms),
+            wordCount = 5,
+            timerSeconds = 9,
+        )
+        val study = VocabularyQuizRules.FALLBACK_ENTRIES.take(5)
+        val questions = VocabularyQuizEngine.generateQuiz(study, study, config.modes, Random(1))
+        val running = VocabularyQuizUiState(
+            config = config,
+            phase = VocabularyQuizPhase.Quiz,
+            studyEntries = study,
+            questions = questions,
+            currentIndex = 3,
+            attemptedCount = 3,
+            correctCount = 3,
+        )
+        val store = FakeVocabularySessionStore(VocabularyQuizSavedState.encodeSession(running, emptyMap()))
+
+        val vm = VocabularyConfigViewModel(FakeRepository(), store)
+        runCurrent()
+        assertTrue(vm.state.value.loaded)
+        assertEquals(4, vm.state.value.resume?.questionNumber)
+        assertEquals(questions.size, vm.state.value.resume?.totalQuestions)
+        assertEquals(config, vm.state.value.resume?.config)
+
+        vm.discardSavedQuiz()
+        assertEquals(null, vm.state.value.resume)
+        assertEquals(null, store.text)
+    }
+
+    @Test
+    fun vocabulary_hasNothingToResumeWithoutAStoredQuiz_andDropsUnreadableOnes() = runTest(dispatcher) {
+        val empty = FakeVocabularySessionStore()
+        val noneVm = VocabularyConfigViewModel(FakeRepository(), empty)
+        runCurrent()
+        assertEquals(null, noneVm.state.value.resume)
+
+        val broken = FakeVocabularySessionStore("garbage")
+        val brokenVm = VocabularyConfigViewModel(FakeRepository(), broken)
+        runCurrent()
+        assertEquals(null, brokenVm.state.value.resume)
+        assertEquals(null, broken.text)
+        assertTrue(brokenVm.state.value.loaded)
     }
 }

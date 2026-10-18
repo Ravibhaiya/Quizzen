@@ -93,6 +93,7 @@ fun QuizzenNavHost(
                 hapticEnabled = hapticEnabled,
                 onBack = { navController.popBackStack() },
                 onStart = { config -> navController.navigate(Routes.vocabularyQuiz(config)) },
+                onResume = { config -> navController.navigate(Routes.vocabularyQuiz(config, resume = true)) },
             )
         }
         composable(
@@ -107,6 +108,7 @@ fun QuizzenNavHost(
                     type = NavType.IntType
                     defaultValue = VocabularyQuizRules.DEFAULT_TIMER_SECONDS
                 },
+                navArgument(Routes.ARG_RESUME) { type = NavType.IntType; defaultValue = 0 },
             ),
         ) {
             VocabularyQuizScreen(
