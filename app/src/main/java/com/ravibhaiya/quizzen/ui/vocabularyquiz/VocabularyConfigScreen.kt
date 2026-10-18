@@ -14,12 +14,16 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.LifecycleEventObserver
+import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.ravibhaiya.quizzen.R
@@ -39,11 +43,22 @@ fun VocabularyConfigScreen(
     hapticEnabled: Boolean,
     onBack: () -> Unit,
     onStart: (VocabularyQuizConfig) -> Unit,
+    onResume: (VocabularyQuizConfig) -> Unit,
     viewModel: VocabularyConfigViewModel = viewModel(factory = VocabularyConfigViewModel.Factory),
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
     val timer by viewModel.timer.state.collectAsStateWithLifecycle()
     val haptics = rememberHaptics(hapticEnabled)
+
+    // Coming back from a quiz: the unfinished quiz may have moved on, finished or been left.
+    val lifecycleOwner = LocalLifecycleOwner.current
+    DisposableEffect(lifecycleOwner, viewModel) {
+        val observer = LifecycleEventObserver { _, event ->
+            if (event == Lifecycle.Event.ON_RESUME) viewModel.refreshSavedQuiz()
+        }
+        lifecycleOwner.lifecycle.addObserver(observer)
+        onDispose { lifecycleOwner.lifecycle.removeObserver(observer) }
+    }
 
     QuizzenScreen {
         val shown by animateFloatAsState(if (state.loaded) 1f else 0f, tween(120), label = "vocabConfigShown")
@@ -70,6 +85,17 @@ fun VocabularyConfigScreen(
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     modifier = Modifier.padding(bottom = 20.dp),
                 )
+
+                state.resume?.let { resume ->
+                    VocabularyResumeCard(
+                        info = resume,
+                        onResume = { haptics.heavyClick(); onResume(resume.config) },
+                        onDiscard = { haptics.click(); viewModel.discardSavedQuiz() },
+                        modifier = Modifier
+                            .padding(bottom = 28.dp)
+                            .testTag("vocabulary_resume_card"),
+                    )
+                }
 
                 SectionTitle(R.string.vocabulary_word_count_title)
                 PillSliderCard(

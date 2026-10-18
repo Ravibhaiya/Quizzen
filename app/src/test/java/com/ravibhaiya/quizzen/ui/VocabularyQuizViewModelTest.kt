@@ -25,6 +25,7 @@ import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNotNull
+import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Test
@@ -325,5 +326,122 @@ class VocabularyQuizViewModelTest {
         assertEquals(8, vm2.state.value.remainingSeconds)
         assertFalse(vm2.state.value.isLocked)
     }
-}
 
+    // ---- Resume after the app was closed (Vocabulary only) ----
+
+    private val resumeConfig = VocabularyQuizConfig(
+        modes = setOf(VocabularyQuizMode.Synonyms, VocabularyQuizMode.Antonyms),
+        wordCount = 5,
+        timerSeconds = 10,
+    )
+
+    private fun newQuizViewModel(store: FakeVocabularySessionStore, resume: Boolean = false, seed: Int = 11) =
+        VocabularyQuizViewModel(
+            config = resumeConfig,
+            repository = FakeVocabularyRepo(sampleEntries),
+            random = Random(seed),
+            sessionStore = store,
+            resumeSavedQuiz = resume,
+        )
+
+    @Test
+    fun `resume route carries the resume flag only when asked`() {
+        assertEquals("vocabulary_quiz?vmodes=syn-ant&wcount=5&seconds=10", Routes.vocabularyQuiz(resumeConfig))
+        assertEquals(
+            "vocabulary_quiz?vmodes=syn-ant&wcount=5&seconds=10&resume=1",
+            Routes.vocabularyQuiz(resumeConfig, resume = true),
+        )
+    }
+
+    @Test
+    fun `a closed quiz resumes at the same question with the same score and a full timer`() = runTest(dispatcher) {
+        val store = FakeVocabularySessionStore()
+        val vm1 = newQuizViewModel(store)
+        runCurrent()
+        vm1.startQuiz()
+        repeat(3) { index ->
+            val q = vm1.state.value.currentQuestion!!
+            vm1.selectOption(if (index == 0) q.options.first { !q.isCorrect(it) } else q.correctAnswer)
+            vm1.nextQuestion()
+        }
+        runCurrent()
+        val before = vm1.state.value
+        vm1.onPause() // the app is closed here
+        assertNotNull(store.text)
+
+        val vm2 = newQuizViewModel(store, resume = true, seed = 99)
+        assertTrue(vm2.state.value.isRestoring)
+        runCurrent()
+
+        val after = vm2.state.value
+        assertFalse(after.isRestoring)
+        assertEquals(VocabularyQuizPhase.Quiz, after.phase)
+        assertEquals(before.questions, after.questions)
+        assertEquals(3, after.currentIndex)
+        assertEquals(3, after.attemptedCount)
+        assertEquals(2, after.correctCount)
+        assertEquals(1, after.wrongCount)
+        assertEquals(resumeConfig.timerSeconds, after.remainingSeconds)
+        assertFalse(after.isLocked)
+
+        // The resumed quiz goes on to the end like a normal one, and finishing clears what was kept.
+        vm2.onResume()
+        repeat(after.totalCount - after.currentIndex) {
+            vm2.selectOption(vm2.state.value.currentQuestion!!.correctAnswer)
+            vm2.nextQuestion()
+        }
+        assertEquals(VocabularyQuizPhase.Finished, vm2.state.value.phase)
+        assertNull(store.text)
+        vm2.onPause()
+        assertNull(store.text) // a finished quiz is never written again
+    }
+
+    @Test
+    fun `an answered question resumes as answered and waits for Next`() = runTest(dispatcher) {
+        val store = FakeVocabularySessionStore()
+        val vm1 = newQuizViewModel(store)
+        runCurrent()
+        vm1.startQuiz()
+        val q = vm1.state.value.currentQuestion!!
+        vm1.selectOption(q.options.first { !q.isCorrect(it) })
+        vm1.onPause()
+
+        val vm2 = newQuizViewModel(store, resume = true)
+        runCurrent()
+
+        assertEquals(VocabularyQuizPhase.Quiz, vm2.state.value.phase)
+        assertEquals(0, vm2.state.value.currentIndex)
+        assertTrue(vm2.state.value.isLocked)
+        assertEquals(FeedbackType.Incorrect, vm2.state.value.feedback?.type)
+        assertEquals(1, vm2.state.value.attemptedCount)
+        vm2.nextQuestion()
+        assertEquals(1, vm2.state.value.currentIndex)
+        assertFalse(vm2.state.value.isLocked)
+    }
+
+    @Test
+    fun `the study screen writes nothing and a stored quiz is left alone until a new quiz starts`() = runTest(dispatcher) {
+        val store = FakeVocabularySessionStore(text = "kept")
+        val vm = newQuizViewModel(store)
+        runCurrent()
+        vm.onResume()
+        vm.onPause()
+        assertEquals("kept", store.text) // Study phase: nothing written, nothing cleared
+
+        vm.startQuiz() // a new quiz replaces it
+        assertTrue(store.text != "kept")
+        assertNotNull(store.text)
+    }
+
+    @Test
+    fun `an unreadable saved quiz is dropped and the normal study screen is shown`() = runTest(dispatcher) {
+        val store = FakeVocabularySessionStore(text = "garbage")
+        val vm = newQuizViewModel(store, resume = true)
+        runCurrent()
+
+        assertFalse(vm.state.value.isRestoring)
+        assertEquals(VocabularyQuizPhase.Study, vm.state.value.phase)
+        assertEquals(2, vm.state.value.studyEntries.size) // the user's words, not the starter set
+        assertNull(store.text)
+    }
+}

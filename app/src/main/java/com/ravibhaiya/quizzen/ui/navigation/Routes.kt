@@ -40,6 +40,7 @@ object Routes {
     const val ARG_FRACTION_TO = "fto"
     const val ARG_VOCAB_MODES = "vmodes"
     const val ARG_WORD_COUNT = "wcount"
+    const val ARG_RESUME = "resume"
 
     const val MODE_MULTIPLY = "multiply"
     const val MODE_TABLES = "tables"
@@ -55,11 +56,13 @@ object Routes {
         "&$ARG_FRACTION_FROM={$ARG_FRACTION_FROM}&$ARG_FRACTION_TO={$ARG_FRACTION_TO}"
 
     const val VOCABULARY_QUIZ = "vocabulary_quiz?$ARG_VOCAB_MODES={$ARG_VOCAB_MODES}" +
-        "&$ARG_WORD_COUNT={$ARG_WORD_COUNT}&$ARG_SECONDS={$ARG_SECONDS}"
+        "&$ARG_WORD_COUNT={$ARG_WORD_COUNT}&$ARG_SECONDS={$ARG_SECONDS}&$ARG_RESUME={$ARG_RESUME}"
 
-    fun vocabularyQuiz(config: VocabularyQuizConfig): String =
+    /** [resume] = continue the unfinished quiz kept on the device (Vocabulary only) instead of starting a new one. */
+    fun vocabularyQuiz(config: VocabularyQuizConfig, resume: Boolean = false): String =
         "vocabulary_quiz?$ARG_VOCAB_MODES=${VocabularyQuizMode.encode(config.modes)}" +
-            "&$ARG_WORD_COUNT=${config.wordCount}&$ARG_SECONDS=${config.timerSeconds}"
+            "&$ARG_WORD_COUNT=${config.wordCount}&$ARG_SECONDS=${config.timerSeconds}" +
+            if (resume) "&$ARG_RESUME=1" else ""
 
     fun practice(config: PracticeConfig): String = when (config) {
         is PracticeConfig.Multiply ->

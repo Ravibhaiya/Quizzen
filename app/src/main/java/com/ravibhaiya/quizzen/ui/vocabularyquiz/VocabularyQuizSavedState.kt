@@ -1,12 +1,15 @@
 package com.ravibhaiya.quizzen.ui.vocabularyquiz
 
 import androidx.lifecycle.SavedStateHandle
+import com.ravibhaiya.quizzen.data.SettingsCodec
 import com.ravibhaiya.quizzen.data.VocabularyJsonCodec
 import com.ravibhaiya.quizzen.domain.Feedback
 import com.ravibhaiya.quizzen.domain.FeedbackType
+import com.ravibhaiya.quizzen.domain.VocabularyEntry
 import com.ravibhaiya.quizzen.domain.VocabularyQuizConfig
 import com.ravibhaiya.quizzen.domain.VocabularyQuizItem
 import com.ravibhaiya.quizzen.domain.VocabularyQuizMode
+import com.ravibhaiya.quizzen.domain.VocabularyQuizRules
 import com.ravibhaiya.quizzen.domain.WordDetails
 import java.util.Base64
 
@@ -15,11 +18,23 @@ internal data class RestoredVocabularyQuizSnapshot(
     val outcomes: Map<Int, FeedbackType>,
 )
 
+/** What the setup screen shows about a stored unfinished quiz: how it was configured and where the user stopped. */
+data class VocabularyResumeInfo(
+    val config: VocabularyQuizConfig,
+    /** 1-based number of the question the user will continue from. */
+    val questionNumber: Int,
+    val totalQuestions: Int,
+)
+
 /**
  * Pure-Kotlin saved-state persistence for [VocabularyQuizViewModel] using [SavedStateHandle].
  * Ensures that if Android kills the app in the background during a Vocabulary Study or Quiz session,
  * the active phase, studied words, generated questions, current question index, scores, remaining timer,
  * and per-word mistake tracking are all preserved seamlessly.
+ *
+ * The same pieces can also be written as one text ([encodeSession] / [decodeSession]) for `VocabularySessionStore`, so an
+ * unfinished **Quiz** survives the app being closed (not only process death). That text is self-contained: it carries the
+ * quiz setup and every generated question with its meanings, so it still works if the words were edited or deleted since.
  */
 internal object VocabularyQuizSavedState {
     private const val KEY_HAS_SNAPSHOT = "vocab_quiz_has_snapshot"
@@ -37,6 +52,7 @@ internal object VocabularyQuizSavedState {
     private const val KEY_FEEDBACK_ANSWER = "vocab_quiz_feedback_answer"
     private const val KEY_IS_LOCKED = "vocab_quiz_is_locked"
     private const val KEY_OUTCOMES = "vocab_quiz_outcomes"
+    private const val SESSION_HEADER = "quizzen-vocabulary-session-v1"
 
     fun save(
         handle: SavedStateHandle,
@@ -68,31 +84,135 @@ internal object VocabularyQuizSavedState {
         val phaseName = handle.get<String>(KEY_PHASE) ?: return null
         val phase = VocabularyQuizPhase.entries.firstOrNull { it.name == phaseName } ?: return null
 
-        val studyEntries = VocabularyJsonCodec.decodeList(handle.get<String>(KEY_STUDY_JSON).orEmpty())
-        val questions = decodeQuestions(handle.get<String>(KEY_QUESTIONS).orEmpty())
+        return buildSnapshot(
+            config = config,
+            phase = phase,
+            studyEntries = VocabularyJsonCodec.decodeList(handle.get<String>(KEY_STUDY_JSON).orEmpty()),
+            questions = decodeQuestions(handle.get<String>(KEY_QUESTIONS).orEmpty()),
+            currentIndex = handle.get<Int>(KEY_CURRENT_INDEX),
+            attemptedCount = handle.get<Int>(KEY_ATTEMPTED),
+            correctCount = handle.get<Int>(KEY_CORRECT),
+            wrongCount = handle.get<Int>(KEY_WRONG),
+            timeoutCount = handle.get<Int>(KEY_TIMEOUT),
+            selectedOption = handle.get<String>(KEY_SELECTED_OPTION),
+            remainingSeconds = handle.get<Int>(KEY_REMAINING_SECONDS),
+            feedbackTypeName = handle.get<String>(KEY_FEEDBACK_TYPE),
+            feedbackAnswer = handle.get<String>(KEY_FEEDBACK_ANSWER),
+            isLocked = handle.get<Boolean>(KEY_IS_LOCKED),
+            outcomes = decodeOutcomes(handle.get<String>(KEY_OUTCOMES).orEmpty()),
+        )
+    }
+
+    /**
+     * The text kept on the device for an unfinished **Quiz** (`null` for the Study and Finished phases: there is nothing to
+     * resume there). The timer is not stored: the screen starts the question again with a full timer (see [decodeSession]).
+     */
+    fun encodeSession(state: VocabularyQuizUiState, outcomes: Map<Int, FeedbackType>): String? {
+        if (state.phase != VocabularyQuizPhase.Quiz || state.questions.isEmpty()) return null
+        return buildList {
+            add(SESSION_HEADER)
+            add("config=${SettingsCodec.encode(state.config)}")
+            add("study=${b64(VocabularyJsonCodec.encodeList(state.studyEntries))}")
+            add("questions=${b64(encodeQuestions(state.questions))}")
+            add("index=${state.currentIndex}")
+            add("attempted=${state.attemptedCount}")
+            add("correct=${state.correctCount}")
+            add("wrong=${state.wrongCount}")
+            add("timeout=${state.timeoutCount}")
+            state.selectedOption?.let { add("selected=${b64(it)}") }
+            add("locked=${if (state.isLocked) 1 else 0}")
+            state.feedback?.let {
+                add("ftype=${it.type.name}")
+                add("fanswer=${b64(it.correctAnswer)}")
+            }
+            add("outcomes=${encodeOutcomes(outcomes)}")
+        }.joinToString("\n")
+    }
+
+    /**
+     * Reads the text written by [encodeSession]. Never trusts it: anything unreadable or that cannot be a real quiz position
+     * (wrong header, no questions, counts that do not match the question index, a locked question without its feedback)
+     * gives `null`, which means "nothing to resume".
+     *
+     * A question that was still open (not answered yet) restarts with a **full timer**; one that was already answered is
+     * restored as answered (result and meanings visible, **Next** enabled).
+     */
+    fun decodeSession(text: String?): RestoredVocabularyQuizSnapshot? {
+        if (text.isNullOrBlank()) return null
+        val lines = text.lines()
+        if (lines.firstOrNull()?.trim() != SESSION_HEADER) return null
+        val values = lines.drop(1).mapNotNull { line ->
+            line.split('=', limit = 2).takeIf { it.size == 2 }?.let { it[0] to it[1] }
+        }.toMap()
+
+        val config = SettingsCodec.decodeVocabulary(values["config"], VocabularyQuizRules.DEFAULT_TIMER_SECONDS)
+            ?: return null
+        val questions = decodeQuestions(unb64(values["questions"].orEmpty()))
+        if (questions.isEmpty()) return null
+        val index = values["index"]?.toIntOrNull() ?: return null
+        val attempted = values["attempted"]?.toIntOrNull() ?: return null
+        val isLocked = values["locked"] == "1"
+        if (index !in questions.indices || attempted != index + if (isLocked) 1 else 0) return null
+
+        val studyEntries = VocabularyJsonCodec.decodeList(unb64(values["study"].orEmpty()))
+        if (studyEntries.isEmpty()) return null
+
+        val snapshot = buildSnapshot(
+            config = config,
+            phase = VocabularyQuizPhase.Quiz,
+            studyEntries = studyEntries,
+            questions = questions,
+            currentIndex = index,
+            attemptedCount = attempted,
+            correctCount = values["correct"]?.toIntOrNull(),
+            wrongCount = values["wrong"]?.toIntOrNull(),
+            timeoutCount = values["timeout"]?.toIntOrNull(),
+            selectedOption = values["selected"]?.let(::unb64),
+            remainingSeconds = config.timerSeconds,
+            feedbackTypeName = values["ftype"],
+            feedbackAnswer = values["fanswer"]?.let(::unb64),
+            isLocked = isLocked,
+            outcomes = decodeOutcomes(values["outcomes"].orEmpty()),
+        ) ?: return null
+        if (isLocked && snapshot.uiState.feedback == null) return null
+        return snapshot
+    }
+
+    /** The short description of a stored quiz for the setup screen, or `null` when [text] cannot be resumed. */
+    fun summarize(text: String?): VocabularyResumeInfo? =
+        decodeSession(text)?.let { snapshot ->
+            VocabularyResumeInfo(
+                config = snapshot.uiState.config,
+                questionNumber = snapshot.uiState.currentIndex + 1,
+                totalQuestions = snapshot.uiState.totalCount,
+            )
+        }
+
+    /** Applies the same repairs (non-negative counts, index and timer inside their limits) to every source of a snapshot. */
+    private fun buildSnapshot(
+        config: VocabularyQuizConfig,
+        phase: VocabularyQuizPhase,
+        studyEntries: List<VocabularyEntry>,
+        questions: List<VocabularyQuizItem>,
+        currentIndex: Int?,
+        attemptedCount: Int?,
+        correctCount: Int?,
+        wrongCount: Int?,
+        timeoutCount: Int?,
+        selectedOption: String?,
+        remainingSeconds: Int?,
+        feedbackTypeName: String?,
+        feedbackAnswer: String?,
+        isLocked: Boolean?,
+        outcomes: Map<Int, FeedbackType>,
+    ): RestoredVocabularyQuizSnapshot? {
         if (phase != VocabularyQuizPhase.Study && questions.isEmpty()) return null
 
-        val currentIndex = (handle.get<Int>(KEY_CURRENT_INDEX) ?: 0)
-            .coerceIn(0, (questions.size - 1).coerceAtLeast(0))
-        val attemptedCount = (handle.get<Int>(KEY_ATTEMPTED) ?: 0).coerceAtLeast(0)
-        val correctCount = (handle.get<Int>(KEY_CORRECT) ?: 0).coerceAtLeast(0)
-        val wrongCount = (handle.get<Int>(KEY_WRONG) ?: 0).coerceAtLeast(0)
-        val timeoutCount = (handle.get<Int>(KEY_TIMEOUT) ?: 0).coerceAtLeast(0)
-        val selectedOption = handle.get<String>(KEY_SELECTED_OPTION)
-        val remainingSeconds = (handle.get<Int>(KEY_REMAINING_SECONDS) ?: config.timerSeconds)
-            .coerceIn(0, config.timerSeconds)
-        val isLocked = handle.get<Boolean>(KEY_IS_LOCKED) ?: false
-
-        val feedbackTypeName = handle.get<String>(KEY_FEEDBACK_TYPE)
-        val feedbackAnswer = handle.get<String>(KEY_FEEDBACK_ANSWER)
         val feedback = if (feedbackTypeName != null && feedbackAnswer != null) {
-            val type = FeedbackType.entries.firstOrNull { it.name == feedbackTypeName }
-            type?.let { Feedback(it, feedbackAnswer) }
+            FeedbackType.entries.firstOrNull { it.name == feedbackTypeName }?.let { Feedback(it, feedbackAnswer) }
         } else {
             null
         }
-
-        val outcomes = decodeOutcomes(handle.get<String>(KEY_OUTCOMES).orEmpty())
 
         return RestoredVocabularyQuizSnapshot(
             uiState = VocabularyQuizUiState(
@@ -100,15 +220,15 @@ internal object VocabularyQuizSavedState {
                 phase = phase,
                 studyEntries = studyEntries,
                 questions = questions,
-                currentIndex = currentIndex,
-                attemptedCount = attemptedCount,
-                correctCount = correctCount,
-                wrongCount = wrongCount,
-                timeoutCount = timeoutCount,
+                currentIndex = (currentIndex ?: 0).coerceIn(0, (questions.size - 1).coerceAtLeast(0)),
+                attemptedCount = (attemptedCount ?: 0).coerceAtLeast(0),
+                correctCount = (correctCount ?: 0).coerceAtLeast(0),
+                wrongCount = (wrongCount ?: 0).coerceAtLeast(0),
+                timeoutCount = (timeoutCount ?: 0).coerceAtLeast(0),
                 selectedOption = selectedOption,
-                remainingSeconds = remainingSeconds,
+                remainingSeconds = (remainingSeconds ?: config.timerSeconds).coerceIn(0, config.timerSeconds),
                 feedback = feedback,
-                isLocked = isLocked,
+                isLocked = isLocked ?: false,
             ),
             outcomes = outcomes,
         )

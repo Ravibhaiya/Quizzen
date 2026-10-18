@@ -80,6 +80,32 @@ Normative description of the app. "Web" = the prototype in `docs/reference/quizz
     - The quiz does **not** advance automatically; a bottom **Next** button becomes enabled once the question is resolved (correct, incorrect, or timeout), and clicking **Next** advances to the next question.
   - Once all questions are attempted and **Next** is clicked after the final question (`Attempted == Total`), the quiz finishes and shows the **Quiz Complete** summary screen with score percentage, Total, Attempted, Correct, and Incorrect counts, plus buttons to **Retry Quiz** or **Review Words**.
 
+## Resume an unfinished quiz (Vocabulary only)
+- Applies only to the **Language > Vocabulary** quiz. Math quizzes (Multiply, Tables, Powers & Roots, Alphabet, Fraction &
+  Percentage) are never saved and always start from nothing.
+- While a **Quiz** is running, its position is kept on the device (a small file in app storage): it is written when the quiz
+  starts, when a question is answered, when the next question opens and when the screen goes to the background or is left. It
+  holds the quiz setup (modes, words, timer), the studied words, every generated question with its options and meanings, the
+  question the user is on, the score and which questions were answered. The countdown is **not** kept.
+- The **Study Words** screen and the **Quiz Complete** screen keep nothing; finishing the quiz (Next after the last question)
+  deletes the saved quiz. Starting a new quiz replaces it when that quiz's first question appears.
+- Leaving the app (swipe away, system kill, restart of the phone) or leaving the quiz with Back both leave the quiz resumable.
+- **Where it shows**: at the top of the Vocabulary configuration screen, above **Words to Attempt**, a card "Resume your quiz"
+  with "Question N of M" (N = the question the user will continue from), a primary **Resume** button and a **Discard** text
+  button. The card appears only while a saved quiz exists and updates when the user comes back to the screen.
+  - **Resume** opens the quiz straight at that question, with the same setup, the same questions in the same order, and the same
+    score; nothing flashes before it (the screen stays empty for a few milliseconds while the file is read). The saved setup is
+    used, not what the setup screen currently shows.
+  - **Discard** deletes the saved quiz and hides the card; the user then starts a fresh quiz as usual.
+  - **Start** with the card showing starts a new quiz from the current setup; the saved one stays until that new quiz begins.
+- **Where the user continues**: a question that was still open restarts with a **full timer** (the time already used is not
+  charged); a question that was already answered (result and meanings showing, Next not pressed yet) comes back answered with
+  **Next** enabled. Per-word mistake tracking continues exactly where it stopped, so words saved or mastered at the end of the
+  quiz are the same as if the app had never been closed.
+- If the saved quiz cannot be read (damaged, from a different version), it is deleted and the user simply gets the normal setup /
+  Study screen. A failed save never crashes the app.
+- Clearing the app data removes the saved quiz.
+
 ## Multiply configuration
 - "Digits in 1st Number": 2/3/4/5 (default **3**). "Digits in 2nd Number": 2/3/4/5 (default **2**). Single choice each.
 - Timer field default **20** s. Start -> Practice.
@@ -98,7 +124,8 @@ Normative description of the app. "Web" = the prototype in `docs/reference/quizz
   default, and a damaged or unreadable save is treated as "nothing saved"; saving can never crash the app.
 - The values are read a few milliseconds after the screen opens; the screen fades in once they are ready so the defaults never
   flash. Anything the user touches before that is not overwritten.
-- Saved settings are only about the setup screen. A quiz itself always starts fresh, and nothing about answers is saved.
+- Saved settings are only about the setup screen. A quiz itself always starts fresh, and nothing about answers is saved. The only
+  exception is an unfinished **Vocabulary** quiz, which can be resumed (see "Resume an unfinished quiz" below); Math quizzes never.
 - Stored on the device only (a few bytes in the app's preferences file); clearing the app data resets everything.
 
 ## Alphabet configuration
@@ -205,7 +232,8 @@ Normative description of the app. "Web" = the prototype in `docs/reference/quizz
   - A comeback answered wrong/slow again starts a fresh set (3 or 2) counted from that moment; the old unused ones are dropped.
     A comeback answered fast keeps the rest of its set.
   - If many mistakes pile up so the 10 slots are full, the leftover comebacks come right after the window instead of being lost.
-  - Nothing is saved: closing the quiz, or starting a new one, begins from nothing.
+  - Nothing is saved: closing the quiz, or starting a new one, begins from nothing. (This is about the Math quizzes; the
+    Vocabulary quiz can be resumed, see its own section.)
   - With only one or two possible questions (e.g. Min = Max) there is nothing else to show, so immediate repeats cannot be avoided.
 - Check: exact integer match = **Correct**; otherwise (including blank) = **Incorrect** (shake).
 - Countdown reaching 0 = **Time's Up**.
@@ -217,8 +245,8 @@ Normative description of the app. "Web" = the prototype in `docs/reference/quizz
   | Effect | When |
   |---|---|
   | Tick (light) | selecting a digit option, table number, challenge type or what to answer in, pressing the "/" key, range slider released, switching Math/Language, turning haptics off, "Coming soon" taps |
-  | Click (medium) | opening Multiply/Tables/Powers & Roots/Alphabet/Fraction & Percentage/Settings, Back, Select All, turning haptics on |
-  | Heavy click (firm thump) | Start |
+  | Click (medium) | opening Multiply/Tables/Powers & Roots/Alphabet/Fraction & Percentage/Settings, Back, Select All, turning haptics on, Discard (saved Vocabulary quiz) |
+  | Heavy click (firm thump) | Start, Resume (saved Vocabulary quiz) |
   | Success (two rising taps) | correct answer |
   | Error (three hard buzzes) | wrong answer |
   | Timeout (one long softer buzz) | time is up |

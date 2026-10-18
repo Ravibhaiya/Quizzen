@@ -123,12 +123,37 @@ one way, and keep the wording out of `equals`, as `FractionQuestion` does), a br
 Each quiz's setup screen restores what the user last started it with: ViewModel takes a `QuizSettingsRepository`, loads in `init`
 (with the `edited` guard and the `loaded` flag), and `startQuiz()` saves while returning the config. A new setup screen or a new
 setting must go through `SettingsCodec` (encode, decode **with repair**) and get a round-trip test in `SettingsCodecTest`. Never
-store anything about running quizzes or answers.
+store anything about running quizzes or answers, with one exception: the unfinished **Vocabulary** quiz (next section). Math quizzes
+are never stored.
+
+## Vocabulary session resume
+
+Only the **Language > Vocabulary** quiz can be resumed after the app was closed (or the quiz left); Math quizzes always start from
+nothing. The rules, so this stays consistent:
+
+- The unfinished quiz lives in one file, `vocabulary_session_v1.txt` in `filesDir`, behind `data/VocabularySessionStore`
+  (`FileVocabularySessionStore`: single writer thread, atomic write, `save`/`clear` never suspend and never crash). It is **not** in
+  DataStore (a preferences file is rewritten as a whole) and **not** part of `QuizSettingsRepository`/`SettingsCodec` (those are setup
+  settings only).
+- The text is made only by `VocabularyQuizSavedState.encodeSession` and read only by `decodeSession` (never trusts the text: wrong
+  header, no questions/study words, counts that do not fit the index, an answered question without its result -> `null` = nothing to
+  resume). It is self-contained (setup + every question with meanings), so edited or deleted words cannot break it. A new field
+  in `VocabularyQuizUiState` that must survive a resume needs `encodeSession`, `decodeSession`, `buildSnapshot` **and** the
+  `SavedStateHandle` keys updated together, plus a case in `VocabularyQuizSavedStateTest`.
+- Only a running **Quiz** is written: when the quiz starts, when a question is answered, when the next one opens and on pause (never
+  per timer tick). Study and Finished write nothing; finishing the quiz clears the file; an unreadable file is cleared.
+- Resuming = Vocabulary setup screen -> `VocabularyResumeCard` (`VocabularyConfigViewModel.resume`, refreshed on every screen resume,
+  **Discard** clears) -> route `vocabulary_quiz?...&resume=1` (`Routes.vocabularyQuiz(config, resume = true)`, `Routes.ARG_RESUME`).
+  `VocabularyQuizViewModel(resumeSavedQuiz = true)` shows nothing (`isRestoring`) until the file is read. A `SavedStateHandle`
+  snapshot (process death) always wins over the file.
+- A question still open restarts with a **full timer**; an answered one comes back answered with **Next** ready. Do not add resume to
+  `PracticeViewModel`/`PracticeSession` without the owner asking (see "Mistake repeats").
+- Any change here updates `docs/BEHAVIOR_SPEC.md` ("Resume an unfinished quiz") and `docs/ARCHITECTURE.md` in the same change.
 
 ## Mistake repeats
 
 The order of questions (shuffled rounds over `QuestionPool`) and how wrong/slow answers come back live only in
-`domain/PracticeSession.kt`, `domain/QuestionPool.kt` and `domain/AnswerOutcome.kt` (constants:
+`domain/PracticeSession.kt`, `domain/QuestionPool.kt` and `domain/AnswerOutcome.kt` (these are the **Math** quizzes; constants:
 `WRONG_REPEATS = 3`, `SLOW_REPEATS = 2`, `WINDOW = 10`, slow = under 40% of the timer left). Keep it pure Kotlin with an injected
 `Random`, keep its state inside the object (no static/global state, no persistence: every quiz must start from nothing), and
 change `docs/BEHAVIOR_SPEC.md` and `PracticeSessionTest` together with any rule. A new practice mode opts in with
