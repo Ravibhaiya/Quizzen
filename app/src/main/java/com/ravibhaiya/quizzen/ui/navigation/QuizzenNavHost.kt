@@ -19,6 +19,7 @@ import androidx.navigation.navArgument
 import com.ravibhaiya.quizzen.domain.AlphabetRules
 import com.ravibhaiya.quizzen.domain.FractionRules
 import com.ravibhaiya.quizzen.domain.PowersRootsRules
+import com.ravibhaiya.quizzen.domain.VocabularyQuizRules
 import com.ravibhaiya.quizzen.ui.components.EmphasizedEasing
 import com.ravibhaiya.quizzen.ui.alphabet.AlphabetConfigScreen
 import com.ravibhaiya.quizzen.ui.database.DatabaseManagerScreen
@@ -29,6 +30,8 @@ import com.ravibhaiya.quizzen.ui.powers.PowersRootsConfigScreen
 import com.ravibhaiya.quizzen.ui.practice.PracticeScreen
 import com.ravibhaiya.quizzen.ui.tables.TablesConfigScreen
 import com.ravibhaiya.quizzen.ui.vocabulary.VocabularyManagerScreen
+import com.ravibhaiya.quizzen.ui.vocabularyquiz.VocabularyConfigScreen
+import com.ravibhaiya.quizzen.ui.vocabularyquiz.VocabularyQuizScreen
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.ui.unit.dp
 
@@ -68,6 +71,7 @@ fun QuizzenNavHost(
                 onOpenPowers = { navController.navigate(Routes.POWERS) },
                 onOpenFractions = { navController.navigate(Routes.FRACTIONS) },
                 onOpenAlphabet = { navController.navigate(Routes.ALPHABET) },
+                onOpenVocabulary = { navController.navigate(Routes.VOCABULARY_CONFIG) },
                 onOpenDatabaseManager = { navController.navigate(Routes.DATABASE_MANAGER) },
             )
         }
@@ -80,6 +84,32 @@ fun QuizzenNavHost(
         }
         composable(Routes.VOCABULARY_MANAGER) {
             VocabularyManagerScreen(
+                hapticEnabled = hapticEnabled,
+                onBack = { navController.popBackStack() },
+            )
+        }
+        composable(Routes.VOCABULARY_CONFIG) {
+            VocabularyConfigScreen(
+                hapticEnabled = hapticEnabled,
+                onBack = { navController.popBackStack() },
+                onStart = { config -> navController.navigate(Routes.vocabularyQuiz(config)) },
+            )
+        }
+        composable(
+            route = Routes.VOCABULARY_QUIZ,
+            arguments = listOf(
+                navArgument(Routes.ARG_VOCAB_MODES) { type = NavType.StringType; defaultValue = "syn-ant" },
+                navArgument(Routes.ARG_WORD_COUNT) {
+                    type = NavType.IntType
+                    defaultValue = VocabularyQuizRules.DEFAULT_WORDS
+                },
+                navArgument(Routes.ARG_SECONDS) {
+                    type = NavType.IntType
+                    defaultValue = VocabularyQuizRules.DEFAULT_TIMER_SECONDS
+                },
+            ),
+        ) {
+            VocabularyQuizScreen(
                 hapticEnabled = hapticEnabled,
                 onBack = { navController.popBackStack() },
             )

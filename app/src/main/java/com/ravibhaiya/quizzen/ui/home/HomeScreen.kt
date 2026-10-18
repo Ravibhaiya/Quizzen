@@ -55,6 +55,7 @@ fun HomeScreen(
     onOpenPowers: () -> Unit,
     onOpenFractions: () -> Unit,
     onOpenAlphabet: () -> Unit,
+    onOpenVocabulary: () -> Unit = {},
     onOpenDatabaseManager: () -> Unit = {},
 ) {
     var showSettings by rememberSaveable { mutableStateOf(false) }
@@ -120,7 +121,10 @@ fun HomeScreen(
                             onOpenAlphabet = { haptics.click(); onOpenAlphabet() },
                         )
                     } else {
-                        LanguagePage(notify)
+                        LanguagePage(
+                            onOpenVocabulary = { haptics.click(); onOpenVocabulary() },
+                            onComingSoon = notify,
+                        )
                     }
                 }
             }
@@ -195,11 +199,14 @@ private fun MathPage(
 }
 
 @Composable
-private fun LanguagePage(onComingSoon: () -> Unit) {
+private fun LanguagePage(
+    onOpenVocabulary: () -> Unit,
+    onComingSoon: () -> Unit,
+) {
     HeroCard(
         letter = "V",
         title = stringResource(R.string.feature_vocabulary),
-        onClick = onComingSoon,
+        onClick = onOpenVocabulary,
     )
     TileRow {
         FeatureTile("F", stringResource(R.string.feature_fixed_preposition), QuizzenShapes.BlobA, onComingSoon, Modifier.weight(1f))

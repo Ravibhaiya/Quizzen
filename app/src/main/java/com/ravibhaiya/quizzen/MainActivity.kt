@@ -21,6 +21,7 @@ import androidx.compose.ui.Modifier
 import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
+import com.ravibhaiya.quizzen.data.ensureVocabularyRepositoryInitialized
 import com.ravibhaiya.quizzen.ui.components.SystemBarIconAppearance
 import com.ravibhaiya.quizzen.ui.navigation.QuizzenNavHost
 import com.ravibhaiya.quizzen.ui.settings.SettingsViewModel
@@ -38,6 +39,7 @@ class MainActivity : ComponentActivity() {
             navigationBarStyle = SystemBarStyle.light(Color.TRANSPARENT, Color.TRANSPARENT),
         )
         super.onCreate(savedInstanceState)
+        ensureVocabularyRepositoryInitialized(applicationContext)
         setContent {
             QuizzenTheme {
                 val settings: SettingsViewModel = viewModel()

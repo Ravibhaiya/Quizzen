@@ -27,8 +27,9 @@ springy press animations. It is a native re-implementation of the original singl
   bottom sheet (Correct / Incorrect / Time's Up), shake on wrong answers, auto-advance to a fresh question.
 - **Settings** bottom sheet with a persisted Haptic Feedback switch.
 - Light theme only (by design, regardless of the system dark-mode setting), edge-to-edge, IME-aware layouts, 440 dp max content width on large screens.
-- Other tiles (Fraction & Percentage, Vocabulary, Fixed Preposition,
-  Phrasal Verb) and Database Manager are placeholders, exactly as in the prototype (they show "Coming soon").
+- **Vocabulary (Language)**: choose **Synonyms**, **Antonyms**, or both simultaneously, select **5 to 25 words** to attempt, review all selected words on a pre-quiz **Study** page, and take a finite **4-option MCQ quiz** with inline feedback, post-answer meaning reveals, manual **Next** button progression, and local mistake tracking (saving wrong/timed-out words locally, prioritizing them in future quizzes, and automatically deleting a word once all questions for that word are answered right in a session).
+- **Database Manager -> Vocabulary**: add/edit vocabulary words via single/bulk JSON format with Cloud Firestore sync + offline cache, collapsible cards, horizontal synonym/antonym count badges, and header search.
+- Other tiles (Fixed Preposition, Phrasal Verb) are placeholders, exactly as in the prototype (they show "Coming soon").
 
 ## Tech stack
 

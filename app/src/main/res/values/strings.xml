@@ -155,4 +155,30 @@
     <string name="delete_word_message">This will permanently remove this word along with its synonyms and antonyms.</string>
     <string name="cancel">Cancel</string>
     <string name="delete">Delete</string>
+
+    <!-- Vocabulary Quiz -->
+    <string name="vocabulary_word_count_title">Words to Attempt</string>
+    <string name="vocabulary_word_count_summary">%1$d words</string>
+    <string name="vocabulary_word_count_thumb">Number of words</string>
+    <string name="vocabulary_quiz_mode_title">Quiz Mode</string>
+    <string name="vocabulary_mode_synonyms">Synonyms</string>
+    <string name="vocabulary_mode_antonyms">Antonyms</string>
+    <string name="vocabulary_study_title">Study Words</string>
+    <string name="vocabulary_study_subtitle">Read the selected words and their related details before attempting the quiz.</string>
+    <string name="cd_shuffle_study_words">Pick different random words</string>
+    <string name="vocabulary_start_quiz">Start Quiz</string>
+    <string name="vocabulary_synonyms_label">Synonyms</string>
+    <string name="vocabulary_antonyms_label">Antonyms</string>
+    <string name="vocabulary_field_english">Meaning in English</string>
+    <string name="vocabulary_field_hinglish">Meaning in Hinglish</string>
+    <string name="vocabulary_field_example">Example sentence</string>
+    <string name="vocabulary_quiz_total_label">Total</string>
+    <string name="vocabulary_quiz_attempted_label">Attempted</string>
+    <string name="vocabulary_find_synonym">Synonym</string>
+    <string name="vocabulary_find_antonym">Antonym</string>
+    <string name="vocabulary_quiz_complete_title">Quiz Complete</string>
+    <string name="vocabulary_quiz_accuracy_badge">SCORE</string>
+    <string name="vocabulary_next_question">Next</string>
+    <string name="vocabulary_retry_quiz">Retry Quiz</string>
+    <string name="vocabulary_review_words">Review Words</string>
 </resources>

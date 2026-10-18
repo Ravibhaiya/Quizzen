@@ -8,6 +8,7 @@ import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewmodel.CreationExtras
 import com.ravibhaiya.quizzen.domain.PracticeConfig
+import com.ravibhaiya.quizzen.domain.VocabularyQuizConfig
 import kotlinx.coroutines.flow.first
 
 /**
@@ -32,6 +33,9 @@ interface QuizSettingsRepository {
 
     suspend fun loadFractions(defaultTimer: Int): PracticeConfig.Fractions?
     suspend fun saveFractions(config: PracticeConfig.Fractions)
+
+    suspend fun loadVocabulary(defaultTimer: Int): VocabularyQuizConfig? = null
+    suspend fun saveVocabulary(config: VocabularyQuizConfig) = Unit
 }
 
 class DataStoreQuizSettingsRepository(context: Context) : QuizSettingsRepository {
@@ -64,6 +68,12 @@ class DataStoreQuizSettingsRepository(context: Context) : QuizSettingsRepository
 
     override suspend fun saveFractions(config: PracticeConfig.Fractions) = write(FRACTIONS_KEY, SettingsCodec.encode(config))
 
+    override suspend fun loadVocabulary(defaultTimer: Int) =
+        SettingsCodec.decodeVocabulary(read(VOCABULARY_KEY), defaultTimer)
+
+    override suspend fun saveVocabulary(config: VocabularyQuizConfig) =
+        write(VOCABULARY_KEY, SettingsCodec.encode(config))
+
     private suspend fun read(key: Preferences.Key<String>): String? =
         runCatching { dataStore.data.first()[key] }.getOrNull() // a damaged file just means "nothing saved"
 
@@ -77,6 +87,7 @@ class DataStoreQuizSettingsRepository(context: Context) : QuizSettingsRepository
         val POWERS_KEY = stringPreferencesKey("quiz_powers_roots")
         val ALPHABET_KEY = stringPreferencesKey("quiz_alphabet")
         val FRACTIONS_KEY = stringPreferencesKey("quiz_fractions")
+        val VOCABULARY_KEY = stringPreferencesKey("quiz_vocabulary")
     }
 }
 

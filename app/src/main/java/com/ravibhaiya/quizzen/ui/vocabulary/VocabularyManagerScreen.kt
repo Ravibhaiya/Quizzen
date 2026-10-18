@@ -13,8 +13,6 @@ import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.ExperimentalLayoutApi
-import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -473,7 +471,6 @@ private fun VocabularyEmptyState(
     }
 }
 
-@OptIn(ExperimentalLayoutApi::class)
 @Composable
 private fun VocabularyWordCard(
     entry: VocabularyEntry,
@@ -514,16 +511,70 @@ private fun VocabularyWordCard(
 
             Column(
                 modifier = Modifier.weight(1f),
-                verticalArrangement = Arrangement.spacedBy(6.dp),
+                verticalArrangement = Arrangement.spacedBy(8.dp),
             ) {
-                Text(
-                    text = entry.wordDetails.word,
-                    style = MaterialTheme.typography.titleLarge,
-                    color = MaterialTheme.colorScheme.onSurface,
-                )
-                FlowRow(
-                    horizontalArrangement = Arrangement.spacedBy(6.dp),
-                    verticalArrangement = Arrangement.spacedBy(6.dp),
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                ) {
+                    Text(
+                        text = entry.wordDetails.word,
+                        style = MaterialTheme.typography.titleLarge,
+                        color = MaterialTheme.colorScheme.onSurface,
+                        modifier = Modifier.weight(1f),
+                    )
+
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    ) {
+                        CardActionIconButton(
+                            icon = QuizzenIcons.Edit,
+                            contentDescription = stringResource(R.string.cd_edit_word, entry.wordDetails.word),
+                            tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                            onClick = onEdit,
+                            modifier = Modifier.testTag("edit_word_${entry.id}"),
+                        )
+                        CardActionIconButton(
+                            icon = QuizzenIcons.Trash,
+                            contentDescription = stringResource(R.string.cd_delete_word, entry.wordDetails.word),
+                            tint = MaterialTheme.quizzen.error,
+                            onClick = onDelete,
+                            modifier = Modifier.testTag("delete_word_${entry.id}"),
+                        )
+                        Box(
+                            modifier = Modifier
+                                .size(40.dp)
+                                .testTag("toggle_expand_word_${entry.id}")
+                                .bouncyClickable(
+                                    shape = CircleShape,
+                                    pressedScale = 0.88f,
+                                    role = Role.Button,
+                                    onClick = onToggleExpand,
+                                )
+                                .background(MaterialTheme.colorScheme.surfaceContainerHigh, CircleShape),
+                            contentAlignment = Alignment.Center,
+                        ) {
+                            Icon(
+                                imageVector = QuizzenIcons.ChevronDown,
+                                contentDescription = stringResource(
+                                    if (expanded) R.string.cd_collapse_word else R.string.cd_expand_word,
+                                    entry.wordDetails.word,
+                                ),
+                                tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                                modifier = Modifier
+                                    .size(18.dp)
+                                    .graphicsLayer { rotationZ = chevronRotation },
+                            )
+                        }
+                    }
+                }
+
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
                 ) {
                     RelationCountPill(
                         text = resources.getQuantityString(
@@ -540,51 +591,6 @@ private fun VocabularyWordCard(
                             entry.antonyms.size,
                         ),
                         modifier = Modifier.testTag("antonym_count_${entry.id}"),
-                    )
-                }
-            }
-
-            Row(
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(8.dp),
-            ) {
-                CardActionIconButton(
-                    icon = QuizzenIcons.Edit,
-                    contentDescription = stringResource(R.string.cd_edit_word, entry.wordDetails.word),
-                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                    onClick = onEdit,
-                    modifier = Modifier.testTag("edit_word_${entry.id}"),
-                )
-                CardActionIconButton(
-                    icon = QuizzenIcons.Trash,
-                    contentDescription = stringResource(R.string.cd_delete_word, entry.wordDetails.word),
-                    tint = MaterialTheme.quizzen.error,
-                    onClick = onDelete,
-                    modifier = Modifier.testTag("delete_word_${entry.id}"),
-                )
-                Box(
-                    modifier = Modifier
-                        .size(40.dp)
-                        .testTag("toggle_expand_word_${entry.id}")
-                        .bouncyClickable(
-                            shape = CircleShape,
-                            pressedScale = 0.88f,
-                            role = Role.Button,
-                            onClick = onToggleExpand,
-                        )
-                        .background(MaterialTheme.colorScheme.surfaceContainerHigh, CircleShape),
-                    contentAlignment = Alignment.Center,
-                ) {
-                    Icon(
-                        imageVector = QuizzenIcons.ChevronDown,
-                        contentDescription = stringResource(
-                            if (expanded) R.string.cd_collapse_word else R.string.cd_expand_word,
-                            entry.wordDetails.word,
-                        ),
-                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                        modifier = Modifier
-                            .size(18.dp)
-                            .graphicsLayer { rotationZ = chevronRotation },
                     )
                 }
             }
@@ -635,12 +641,14 @@ private fun RelationCountPill(
     Box(
         modifier = modifier
             .background(MaterialTheme.colorScheme.surfaceContainerHigh, CircleShape)
-            .padding(horizontal = 10.dp, vertical = 3.dp),
+            .padding(horizontal = 10.dp, vertical = 4.dp),
     ) {
         Text(
             text = text,
             style = MaterialTheme.typography.labelSmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
+            maxLines = 1,
+            softWrap = false,
         )
     }
 }

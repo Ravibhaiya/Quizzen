@@ -4,6 +4,8 @@ import com.ravibhaiya.quizzen.domain.AlphabetChallenge
 import com.ravibhaiya.quizzen.domain.FractionChallenge
 import com.ravibhaiya.quizzen.domain.PowerRootType
 import com.ravibhaiya.quizzen.domain.PracticeConfig
+import com.ravibhaiya.quizzen.domain.VocabularyQuizConfig
+import com.ravibhaiya.quizzen.domain.VocabularyQuizMode
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertNull
@@ -33,6 +35,29 @@ class SettingsCodecTest {
 
         val fractions = PracticeConfig.Fractions(setOf(FractionChallenge.Percentage), timerSeconds = 15, range = 3..12)
         assertEquals(fractions, SettingsCodec.decodeFractions(SettingsCodec.encode(fractions), defaultTimer = 10))
+
+        val vocabulary = VocabularyQuizConfig(
+            modes = setOf(VocabularyQuizMode.Synonyms, VocabularyQuizMode.Antonyms),
+            wordCount = 15,
+            timerSeconds = 12,
+        )
+        assertEquals(vocabulary, SettingsCodec.decodeVocabulary(SettingsCodec.encode(vocabulary), defaultTimer = 10))
+    }
+
+    @Test
+    fun vocabulary_repairsWordCountAndTimer_andDropsInvalidModes() {
+        val both = VocabularyQuizConfig(
+            modes = setOf(VocabularyQuizMode.Antonyms, VocabularyQuizMode.Synonyms),
+            wordCount = 12,
+            timerSeconds = 15,
+        )
+        assertEquals("vm=syn-ant;wc=12;t=15", SettingsCodec.encode(both))
+        assertEquals(both, SettingsCodec.decodeVocabulary("vm=ant-syn;wc=12;t=15", 10))
+        assertEquals(5, SettingsCodec.decodeVocabulary("vm=syn;wc=1;t=10", 10)!!.wordCount)
+        assertEquals(25, SettingsCodec.decodeVocabulary("vm=ant;wc=99;t=10", 10)!!.wordCount)
+        assertEquals(10, SettingsCodec.decodeVocabulary("vm=syn;wc=10;t=999", 10)!!.timerSeconds)
+        assertNull(SettingsCodec.decodeVocabulary("vm=unknown;wc=10;t=10", 10))
+        assertNull(SettingsCodec.decodeVocabulary(null, 10))
     }
 
     @Test

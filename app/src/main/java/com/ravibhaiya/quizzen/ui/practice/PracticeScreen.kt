@@ -76,6 +76,7 @@ import com.ravibhaiya.quizzen.ui.components.NeutralShadowColor
 import com.ravibhaiya.quizzen.ui.components.PrimaryButton
 import com.ravibhaiya.quizzen.ui.components.QuizzenScreen
 import com.ravibhaiya.quizzen.ui.components.ScreenHeader
+import com.ravibhaiya.quizzen.ui.components.TimerChip
 import com.ravibhaiya.quizzen.ui.components.bouncyClickable
 import com.ravibhaiya.quizzen.ui.components.cssShadow
 import com.ravibhaiya.quizzen.ui.components.rememberHaptics
@@ -226,35 +227,6 @@ fun PracticeScreen(
             )
         }
     }
-}
-
-/**
- * Countdown chip. While [pulsing] it breathes between 100% and 110%; otherwise nothing animates, so an idle Practice screen
- * schedules no frames at all (an always-running infinite transition kept redrawing every frame, draining battery and
- * stealing time from slow phones). The scale is read inside `graphicsLayer`, so pulsing never recomposes the chip.
- */
-@Composable
-private fun TimerChip(seconds: Int, pulsing: Boolean) {
-    val pulse = remember { Animatable(1f) }
-    LaunchedEffect(pulsing) {
-        if (pulsing) {
-            pulse.animateTo(1.1f, infiniteRepeatable(tween(500, easing = LinearEasing), RepeatMode.Reverse))
-        } else {
-            pulse.snapTo(1f)
-        }
-    }
-    Text(
-        text = stringResource(R.string.seconds_short, seconds),
-        style = MaterialTheme.typography.labelLarge,
-        color = MaterialTheme.colorScheme.onSurfaceVariant,
-        modifier = Modifier
-            .graphicsLayer {
-                scaleX = pulse.value
-                scaleY = pulse.value
-            }
-            .background(MaterialTheme.colorScheme.surfaceContainerHigh, CircleShape)
-            .padding(horizontal = 15.dp, vertical = 9.dp),
-    )
 }
 
 @Composable

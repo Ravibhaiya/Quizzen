@@ -8,6 +8,9 @@ import com.ravibhaiya.quizzen.domain.PowerRootType
 import com.ravibhaiya.quizzen.domain.PowersRootsRules
 import com.ravibhaiya.quizzen.domain.PracticeConfig
 import com.ravibhaiya.quizzen.domain.TimerInput
+import com.ravibhaiya.quizzen.domain.VocabularyQuizConfig
+import com.ravibhaiya.quizzen.domain.VocabularyQuizMode
+import com.ravibhaiya.quizzen.domain.VocabularyQuizRules
 
 /**
  * Turns the last-used settings of a quiz into one short string and back, e.g. `d1=3;d2=2;t=20`. Pure Kotlin so it can be
@@ -32,6 +35,9 @@ object SettingsCodec {
 
     fun encode(config: PracticeConfig.Fractions): String =
         "fc=${FractionChallenge.encode(config.challenges)};f=${config.range.first}-${config.range.last};t=${config.timerSeconds}"
+
+    fun encode(config: VocabularyQuizConfig): String =
+        "vm=${VocabularyQuizMode.encode(config.modes)};wc=${config.wordCount};t=${config.timerSeconds}"
 
     fun decodeMultiply(text: String?, defaultTimer: Int): PracticeConfig.Multiply? {
         val values = parse(text) ?: return null
@@ -93,6 +99,18 @@ object SettingsCodec {
                 from = places.getOrNull(0)?.toIntOrNull() ?: FractionRules.FIRST,
                 to = places.getOrNull(1)?.toIntOrNull() ?: FractionRules.SIZE,
             ),
+        )
+    }
+
+    fun decodeVocabulary(text: String?, defaultTimer: Int): VocabularyQuizConfig? {
+        val values = parse(text) ?: return null
+        val modes = VocabularyQuizMode.decode(values["vm"])
+        if (modes.isEmpty()) return null
+        val rawWords = values["wc"]?.toIntOrNull() ?: VocabularyQuizRules.DEFAULT_WORDS
+        return VocabularyQuizConfig(
+            modes = modes,
+            wordCount = VocabularyQuizRules.coerceWordCount(rawWords),
+            timerSeconds = timer(values["t"], defaultTimer),
         )
     }
 

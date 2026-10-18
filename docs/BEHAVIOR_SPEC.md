@@ -21,7 +21,7 @@ Normative description of the app. "Web" = the prototype in `docs/reference/quizz
 - Segmented control: **Math** | **Language**. Tap animates the pager; swiping the pager moves the indicator with the finger.
 - **Math** page: hero "Multiply" (-> Multiply config); tiles "Tables Practice" (-> Tables config), "Powers & Roots"
   (-> Powers & Roots config), "Alphabet Reasoning" (-> Alphabet config), "Fraction & Percentage" (-> Fraction & Percentage config).
-- **Language** page: hero "Vocabulary"; tiles "Fixed Preposition", "Phrasal Verb" (all placeholders).
+- **Language** page: hero "Vocabulary" (-> Vocabulary config); tiles "Fixed Preposition", "Phrasal Verb" (placeholders).
 - Placeholders show a "Coming soon" snackbar.
 
 ## Settings sheet (modal bottom sheet)
@@ -47,6 +47,39 @@ Normative description of the app. "Web" = the prototype in `docs/reference/quizz
 - Saving: words repeated inside one import (same word, any capitalization) are merged into one (the last one wins), and repeated synonyms/antonyms inside a word are collapsed. Writes go out in batches of at most 400 documents (Firestore's limit is 500), each with its own timeout, and every batch is read back and verified in parallel. An inline error banner shows if saving or fetching fails. Stored synonym/antonym items that cannot be read are skipped and logged.
 - Offline copy: a versioned JSON file in app storage (`vocabulary_cache.json`); the older DataStore text copy is read once and then removed.
 
+## Vocabulary configuration, study & finite quiz
+- **Configuration screen**:
+  - Title "Vocabulary", subtitle "Configure your challenge".
+  - **Words to Attempt**: single-thumb slider from **5** to **25** (default **10**), showing the selected count in a pill badge.
+  - **Quiz Mode** (multi-select, default both **Synonyms** and **Antonyms**; at least one always remains selected):
+    - **Synonyms**: tests synonym relationships within the studied word clusters.
+    - **Antonyms**: tests antonym relationships within the studied word clusters.
+  - Timer field default **10** s. Start -> opens the **Study Words** screen.
+- **Study Words screen**:
+  - Selects the configured number of eligible vocabulary entries (`5..25`) from the user's database (or built-in starter words if none exist yet), prioritizing any **locally saved mistake words first** and filling the remaining slots with randomly selected eligible words.
+  - Displays all selected words with full **Word**, **Meaning in English**, **Meaning in Hinglish**, **Example sentence**, **Synonyms**, and **Antonyms** so the user can read before starting.
+  - Header includes a **Shuffle** icon button to pick a fresh set of words (keeping saved mistake words prioritized first).
+  - Sticky bottom **Start Quiz** button begins the finite quiz.
+- **Finite Vocabulary Quiz & Algorithm (`VocabularyQuizEngine` & `VocabularyMistakeTracker`)**:
+  - Separate from Math's infinite `PracticeSession`.
+  - Top bar displays **Total** and **Attempted** question counts alongside the countdown timer chip.
+  - Each studied entry forms a semantic cluster with a same-meaning set `S+ = { mainWord } U synonyms` and an opposite-meaning set `S- = antonyms`.
+  - Every active word in the studied entries (main word, each synonym, and each antonym) is asked once as a question prompt, and there is no restriction that the main word must be the question or the correct option:
+    - In **Synonyms** mode, words in `S+` are paired via a shuffled single-cycle derangement (`w_i -> w_{(i+1) mod k}`), so two synonyms directly test each other (`Synonym A -> Synonym B`) whenever `|S+| >= 3`.
+    - In **Antonyms** mode, antonyms in `S-` pair across all members of `S+` (both synonyms and the main word), and in Antonyms-only mode words in `S+` also ask for antonyms in `S-`.
+  - Questions are interleaved across clusters using greedy max-distance spacing so two questions from the same word cluster are not asked back-to-back unless only one cluster remains.
+  - Each question presents 4 multiple-choice options: 1 correct answer and 3 conflict-free distractors (excluding any other valid synonym/antonym for the prompt, prioritizing opposite-relation traps and words from the other studied entries).
+  - **Local Mistake-Tracking & Mastery Deletion (`VocabularyMistakeTracker`)**:
+    - Whenever the user selects a wrong option (`Incorrect`) or runs out of time (`Timeout`) on any question belonging to a word cluster, that word is immediately saved locally in device storage (`VocabularyRepository.mistakeWords`).
+    - When selecting words for a subsequent quiz (`VocabularyQuizRules.selectStudyWords`), saved mistake words are chosen first (up to the configured word count) before filling remaining slots with random words.
+    - A saved word is **automatically deleted** from local mistake storage as soon as the user answers **every question generated for that word correctly** within a single quiz session (zero wrong selections and zero timeouts for that word in the session).
+  - **MCQ Feedback, Meanings & Next Button**:
+    - Bottom sheet feedback (`FeedbackSheet`) is **not** used on MCQ-based questions. Instead, feedback (`Correct!`, `Incorrect`, or `Time's Up`) is shown inline on the quiz card and option cards (with a green border/check badge on the correct option and a red border/cross badge on a wrong selected option).
+    - While the countdown timer is running (before an option is selected or a timeout occurs), only the prompt word and the 4 option words are shown.
+    - As soon as an answer is selected (correct or incorrect) or a timeout occurs, the meaning of the prompt word and the meanings of all 4 option words are revealed directly on the quiz screen.
+    - The quiz does **not** advance automatically; a bottom **Next** button becomes enabled once the question is resolved (correct, incorrect, or timeout), and clicking **Next** advances to the next question.
+  - Once all questions are attempted and **Next** is clicked after the final question (`Attempted == Total`), the quiz finishes and shows the **Quiz Complete** summary screen with score percentage, Total, Attempted, Correct, and Incorrect counts, plus buttons to **Retry Quiz** or **Review Words**.
+
 ## Multiply configuration
 - "Digits in 1st Number": 2/3/4/5 (default **3**). "Digits in 2nd Number": 2/3/4/5 (default **2**). Single choice each.
 - Timer field default **20** s. Start -> Practice.
@@ -58,8 +91,8 @@ Normative description of the app. "Web" = the prototype in `docs/reference/quizz
 
 ## Remembered settings
 - Each quiz's setup screen opens with the settings it was **last started with**: Multiply (digits of both numbers, timer), Tables
-  (selected numbers, timer), Powers & Roots (selected types, both ranges, timer), Alphabet (challenge type, letter range, timer)
-  and Fraction & Percentage (fraction range, what to answer in, timer).
+  (selected numbers, timer), Powers & Roots (selected types, both ranges, timer), Alphabet (challenge type, letter range, timer),
+  Fraction & Percentage (fraction range, what to answer in, timer), and Vocabulary (selected modes, word count, timer).
   They are saved when **Start** is pressed.
 - The first time (nothing saved) the screen shows its defaults. A saved value that is no longer valid is repaired or replaced by the
   default, and a damaged or unreadable save is treated as "nothing saved"; saving can never crash the app.

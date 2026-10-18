@@ -4,7 +4,9 @@ import android.app.Application
 import android.content.Context
 import android.util.Log
 import androidx.datastore.preferences.core.edit
+import androidx.datastore.preferences.core.intPreferencesKey
 import androidx.datastore.preferences.core.stringPreferencesKey
+import androidx.datastore.preferences.core.stringSetPreferencesKey
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewmodel.CreationExtras
 import com.google.firebase.FirebaseApp
@@ -19,6 +21,7 @@ import com.google.firebase.firestore.SetOptions
 import com.google.firebase.firestore.Source
 import com.ravibhaiya.quizzen.domain.VocabularyEntry
 import com.ravibhaiya.quizzen.domain.VocabularyJsonFormat
+import com.ravibhaiya.quizzen.domain.VocabularyQuizRules
 import com.ravibhaiya.quizzen.domain.VocabularyRules
 import com.ravibhaiya.quizzen.domain.WordDetails
 import java.io.File
@@ -40,6 +43,7 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
@@ -49,10 +53,14 @@ import kotlinx.coroutines.withTimeout
 
 interface VocabularyRepository {
     val entries: Flow<List<VocabularyEntry>>
+    val mistakeWords: Flow<Set<String>>
+        get() = flowOf(emptySet())
     val syncError: Flow<String?>
     suspend fun saveEntry(entry: VocabularyEntry): Result<VocabularyEntry>
     suspend fun saveEntries(entries: List<VocabularyEntry>): Result<List<VocabularyEntry>>
     suspend fun deleteEntry(id: String): Result<Unit>
+    suspend fun recordMistakeWords(wordKeys: Set<String>) = Unit
+    suspend fun removeMistakeWords(wordKeys: Set<String>) = Unit
     fun clearSyncError()
 }
 
@@ -72,12 +80,17 @@ class FirestoreVocabularyRepository(context: Context) : VocabularyRepository {
     private val appContext = context.applicationContext
     private val dataStore = appContext.quizzenDataStore
     private val cacheFile = File(appContext.filesDir, CACHE_FILE_NAME)
+    private val mistakesFile = File(appContext.filesDir, MISTAKES_FILE_NAME)
     private val cacheMutex = Mutex()
+    private val mistakesMutex = Mutex()
     @Volatile private var legacyCacheCleared = false
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
 
     private val _entries = MutableStateFlow<List<VocabularyEntry>>(emptyList())
     override val entries: Flow<List<VocabularyEntry>> = _entries.asStateFlow()
+
+    private val _mistakeWords = MutableStateFlow<Set<String>>(loadMistakesFileSync())
+    override val mistakeWords: Flow<Set<String>> = _mistakeWords.asStateFlow()
 
     private val _syncError = MutableStateFlow<String?>(null)
     override val syncError: Flow<String?> = _syncError.asStateFlow()
@@ -104,12 +117,29 @@ class FirestoreVocabularyRepository(context: Context) : VocabularyRepository {
 
     init {
         scope.launch {
+            syncInitialMistakes()
             val cached = loadLocalCache()
-            if (cached.isNotEmpty() && _entries.value.isEmpty()) {
-                _entries.value = sortEntries(cached)
+            val seedVersion = runCatching { dataStore.data.first()[SEED_VERSION_KEY] ?: 0 }.getOrDefault(0)
+            val seedNeeded = seedVersion < CURRENT_SEED_VERSION
+            val initialEntries = if (seedNeeded) {
+                val cachedWordsLower = cached.map { it.wordDetails.word.lowercase() }.toSet()
+                val now = System.currentTimeMillis()
+                val missingSeeds = VocabularyQuizRules.FALLBACK_ENTRIES
+                    .filter { it.wordDetails.word.lowercase() !in cachedWordsLower }
+                    .mapIndexed { idx, entry ->
+                        entry.copy(createdAt = now + idx, updatedAt = now + idx)
+                    }
+                val combined = sortEntries(cached + missingSeeds)
+                saveLocalCache(combined)
+                combined
+            } else {
+                sortEntries(cached)
+            }
+            if (initialEntries.isNotEmpty() && _entries.value.isEmpty()) {
+                _entries.value = initialEntries
             }
             observeFirestore()
-            syncInitialWithFirestore(cached)
+            syncInitialWithFirestore(initialEntries, seedNeeded = seedNeeded)
         }
     }
 
@@ -144,7 +174,10 @@ class FirestoreVocabularyRepository(context: Context) : VocabularyRepository {
         }
     }
 
-    private suspend fun syncInitialWithFirestore(localCached: List<VocabularyEntry>) {
+    private suspend fun syncInitialWithFirestore(
+        localCached: List<VocabularyEntry>,
+        seedNeeded: Boolean,
+    ) {
         val db = firestore ?: return
         runCatching {
             val snapshot = withTimeout(FIREBASE_TIMEOUT_MS) {
@@ -154,10 +187,31 @@ class FirestoreVocabularyRepository(context: Context) : VocabularyRepository {
                 docToEntry(doc.id, doc.getData(ServerTimestampBehavior.ESTIMATE))
             }
             val remoteById = remoteEntries.associateBy { it.id }
+            val remoteByWordLower = remoteEntries.associateBy { it.wordDetails.word.lowercase() }
+
+            // Seed starter vocabulary words directly into Firebase when not yet seeded or if remote is empty
+            if (seedNeeded || remoteEntries.isEmpty()) {
+                val missingSeeds = VocabularyQuizRules.FALLBACK_ENTRIES.filter { seed ->
+                    seed.id !in pendingDeletes &&
+                        seed.id !in remoteById &&
+                        seed.wordDetails.word.lowercase() !in remoteByWordLower
+                }
+                if (missingSeeds.isNotEmpty()) {
+                    val seedResult = saveEntries(missingSeeds)
+                    if (seedResult.isSuccess) {
+                        runCatching { dataStore.edit { it[SEED_VERSION_KEY] = CURRENT_SEED_VERSION } }
+                    }
+                } else {
+                    runCatching { dataStore.edit { it[SEED_VERSION_KEY] = CURRENT_SEED_VERSION } }
+                }
+            }
 
             // Push any locally cached entries that aren't in Firestore yet
             for (local in localCached) {
-                if (local.id !in pendingDeletes && local.id !in remoteById) {
+                if (local.id !in pendingDeletes &&
+                    local.id !in remoteById &&
+                    local.wordDetails.word.lowercase() !in remoteByWordLower
+                ) {
                     runCatching {
                         withTimeout(FIREBASE_TIMEOUT_MS) {
                             db.collection(COLLECTION_VOCABULARY)
@@ -172,8 +226,18 @@ class FirestoreVocabularyRepository(context: Context) : VocabularyRepository {
                 }
             }
 
+            val refreshedRemote = if (seedNeeded || remoteEntries.isEmpty()) {
+                withTimeout(FIREBASE_TIMEOUT_MS) {
+                    db.collection(COLLECTION_VOCABULARY).get().await()
+                }.documents.mapNotNull { doc ->
+                    docToEntry(doc.id, doc.getData(ServerTimestampBehavior.ESTIMATE))
+                }
+            } else {
+                remoteEntries
+            }
+
             applyRemoteEntries(
-                remoteEntries = remoteEntries,
+                remoteEntries = refreshedRemote,
                 isFromServer = !snapshot.metadata.isFromCache,
             )
         }.onFailure { e ->
@@ -347,9 +411,13 @@ class FirestoreVocabularyRepository(context: Context) : VocabularyRepository {
         pendingUpserts.remove(id)
         pendingDeletes.add(id)
 
+        val deletedEntry = _entries.value.firstOrNull { it.id == id }
         val updatedList = _entries.value.filterNot { it.id == id }
         _entries.value = updatedList
         saveLocalCache(updatedList)
+        if (deletedEntry != null) {
+            removeMistakeWords(VocabularyQuizRules.mistakeKeysForEntry(deletedEntry))
+        }
 
         return try {
             withTimeout(FIREBASE_TIMEOUT_MS) {
@@ -374,6 +442,72 @@ class FirestoreVocabularyRepository(context: Context) : VocabularyRepository {
             Log.w(TAG, msg, e)
             _syncError.value = msg
             Result.failure(IllegalStateException(msg, e))
+        }
+    }
+
+    override suspend fun recordMistakeWords(wordKeys: Set<String>) {
+        val normalized = wordKeys.map(VocabularyQuizRules::mistakeKey).filter { it.isNotEmpty() }.toSet()
+        if (normalized.isEmpty()) return
+        mistakesMutex.withLock {
+            val updated = _mistakeWords.value + normalized
+            _mistakeWords.value = updated
+            persistMistakes(updated)
+        }
+    }
+
+    override suspend fun removeMistakeWords(wordKeys: Set<String>) {
+        val normalized = wordKeys.map(VocabularyQuizRules::mistakeKey).filter { it.isNotEmpty() }.toSet()
+        if (normalized.isEmpty()) return
+        mistakesMutex.withLock {
+            val updated = _mistakeWords.value - normalized
+            _mistakeWords.value = updated
+            persistMistakes(updated)
+        }
+    }
+
+    private fun loadMistakesFileSync(): Set<String> = runCatching {
+        if (!mistakesFile.exists()) return@runCatching emptySet()
+        mistakesFile.readLines(Charsets.UTF_8)
+            .map(VocabularyQuizRules::mistakeKey)
+            .filter { it.isNotEmpty() }
+            .toSet()
+    }.getOrDefault(emptySet())
+
+    private suspend fun syncInitialMistakes() {
+        mistakesMutex.withLock {
+            val fromDataStore = runCatching {
+                dataStore.data.first()[MISTAKE_WORDS_KEY].orEmpty()
+                    .map(VocabularyQuizRules::mistakeKey)
+                    .filter { it.isNotEmpty() }
+                    .toSet()
+            }.getOrDefault(emptySet())
+            val merged = _mistakeWords.value + fromDataStore
+            if (merged != _mistakeWords.value) {
+                _mistakeWords.value = merged
+            }
+            if (merged.isNotEmpty()) {
+                persistMistakes(merged)
+            }
+        }
+    }
+
+    private suspend fun persistMistakes(words: Set<String>) {
+        withContext(Dispatchers.IO) {
+            runCatching {
+                dataStore.edit { prefs ->
+                    prefs[MISTAKE_WORDS_KEY] = words
+                }
+            }.onFailure { Log.w(TAG, "Failed to write mistake words to DataStore", it) }
+
+            runCatching {
+                val tmp = File(mistakesFile.parentFile, "$MISTAKES_FILE_NAME.tmp")
+                tmp.writeText(words.joinToString(separator = "\n"), Charsets.UTF_8)
+                try {
+                    Files.move(tmp.toPath(), mistakesFile.toPath(), StandardCopyOption.ATOMIC_MOVE)
+                } catch (e: AtomicMoveNotSupportedException) {
+                    Files.move(tmp.toPath(), mistakesFile.toPath(), StandardCopyOption.REPLACE_EXISTING)
+                }
+            }.onFailure { Log.w(TAG, "Failed to write mistake words file", it) }
         }
     }
 
@@ -462,8 +596,12 @@ class FirestoreVocabularyRepository(context: Context) : VocabularyRepository {
         const val FIREBASE_TIMEOUT_MS = 12_000L
         const val BATCH_SIZE = 400
         const val CACHE_FILE_NAME = "vocabulary_cache.json"
+        const val MISTAKES_FILE_NAME = "vocabulary_mistakes.txt"
+        const val CURRENT_SEED_VERSION = 1
 
         val LEGACY_CACHE_KEY = stringPreferencesKey("vocabulary_entries_cache")
+        val SEED_VERSION_KEY = intPreferencesKey("vocabulary_firebase_seed_version")
+        val MISTAKE_WORDS_KEY = stringSetPreferencesKey("vocabulary_mistake_words")
     }
 }
 
@@ -692,11 +830,16 @@ internal object VocabularyJsonCodec {
 
 private var sharedRepositoryInstance: VocabularyRepository? = null
 
-internal fun CreationExtras.vocabularyRepository(): VocabularyRepository {
-    val app = this[ViewModelProvider.AndroidViewModelFactory.APPLICATION_KEY] as Application
+internal fun ensureVocabularyRepositoryInitialized(context: Context): VocabularyRepository {
+    val appContext = context.applicationContext
     return synchronized(VocabularyRepository::class.java) {
-        sharedRepositoryInstance ?: FirestoreVocabularyRepository(app).also {
+        sharedRepositoryInstance ?: FirestoreVocabularyRepository(appContext).also {
             sharedRepositoryInstance = it
         }
     }
+}
+
+internal fun CreationExtras.vocabularyRepository(): VocabularyRepository {
+    val app = this[ViewModelProvider.AndroidViewModelFactory.APPLICATION_KEY] as Application
+    return ensureVocabularyRepositoryInitialized(app)
 }

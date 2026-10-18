@@ -139,4 +139,15 @@ object QuizzenIcons {
             "M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z",
         )
     }
+
+    val Shuffle: ImageVector by lazy {
+        strokeIcon(
+            "Shuffle", 2f,
+            "M16 3h5v5",
+            "M4 20L21 3",
+            "M21 16v5h-5",
+            "M15 15l6 6",
+            "M4 4l5 5",
+        )
+    }
 }

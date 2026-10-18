@@ -5,11 +5,14 @@ import com.ravibhaiya.quizzen.domain.AlphabetChallenge
 import com.ravibhaiya.quizzen.domain.FractionChallenge
 import com.ravibhaiya.quizzen.domain.PowerRootType
 import com.ravibhaiya.quizzen.domain.PracticeConfig
+import com.ravibhaiya.quizzen.domain.VocabularyQuizConfig
+import com.ravibhaiya.quizzen.domain.VocabularyQuizMode
 import com.ravibhaiya.quizzen.ui.alphabet.AlphabetConfigViewModel
 import com.ravibhaiya.quizzen.ui.fractions.FractionsConfigViewModel
 import com.ravibhaiya.quizzen.ui.multiply.MultiplyConfigViewModel
 import com.ravibhaiya.quizzen.ui.powers.PowersRootsConfigViewModel
 import com.ravibhaiya.quizzen.ui.tables.TablesConfigViewModel
+import com.ravibhaiya.quizzen.ui.vocabularyquiz.VocabularyConfigViewModel
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -41,6 +44,7 @@ class ConfigViewModelsTest {
         var powers: PracticeConfig.PowersRoots? = null,
         var alphabet: PracticeConfig.Alphabet? = null,
         var fractions: PracticeConfig.Fractions? = null,
+        var vocabulary: VocabularyQuizConfig? = null,
         private val gate: CompletableDeferred<Unit>? = null,
     ) : QuizSettingsRepository {
         var savedMultiply: PracticeConfig.Multiply? = null
@@ -48,6 +52,7 @@ class ConfigViewModelsTest {
         var savedPowers: PracticeConfig.PowersRoots? = null
         var savedAlphabet: PracticeConfig.Alphabet? = null
         var savedFractions: PracticeConfig.Fractions? = null
+        var savedVocabulary: VocabularyQuizConfig? = null
 
         override suspend fun loadMultiply(defaultTimer: Int): PracticeConfig.Multiply? { gate?.await(); return multiply }
         override suspend fun saveMultiply(config: PracticeConfig.Multiply) { savedMultiply = config }
@@ -59,6 +64,8 @@ class ConfigViewModelsTest {
         override suspend fun saveAlphabet(config: PracticeConfig.Alphabet) { savedAlphabet = config }
         override suspend fun loadFractions(defaultTimer: Int): PracticeConfig.Fractions? { gate?.await(); return fractions }
         override suspend fun saveFractions(config: PracticeConfig.Fractions) { savedFractions = config }
+        override suspend fun loadVocabulary(defaultTimer: Int): VocabularyQuizConfig? { gate?.await(); return vocabulary }
+        override suspend fun saveVocabulary(config: VocabularyQuizConfig) { savedVocabulary = config }
     }
 
     // ---- Multiply ----
@@ -296,5 +303,55 @@ class ConfigViewModelsTest {
         assertEquals(setOf(PowerRootType.Squares), vm.state.value.types)
         assertEquals(2..30, vm.state.value.squares) // the saved ranges were not applied either
         assertTrue(vm.state.value.loaded)
+    }
+
+    // ---- Vocabulary ----
+
+    @Test
+    fun vocabulary_opensWithLastUsedSettings_andSavesOnStart() = runTest(dispatcher) {
+        val saved = VocabularyQuizConfig(
+            modes = setOf(VocabularyQuizMode.Synonyms),
+            wordCount = 18,
+            timerSeconds = 15,
+        )
+        val repository = FakeRepository(vocabulary = saved)
+        val vm = VocabularyConfigViewModel(repository)
+        runCurrent()
+        assertEquals(setOf(VocabularyQuizMode.Synonyms), vm.state.value.modes)
+        assertEquals(18, vm.state.value.wordCount)
+        assertEquals("15", vm.timer.state.value.text)
+        assertTrue(vm.state.value.loaded)
+
+        vm.toggleMode(VocabularyQuizMode.Antonyms)
+        vm.onWordCountChanged(22)
+        val config = vm.startQuiz()
+        runCurrent()
+        assertEquals(
+            VocabularyQuizConfig(
+                modes = setOf(VocabularyQuizMode.Synonyms, VocabularyQuizMode.Antonyms),
+                wordCount = 22,
+                timerSeconds = 15,
+            ),
+            config,
+        )
+        assertEquals(config, repository.savedVocabulary)
+    }
+
+    @Test
+    fun vocabulary_modesAreMultiSelect_andWordCountIsClampedTo5To25() = runTest(dispatcher) {
+        val vm = VocabularyConfigViewModel(FakeRepository())
+        runCurrent()
+        assertEquals(setOf(VocabularyQuizMode.Synonyms, VocabularyQuizMode.Antonyms), vm.state.value.modes)
+        assertEquals(10, vm.state.value.wordCount)
+
+        vm.toggleMode(VocabularyQuizMode.Antonyms)
+        assertEquals(setOf(VocabularyQuizMode.Synonyms), vm.state.value.modes)
+        vm.toggleMode(VocabularyQuizMode.Synonyms) // last one stays selected
+        assertEquals(setOf(VocabularyQuizMode.Synonyms), vm.state.value.modes)
+
+        vm.onWordCountChanged(2)
+        assertEquals(5, vm.state.value.wordCount)
+        vm.onWordCountChanged(40)
+        assertEquals(25, vm.state.value.wordCount)
     }
 }

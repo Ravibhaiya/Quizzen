@@ -8,6 +8,9 @@ import com.ravibhaiya.quizzen.domain.FractionRules
 import com.ravibhaiya.quizzen.domain.PowerRootType
 import com.ravibhaiya.quizzen.domain.PowersRootsRules
 import com.ravibhaiya.quizzen.domain.PracticeConfig
+import com.ravibhaiya.quizzen.domain.VocabularyQuizConfig
+import com.ravibhaiya.quizzen.domain.VocabularyQuizMode
+import com.ravibhaiya.quizzen.domain.VocabularyQuizRules
 
 object Routes {
     const val HOME = "home"
@@ -16,6 +19,7 @@ object Routes {
     const val POWERS = "powers"
     const val ALPHABET = "alphabet"
     const val FRACTIONS = "fractions"
+    const val VOCABULARY_CONFIG = "vocabulary_config"
     const val DATABASE_MANAGER = "database_manager"
     const val VOCABULARY_MANAGER = "vocabulary_manager"
 
@@ -34,6 +38,8 @@ object Routes {
     const val ARG_LETTER_TO = "lto"
     const val ARG_FRACTION_FROM = "ffrom"
     const val ARG_FRACTION_TO = "fto"
+    const val ARG_VOCAB_MODES = "vmodes"
+    const val ARG_WORD_COUNT = "wcount"
 
     const val MODE_MULTIPLY = "multiply"
     const val MODE_TABLES = "tables"
@@ -47,6 +53,13 @@ object Routes {
         "&$ARG_CU_MIN={$ARG_CU_MIN}&$ARG_CU_MAX={$ARG_CU_MAX}" +
         "&$ARG_CHALLENGE={$ARG_CHALLENGE}&$ARG_LETTER_FROM={$ARG_LETTER_FROM}&$ARG_LETTER_TO={$ARG_LETTER_TO}" +
         "&$ARG_FRACTION_FROM={$ARG_FRACTION_FROM}&$ARG_FRACTION_TO={$ARG_FRACTION_TO}"
+
+    const val VOCABULARY_QUIZ = "vocabulary_quiz?$ARG_VOCAB_MODES={$ARG_VOCAB_MODES}" +
+        "&$ARG_WORD_COUNT={$ARG_WORD_COUNT}&$ARG_SECONDS={$ARG_SECONDS}"
+
+    fun vocabularyQuiz(config: VocabularyQuizConfig): String =
+        "vocabulary_quiz?$ARG_VOCAB_MODES=${VocabularyQuizMode.encode(config.modes)}" +
+            "&$ARG_WORD_COUNT=${config.wordCount}&$ARG_SECONDS=${config.timerSeconds}"
 
     fun practice(config: PracticeConfig): String = when (config) {
         is PracticeConfig.Multiply ->
@@ -68,6 +81,31 @@ object Routes {
             "practice/$MODE_FRACTIONS?$ARG_CHALLENGE=${FractionChallenge.encode(config.challenges)}" +
                 "&$ARG_FRACTION_FROM=${config.range.first}&$ARG_FRACTION_TO=${config.range.last}" +
                 "&$ARG_SECONDS=${config.timerSeconds}"
+    }
+}
+
+/** Decodes a [VocabularyQuizConfig] from navigation arguments (also restored from saved state). */
+object VocabularyQuizArgs {
+
+    fun fromSavedState(handle: SavedStateHandle): VocabularyQuizConfig = decode(
+        modes = handle.get<String>(Routes.ARG_VOCAB_MODES),
+        wordCount = handle.get<Int>(Routes.ARG_WORD_COUNT),
+        seconds = handle.get<Int>(Routes.ARG_SECONDS),
+    )
+
+    fun decode(
+        modes: String?,
+        wordCount: Int?,
+        seconds: Int?,
+    ): VocabularyQuizConfig {
+        val timer = (seconds ?: 0).takeIf { it > 0 } ?: VocabularyQuizRules.DEFAULT_TIMER_SECONDS
+        val decodedModes = VocabularyQuizMode.decode(modes).ifEmpty { VocabularyQuizMode.DEFAULT }
+        val count = VocabularyQuizRules.coerceWordCount(wordCount ?: VocabularyQuizRules.DEFAULT_WORDS)
+        return VocabularyQuizConfig(
+            modes = decodedModes,
+            wordCount = count,
+            timerSeconds = timer,
+        )
     }
 }
 
