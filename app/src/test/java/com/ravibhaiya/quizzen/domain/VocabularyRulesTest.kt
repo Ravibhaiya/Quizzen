@@ -246,4 +246,124 @@ class VocabularyRulesTest {
         assertEquals(listOf("Fast", "Swift"), merged.synonyms.map { it.word })
         assertEquals(listOf("Slow"), merged.antonyms.map { it.word })
     }
+
+    private fun entry(
+        word: String,
+        id: String = "",
+        synonyms: List<String> = emptyList(),
+        antonyms: List<String> = emptyList(),
+        hinglish: String = "",
+        example: String = "",
+    ) = VocabularyEntry(
+        id = id,
+        wordDetails = WordDetails(word = word, meaningEnglish = "meaning", meaningHinglish = hinglish, exampleSentence = example),
+        synonyms = synonyms.map { WordDetails(word = it, meaningEnglish = "meaning") },
+        antonyms = antonyms.map { WordDetails(word = it, meaningEnglish = "meaning") },
+    )
+
+    private val abate = entry("abate", id = "a1", synonyms = listOf("reduce", "lessen"), antonyms = listOf("increase"))
+
+    @Test
+    fun `wordKey ignores case, extra and non-breaking spaces and curly apostrophes`() {
+        assertEquals("don't", VocabularyRules.wordKey(" Don\u2019t "))
+        assertEquals("give up", VocabularyRules.wordKey("Give  \u00A0up"))
+    }
+
+    @Test
+    fun `checkMainWords flags the same main word in any capitalization or spacing`() {
+        val check = VocabularyRules.checkMainWords(listOf(entry(" ABATE ")), listOf(abate))
+        assertEquals(1, check.clashing.size)
+        assertTrue(check.toSave.isEmpty())
+    }
+
+    @Test
+    fun `checkMainWords never compares synonyms or antonyms of other entries`() {
+        val asSynonym = VocabularyRules.checkMainWords(listOf(entry("Reduce")), listOf(abate))
+        val asAntonym = VocabularyRules.checkMainWords(listOf(entry("increase")), listOf(abate))
+        assertTrue(asSynonym.clashing.isEmpty() && asSynonym.toSave.size == 1)
+        assertTrue(asAntonym.clashing.isEmpty() && asAntonym.toSave.size == 1)
+    }
+
+    @Test
+    fun `checkMainWords lets an entry keep its own word even when an older duplicate exists`() {
+        val saved = listOf(entry("abate", id = "a1"), entry("abate", id = "a2"))
+        val check = VocabularyRules.checkMainWords(listOf(entry("abate", id = "a1", hinglish = "kam karna")), saved)
+        assertTrue(check.clashing.isEmpty())
+        assertEquals(1, check.toSave.size)
+    }
+
+    @Test
+    fun `checkMainWords refuses renaming an entry onto another entry's word`() {
+        val saved = listOf(entry("abate", id = "a1"), entry("abet", id = "a2"))
+        val check = VocabularyRules.checkMainWords(listOf(entry("abet", id = "a1")), saved)
+        assertEquals(1, check.clashing.size)
+    }
+
+    @Test
+    fun `checkMainWords on a bulk list splits new, existing and repeated words`() {
+        val incoming = listOf(
+            entry("abandon"),
+            entry("abate"),
+            entry("abhor"),
+            entry("Abandon", synonyms = listOf("leave")),
+        )
+        val check = VocabularyRules.checkMainWords(incoming, listOf(abate))
+        assertEquals(listOf("Abandon", "abhor"), check.toSave.map { it.wordDetails.word })
+        assertEquals(listOf("abate"), check.skippedExisting)
+        assertEquals(1, check.mergedRepeats)
+    }
+
+    @Test
+    fun `mergeRelations adds only new synonyms and antonyms and keeps the entry id`() {
+        val incoming = entry("abate", synonyms = listOf("Reduce", "subside"), antonyms = listOf("intensify"))
+        val result = VocabularyRules.mergeRelations(abate, incoming)
+        assertEquals(listOf("reduce", "lessen", "subside"), result.entry.synonyms.map { it.word })
+        assertEquals(listOf("increase", "intensify"), result.entry.antonyms.map { it.word })
+        assertEquals(1, result.addedSynonyms)
+        assertEquals(1, result.addedAntonyms)
+        assertEquals(1, result.skipped)
+        assertEquals("a1", result.entry.id)
+        assertTrue(result.changed)
+    }
+
+    @Test
+    fun `mergeRelations skips the main word itself and a word already in the other list`() {
+        val incoming = entry("abate", synonyms = listOf("ABATE", "increase", "fresh"), antonyms = listOf("fresh", "decrease"))
+        val result = VocabularyRules.mergeRelations(abate, incoming)
+        assertEquals(listOf("reduce", "lessen", "fresh"), result.entry.synonyms.map { it.word })
+        assertEquals(listOf("increase", "decrease"), result.entry.antonyms.map { it.word })
+    }
+
+    @Test
+    fun `mergeRelations never lets a list grow past the limit`() {
+        val full = entry("big", id = "b", synonyms = (1..VocabularyRules.MAX_RELATIONS).map { "s$it" })
+        val result = VocabularyRules.mergeRelations(full, entry("big", synonyms = listOf("extra"), antonyms = listOf("small")))
+        assertEquals(VocabularyRules.MAX_RELATIONS, result.entry.synonyms.size)
+        assertTrue(result.limitReached)
+        assertEquals(0, result.addedSynonyms)
+        assertEquals(1, result.addedAntonyms)
+    }
+
+    @Test
+    fun `mergeRelations fills blank Hinglish and example but never overwrites`() {
+        val blank = entry("abate", id = "a1")
+        val filled = VocabularyRules.mergeRelations(blank, entry("abate", hinglish = "kam karna", example = "The storm abated."))
+        assertEquals("kam karna", filled.entry.wordDetails.meaningHinglish)
+        assertEquals("The storm abated.", filled.entry.wordDetails.exampleSentence)
+        assertTrue(filled.changed)
+
+        val kept = VocabularyRules.mergeRelations(
+            entry("abate", id = "a1", hinglish = "keep me", example = "keep"),
+            entry("abate", hinglish = "other", example = "other"),
+        )
+        assertEquals("keep me", kept.entry.wordDetails.meaningHinglish)
+        assertFalse(kept.changed)
+    }
+
+    @Test
+    fun `mergeRelations reports no change when everything is already present`() {
+        val result = VocabularyRules.mergeRelations(abate, entry("abate", synonyms = listOf("reduce"), antonyms = listOf("increase")))
+        assertFalse(result.changed)
+        assertEquals(2, result.skipped)
+    }
 }

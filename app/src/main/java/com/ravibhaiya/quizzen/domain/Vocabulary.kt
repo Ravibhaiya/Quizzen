@@ -1,5 +1,7 @@
 package com.ravibhaiya.quizzen.domain
 
+import java.text.Normalizer
+
 /**
  * The four details stored and displayed for a primary vocabulary word, a synonym, or an antonym.
  */
@@ -75,7 +77,7 @@ object VocabularyRules {
                 synonyms = raw.synonyms.distinctBy { it.word.trim().lowercase() },
                 antonyms = raw.antonyms.distinctBy { it.word.trim().lowercase() },
             )
-            val key = entry.wordDetails.word.trim().lowercase()
+            val key = wordKey(entry.wordDetails.word)
             val previous = byWord[key]
             byWord[key] = if (previous == null) {
                 entry
@@ -87,6 +89,126 @@ object VocabularyRules {
             }
         }
         return byWord.values.toList()
+    }
+
+    private val whitespaceRun = Regex("[\\s\\u00A0]+")
+
+    /** Most synonyms (and most antonyms) one word can hold; the same limit is enforced by `firestore.rules`. */
+    const val MAX_RELATIONS = 30
+
+    /**
+     * The identity of a main word: capitalization, extra or non-breaking spaces and curly versus straight
+     * apostrophes are ignored. Only ever applied to main words for the uniqueness rule; synonyms and antonyms
+     * are never compared with other entries' main words.
+     */
+    fun wordKey(word: String): String =
+        Normalizer.normalize(word, Normalizer.Form.NFC)
+            .replace('\u2018', '\'')
+            .replace('\u2019', '\'')
+            .replace(whitespaceRun, " ")
+            .trim()
+            .lowercase()
+
+    /**
+     * Result of [checkMainWords]: [toSave] are new words (or unchanged/edited ones), [clashing] are incoming entries
+     * whose main word already belongs to another saved entry, [mergedRepeats] counts repeats collapsed inside the batch.
+     */
+    data class WordCheck(
+        val toSave: List<VocabularyEntry>,
+        val clashing: List<VocabularyEntry>,
+        val mergedRepeats: Int,
+    ) {
+        val skippedExisting: List<String> get() = clashing.map { it.wordDetails.word.trim() }
+    }
+
+    /**
+     * Keeps one entry per main word. Repeats inside [incoming] are collapsed (the last one wins). An incoming entry
+     * clashes when its word key belongs to a saved entry, unless it is that same entry (same id, same word), so
+     * editing a word still works even if older duplicates exist. Renaming onto another word clashes.
+     */
+    fun checkMainWords(incoming: List<VocabularyEntry>, existing: List<VocabularyEntry>): WordCheck {
+        val merged = mergeDuplicateWords(incoming)
+        val keyById = existing.filter { it.id.isNotBlank() }.associate { it.id to wordKey(it.wordDetails.word) }
+        val taken = existing.map { wordKey(it.wordDetails.word) }.toSet()
+        val (clashing, fresh) = merged.partition { entry ->
+            val key = wordKey(entry.wordDetails.word)
+            val unchanged = entry.id.isNotBlank() && keyById[entry.id] == key
+            key in taken && !unchanged
+        }
+        return WordCheck(toSave = fresh, clashing = clashing, mergedRepeats = incoming.size - merged.size)
+    }
+
+    data class MergeResult(
+        val entry: VocabularyEntry,
+        val addedSynonyms: Int,
+        val addedAntonyms: Int,
+        val skipped: Int,
+        val limitReached: Boolean,
+        val changed: Boolean,
+    )
+
+    data class MergeSummary(
+        val wordsUpdated: Int,
+        val addedSynonyms: Int,
+        val addedAntonyms: Int,
+        val skipped: Int,
+        val limitReached: Boolean,
+    )
+
+    /**
+     * Adds the new synonyms and antonyms of [incoming] to [existing]. The existing word, meanings and example are
+     * never overwritten (a blank Hinglish meaning or example is filled in). An item is skipped when it equals the main
+     * word, is already in either list, or would push a list past [MAX_RELATIONS].
+     */
+    fun mergeRelations(existing: VocabularyEntry, incoming: VocabularyEntry): MergeResult {
+        val clean = incoming.sanitized()
+        val mainKey = wordKey(existing.wordDetails.word)
+        val synKeys = existing.synonyms.map { wordKey(it.word) }.toMutableSet()
+        val antKeys = existing.antonyms.map { wordKey(it.word) }.toMutableSet()
+        val synonyms = existing.synonyms.toMutableList()
+        val antonyms = existing.antonyms.toMutableList()
+        var skipped = 0
+        var limitReached = false
+
+        fun absorb(
+            source: List<WordDetails>,
+            target: MutableList<WordDetails>,
+            own: MutableSet<String>,
+            other: Set<String>,
+        ): Int {
+            var added = 0
+            for (item in source) {
+                val key = wordKey(item.word)
+                when {
+                    key == mainKey || key in own || key in other -> skipped++
+                    target.size >= MAX_RELATIONS -> {
+                        skipped++
+                        limitReached = true
+                    }
+                    else -> {
+                        target += item
+                        own += key
+                        added++
+                    }
+                }
+            }
+            return added
+        }
+
+        val addedSyn = absorb(clean.synonyms, synonyms, synKeys, antKeys)
+        val addedAnt = absorb(clean.antonyms, antonyms, antKeys, synKeys)
+        val mainDetails = existing.wordDetails.copy(
+            meaningHinglish = existing.wordDetails.meaningHinglish.ifBlank { clean.wordDetails.meaningHinglish },
+            exampleSentence = existing.wordDetails.exampleSentence.ifBlank { clean.wordDetails.exampleSentence },
+        )
+        return MergeResult(
+            entry = existing.copy(wordDetails = mainDetails, synonyms = synonyms, antonyms = antonyms),
+            addedSynonyms = addedSyn,
+            addedAntonyms = addedAnt,
+            skipped = skipped,
+            limitReached = limitReached,
+            changed = addedSyn + addedAnt > 0 || mainDetails != existing.wordDetails,
+        )
     }
 
     /**
