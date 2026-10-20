@@ -2,6 +2,7 @@ package com.ravibhaiya.quizzen.ui
 
 import com.ravibhaiya.quizzen.data.VocabularyRepository
 import com.ravibhaiya.quizzen.domain.VocabularyEntry
+import com.ravibhaiya.quizzen.domain.VocabularyRules
 import com.ravibhaiya.quizzen.domain.WordDetails
 import com.ravibhaiya.quizzen.ui.vocabulary.VocabularyManagerViewModel
 import kotlinx.coroutines.Dispatchers
@@ -188,6 +189,139 @@ class VocabularyManagerViewModelTest {
         assertNull(vm.uiState.value.errorMessage)
     }
 
+    private fun word(
+        word: String,
+        synonyms: List<String> = emptyList(),
+        antonyms: List<String> = emptyList(),
+    ): String {
+        fun rel(items: List<String>) =
+            items.joinToString(",") { """{"word": "$it", "meaningEnglish": "m"}""" }
+        return """{"word": "$word", "meaningEnglish": "m", "synonyms": [${rel(synonyms)}], "antonyms": [${rel(antonyms)}]}"""
+    }
+
+    private suspend fun repoWithAbate(): FakeVocabularyRepository {
+        val repo = FakeVocabularyRepository()
+        repo.saveEntry(
+            VocabularyEntry(
+                id = "a1",
+                wordDetails = WordDetails(word = "abate", meaningEnglish = "become less"),
+                synonyms = listOf(WordDetails(word = "reduce", meaningEnglish = "make smaller")),
+                antonyms = listOf(WordDetails(word = "increase", meaningEnglish = "grow")),
+            ),
+        ).getOrThrow()
+        return repo
+    }
+
+    @Test
+    fun `adding an existing main word asks to merge and saves nothing until confirmed`() = runTest(dispatcher) {
+        val repo = repoWithAbate()
+        val vm = VocabularyManagerViewModel(repo)
+        advanceUntilIdle()
+
+        vm.onStartAdd()
+        vm.onUpdateJsonText(word(" ABATE ", synonyms = listOf("reduce", "subside"), antonyms = listOf("intensify")))
+        assertFalse(vm.onSaveEntry())
+        advanceUntilIdle()
+
+        val prompt = vm.uiState.value.mergePrompt
+        assertNotNull(prompt)
+        assertEquals("abate", prompt!!.existingWord)
+        assertEquals(1, prompt.newSynonyms)
+        assertEquals(1, prompt.newAntonyms)
+        assertNotNull(vm.uiState.value.editorState) // editor stays open behind the sheet
+        assertEquals(1, vm.uiState.value.entries.size)
+        assertEquals(1, vm.uiState.value.entries.single().synonyms.size)
+
+        vm.onConfirmMerge()
+        advanceUntilIdle()
+
+        assertNull(vm.uiState.value.mergePrompt)
+        assertNull(vm.uiState.value.editorState)
+        val merged = vm.uiState.value.entries.single()
+        assertEquals("a1", merged.id)
+        assertEquals(listOf("reduce", "subside"), merged.synonyms.map { it.word })
+        assertEquals(listOf("increase", "intensify"), merged.antonyms.map { it.word })
+        assertNotNull(vm.uiState.value.noticeMessage)
+    }
+
+    @Test
+    fun `cancelling the merge keeps the editor text and changes nothing`() = runTest(dispatcher) {
+        val repo = repoWithAbate()
+        val vm = VocabularyManagerViewModel(repo)
+        advanceUntilIdle()
+
+        vm.onStartAdd()
+        val json = word("abate", synonyms = listOf("subside"))
+        vm.onUpdateJsonText(json)
+        assertFalse(vm.onSaveEntry())
+        vm.onDismissMerge()
+        advanceUntilIdle()
+
+        assertNull(vm.uiState.value.mergePrompt)
+        assertEquals(json, vm.uiState.value.editorState!!.jsonText)
+        assertEquals(1, vm.uiState.value.entries.single().synonyms.size)
+    }
+
+    @Test
+    fun `adding an existing word with nothing new shows an error instead of a merge`() = runTest(dispatcher) {
+        val repo = repoWithAbate()
+        val vm = VocabularyManagerViewModel(repo)
+        advanceUntilIdle()
+
+        vm.onStartAdd()
+        vm.onUpdateJsonText(word("abate", synonyms = listOf("reduce"), antonyms = listOf("increase")))
+        assertFalse(vm.onSaveEntry())
+
+        assertNull(vm.uiState.value.mergePrompt)
+        assertTrue(vm.uiState.value.editorState!!.validationError!!.contains("already exists"))
+    }
+
+    @Test
+    fun `renaming a word onto another saved word is refused`() = runTest(dispatcher) {
+        val repo = repoWithAbate()
+        repo.saveEntry(
+            VocabularyEntry(id = "b1", wordDetails = WordDetails(word = "abet", meaningEnglish = "help")),
+        ).getOrThrow()
+        val vm = VocabularyManagerViewModel(repo)
+        advanceUntilIdle()
+
+        vm.onStartEdit(vm.uiState.value.entries.first { it.id == "a1" })
+        vm.onUpdateJsonText(word("abet"))
+        assertFalse(vm.onSaveEntry())
+
+        assertTrue(vm.uiState.value.editorState!!.validationError!!.contains("already exists"))
+        assertEquals(2, vm.uiState.value.entries.size)
+    }
+
+    @Test
+    fun `bulk import adds new words, merges existing ones without asking and shows a notice`() = runTest(dispatcher) {
+        val repo = repoWithAbate()
+        val vm = VocabularyManagerViewModel(repo)
+        advanceUntilIdle()
+
+        vm.onStartAdd()
+        vm.onUpdateJsonText(
+            "[" + listOf(
+                word("abandon"),
+                word("abate", synonyms = listOf("subside")),
+                word("Abandon", synonyms = listOf("leave")),
+            ).joinToString(",") + "]",
+        )
+        assertTrue(vm.onSaveEntry())
+        advanceUntilIdle()
+
+        assertNull(vm.uiState.value.mergePrompt)
+        assertEquals(2, vm.uiState.value.entries.size)
+        assertEquals(
+            listOf("reduce", "subside"),
+            vm.uiState.value.entries.first { it.id == "a1" }.synonyms.map { it.word },
+        )
+        assertEquals(1, vm.uiState.value.entries.count { it.wordDetails.word.equals("abandon", ignoreCase = true) })
+        assertNotNull(vm.uiState.value.noticeMessage)
+        vm.onDismissNotice()
+        assertNull(vm.uiState.value.noticeMessage)
+    }
+
     private class FakeVocabularyRepository(
         private val failWrites: Boolean = false,
     ) : VocabularyRepository {
@@ -215,6 +349,28 @@ class VocabularyManagerViewModelTest {
             val savedIds = savedList.map { it.id }.toSet()
             flow.value = flow.value.filterNot { it.id in savedIds } + savedList
             return Result.success(savedList)
+        }
+
+        override suspend fun mergeIntoExisting(
+            incoming: List<VocabularyEntry>,
+        ): Result<VocabularyRules.MergeSummary> {
+            val byKey = flow.value.associateBy { VocabularyRules.wordKey(it.wordDetails.word) }
+            val changed = mutableListOf<VocabularyEntry>()
+            var syn = 0
+            var ant = 0
+            var skipped = 0
+            var limit = false
+            for (entry in incoming) {
+                val target = byKey[VocabularyRules.wordKey(entry.wordDetails.word)] ?: continue
+                val result = VocabularyRules.mergeRelations(target, entry)
+                syn += result.addedSynonyms
+                ant += result.addedAntonyms
+                skipped += result.skipped
+                limit = limit || result.limitReached
+                if (result.changed) changed += result.entry
+            }
+            if (changed.isNotEmpty()) saveEntries(changed)
+            return Result.success(VocabularyRules.MergeSummary(changed.size, syn, ant, skipped, limit))
         }
 
         override suspend fun deleteEntry(id: String): Result<Unit> {

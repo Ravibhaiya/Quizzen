@@ -6,6 +6,7 @@ import com.ravibhaiya.quizzen.domain.VocabularyEntry
 import com.ravibhaiya.quizzen.domain.VocabularyQuizConfig
 import com.ravibhaiya.quizzen.domain.VocabularyQuizMode
 import com.ravibhaiya.quizzen.domain.VocabularyQuizRules
+import com.ravibhaiya.quizzen.domain.VocabularyRules
 import com.ravibhaiya.quizzen.domain.WordDetails
 import com.ravibhaiya.quizzen.ui.navigation.Routes
 import com.ravibhaiya.quizzen.ui.navigation.VocabularyQuizArgs
@@ -49,6 +50,8 @@ class VocabularyQuizViewModelTest {
         override val syncError: Flow<String?> = MutableStateFlow(null)
         override suspend fun saveEntry(entry: VocabularyEntry): Result<VocabularyEntry> = Result.success(entry)
         override suspend fun saveEntries(entries: List<VocabularyEntry>): Result<List<VocabularyEntry>> = Result.success(entries)
+        override suspend fun mergeIntoExisting(incoming: List<VocabularyEntry>): Result<VocabularyRules.MergeSummary> =
+            Result.success(VocabularyRules.MergeSummary(0, 0, 0, 0, false))
         override suspend fun deleteEntry(id: String): Result<Unit> = Result.success(Unit)
         override suspend fun recordMistakeWords(wordKeys: Set<String>) {
             _mistakes.value = _mistakes.value + wordKeys

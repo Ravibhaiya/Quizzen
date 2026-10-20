@@ -112,6 +112,7 @@
     <string name="cd_close_search">Close search</string>
     <string name="cd_clear_search">Clear search</string>
     <string name="cd_dismiss_error">Dismiss error</string>
+    <string name="cd_dismiss_notice">Dismiss message</string>
     <string name="cd_edit_word">Edit %1$s</string>
     <string name="cd_delete_word">Delete %1$s</string>
     <string name="cd_expand_word">Expand %1$s</string>
@@ -155,6 +156,9 @@
     <string name="delete_word_message">This will permanently remove this word along with its synonyms and antonyms.</string>
     <string name="cancel">Cancel</string>
     <string name="delete">Delete</string>
+    <string name="merge_word_title">\"%1$s\" already exists</string>
+    <string name="merge_word_message">New synonyms: %1$d. New antonyms: %2$d. Existing meanings and example are kept.</string>
+    <string name="merge">Merge</string>
 
     <!-- Vocabulary Quiz -->
     <string name="vocabulary_word_count_title">Words to Attempt</string>

@@ -205,6 +205,18 @@ fun VocabularyManagerScreen(
                     Spacer(Modifier.height(12.dp))
                 }
 
+                val noticeMessage = state.noticeMessage
+                if (noticeMessage != null) {
+                    NoticeBanner(
+                        message = noticeMessage,
+                        onDismiss = {
+                            haptics.click()
+                            viewModel.onDismissNotice()
+                        },
+                    )
+                    Spacer(Modifier.height(12.dp))
+                }
+
                 AnimatedVisibility(
                     visible = state.isSearchActive,
                     enter = fadeIn(tween(200)) + expandVertically(tween(250, easing = EmphasizedEasing)),
@@ -348,6 +360,18 @@ fun VocabularyManagerScreen(
         )
     }
 
+    val mergePrompt = state.mergePrompt
+    if (mergePrompt != null) {
+        MergeWordConfirmSheet(
+            prompt = mergePrompt,
+            onConfirm = {
+                haptics.heavyClick()
+                viewModel.onConfirmMerge()
+            },
+            onDismiss = viewModel::onDismissMerge,
+        )
+    }
+
     val pendingDelete = state.pendingDelete
     if (pendingDelete != null) {
         DeleteWordConfirmSheet(
@@ -397,6 +421,49 @@ private fun FirebaseErrorBanner(
                 imageVector = QuizzenIcons.CloseBold,
                 contentDescription = stringResource(R.string.cd_dismiss_error),
                 tint = MaterialTheme.quizzen.error,
+                modifier = Modifier.size(14.dp),
+            )
+        }
+    }
+}
+
+@Composable
+private fun NoticeBanner(
+    message: String,
+    onDismiss: () -> Unit,
+) {
+    val shape = RoundedCornerShape(20.dp)
+    val tone = MaterialTheme.colorScheme.primary
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .testTag("vocabulary_notice_banner")
+            .semantics { liveRegion = LiveRegionMode.Polite }
+            .clip(shape)
+            .background(tone.copy(alpha = 0.10f), shape)
+            .border(1.5.dp, tone.copy(alpha = 0.3f), shape)
+            .padding(horizontal = 16.dp, vertical = 12.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(12.dp),
+    ) {
+        Text(
+            text = message,
+            style = MaterialTheme.typography.bodyMedium.copy(fontSize = 14.sp, fontWeight = FontWeight.Medium),
+            color = MaterialTheme.colorScheme.onSurface,
+            modifier = Modifier.weight(1f),
+        )
+        Box(
+            modifier = Modifier
+                .size(40.dp)
+                .testTag("dismiss_notice_button")
+                .bouncyClickable(CircleShape, pressedScale = 0.88f, onClick = onDismiss)
+                .background(tone.copy(alpha = 0.12f), CircleShape),
+            contentAlignment = Alignment.Center,
+        ) {
+            Icon(
+                imageVector = QuizzenIcons.CloseBold,
+                contentDescription = stringResource(R.string.cd_dismiss_notice),
+                tint = tone,
                 modifier = Modifier.size(14.dp),
             )
         }

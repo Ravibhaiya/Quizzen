@@ -9,6 +9,7 @@ import com.google.firebase.firestore.ListenerRegistration
 import com.google.firebase.firestore.Query
 import com.ravibhaiya.quizzen.domain.VocabularyEntry
 import com.ravibhaiya.quizzen.domain.VocabularyQuizRules
+import com.ravibhaiya.quizzen.domain.VocabularyRules
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -37,11 +38,16 @@ interface VocabularyRepository {
     val syncError: Flow<String?>
     suspend fun saveEntry(entry: VocabularyEntry): Result<VocabularyEntry>
     suspend fun saveEntries(entries: List<VocabularyEntry>): Result<List<VocabularyEntry>>
+    suspend fun mergeIntoExisting(incoming: List<VocabularyEntry>): Result<VocabularyRules.MergeSummary>
     suspend fun deleteEntry(id: String): Result<Unit>
     suspend fun recordMistakeWords(wordKeys: Set<String>)
     suspend fun removeMistakeWords(wordKeys: Set<String>)
     fun clearSyncError()
 }
+
+/** Thrown by [VocabularyRepository.saveEntries] when a save would create a second entry for a main word. */
+class DuplicateWordException(val words: List<String>) :
+    IllegalArgumentException("Duplicate main word(s): ${words.joinToString(", ")}")
 
 /**
  * Production implementation backed by Firebase Cloud Firestore (`vocabulary` collection) and a local JSON file
@@ -59,6 +65,7 @@ class FirestoreVocabularyRepository(
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
     private val cacheMutex = Mutex()
     private val mistakeMutex = Mutex()
+    private val mergeMutex = Mutex()
     private val cacheFile: File
         get() = File(appContext.filesDir, LOCAL_CACHE_FILENAME)
     private val mistakeFile: File
@@ -197,6 +204,13 @@ class FirestoreVocabularyRepository(
                 )
             }
 
+            // One entry per main word: refuse a save that would create a second one (callers merge instead).
+            val wordCheck = VocabularyRules.checkMainWords(preparedList, localFallbackFlow.value)
+            if (wordCheck.clashing.isNotEmpty() || wordCheck.mergedRepeats > 0) {
+                val names = wordCheck.skippedExisting.ifEmpty { listOf("repeated words in the same save") }
+                return@withContext Result.failure(DuplicateWordException(names))
+            }
+
             // 1. Update local cache immediately for instant UI responsiveness and offline safety.
             val newIds = preparedList.map { it.id }.toSet()
             val updatedLocal = buildList {
@@ -211,13 +225,15 @@ class FirestoreVocabularyRepository(
             // 2. Sync to Firebase Firestore in a single batch when available.
             val db = firestore ?: return@withContext Result.success(preparedList)
             runCatching {
-                val batch = db.batch()
                 val col = db.collection(COLLECTION_VOCABULARY)
-                for (prepared in preparedList) {
-                    val docRef = col.document(prepared.id)
-                    batch.set(docRef, VocabularyFirestoreMapper.entryToMap(prepared))
+                // Firestore allows at most 500 writes per batch, so big imports go out in chunks.
+                for (chunk in preparedList.chunked(BATCH_CHUNK_SIZE)) {
+                    val batch = db.batch()
+                    for (prepared in chunk) {
+                        batch.set(col.document(prepared.id), VocabularyFirestoreMapper.entryToMap(prepared))
+                    }
+                    batch.commit().await()
                 }
-                batch.commit().await()
                 _syncError.value = null
             }.onFailure { e ->
                 Log.w(TAG, "Firestore saveEntries failed (saved locally): ${e.message}", e)
@@ -226,6 +242,30 @@ class FirestoreVocabularyRepository(
 
             Result.success(preparedList)
         }
+
+    override suspend fun mergeIntoExisting(
+        incoming: List<VocabularyEntry>,
+    ): Result<VocabularyRules.MergeSummary> = mergeMutex.withLock {
+        // Read the freshest local list inside the lock so two quick merges into one word cannot overwrite each other.
+        val byKey = localFallbackFlow.value.associateBy { VocabularyRules.wordKey(it.wordDetails.word) }
+        val changed = mutableListOf<VocabularyEntry>()
+        var syn = 0
+        var ant = 0
+        var skipped = 0
+        var limit = false
+        for (entry in incoming) {
+            val target = byKey[VocabularyRules.wordKey(entry.wordDetails.word)] ?: continue
+            val result = VocabularyRules.mergeRelations(target, entry)
+            syn += result.addedSynonyms
+            ant += result.addedAntonyms
+            skipped += result.skipped
+            limit = limit || result.limitReached
+            if (result.changed) changed += result.entry
+        }
+        val summary = VocabularyRules.MergeSummary(changed.size, syn, ant, skipped, limit)
+        if (changed.isEmpty()) return@withLock Result.success(summary)
+        saveEntries(changed).map { summary }
+    }
 
     override suspend fun deleteEntry(id: String): Result<Unit> = withContext(Dispatchers.IO) {
         if (id.isBlank()) return@withContext Result.success(Unit)
@@ -335,6 +375,7 @@ class FirestoreVocabularyRepository(
         private const val TAG = "VocabularyRepo"
         const val COLLECTION_VOCABULARY = "vocabulary"
         private const val FIELD_UPDATED_AT = "updatedAt"
+        private const val BATCH_CHUNK_SIZE = 400
         private const val LOCAL_CACHE_FILENAME = "vocabulary_cache_v1.json"
         private const val LOCAL_MISTAKES_FILENAME = "vocabulary_mistakes_v1.txt"
 
