@@ -27,6 +27,14 @@ data class VocabularyEditorState(
     val isEditing: Boolean get() = editingId != null
 }
 
+/** A new entry whose main word already exists: shown as a "Merge" confirmation before adding only the new items. */
+data class MergePrompt(
+    val incoming: VocabularyEntry,
+    val existingWord: String,
+    val newSynonyms: Int,
+    val newAntonyms: Int,
+)
+
 data class VocabularyUiState(
     val entries: List<VocabularyEntry> = emptyList(),
     val isSearchActive: Boolean = false,
@@ -34,6 +42,8 @@ data class VocabularyUiState(
     val expandedIds: Set<String> = emptySet(),
     val editorState: VocabularyEditorState? = null,
     val pendingDelete: VocabularyEntry? = null,
+    val mergePrompt: MergePrompt? = null,
+    val noticeMessage: String? = null,
     val errorMessage: String? = null,
 ) {
     val filteredEntries: List<VocabularyEntry>
@@ -159,9 +169,50 @@ class VocabularyManagerViewModel(
                 return false
             }
             is VocabularyJsonFormat.ParseResult.Success -> {
+                val existing = _uiState.value.entries
+                val incoming = if (editor.isEditing) {
+                    parseResult.entries.map { it.copy(id = editor.editingId.orEmpty()) }
+                } else {
+                    parseResult.entries
+                }
+                val check = VocabularyRules.checkMainWords(incoming, existing)
+
+                // Renaming a word onto another saved word is refused.
+                if (editor.isEditing && check.clashing.isNotEmpty()) {
+                    showEditorError(editor, "\"${check.skippedExisting.first()}\" already exists in your vocabulary.")
+                    return false
+                }
+
+                // Adding one word that already exists: offer to merge its new synonyms/antonyms, or explain.
+                if (!editor.isEditing && incoming.size == 1 && check.clashing.isNotEmpty()) {
+                    val clash = check.clashing.first()
+                    val key = VocabularyRules.wordKey(clash.wordDetails.word)
+                    val target = existing.firstOrNull { VocabularyRules.wordKey(it.wordDetails.word) == key }
+                        ?: return false
+                    val preview = VocabularyRules.mergeRelations(target, clash)
+                    if (!preview.changed) {
+                        showEditorError(
+                            editor,
+                            "\"${target.wordDetails.word}\" already exists and there is nothing new to add.",
+                        )
+                        return false
+                    }
+                    _uiState.update {
+                        it.copy(
+                            mergePrompt = MergePrompt(
+                                incoming = clash,
+                                existingWord = target.wordDetails.word,
+                                newSynonyms = preview.addedSynonyms,
+                                newAntonyms = preview.addedAntonyms,
+                            ),
+                        )
+                    }
+                    return false // the editor stays open behind the merge sheet
+                }
+
                 val now = System.currentTimeMillis()
                 val entriesToSave = if (editor.isEditing) {
-                    val single = parseResult.entries.first()
+                    val single = check.toSave.first()
                     listOf(
                         single.copy(
                             id = editor.editingId.orEmpty(),
@@ -170,7 +221,7 @@ class VocabularyManagerViewModel(
                         ).sanitized(),
                     )
                 } else {
-                    parseResult.entries.mapIndexed { index, parsed ->
+                    check.toSave.mapIndexed { index, parsed ->
                         parsed.copy(
                             createdAt = now + index,
                             updatedAt = now + index,
@@ -179,20 +230,75 @@ class VocabularyManagerViewModel(
                 }
 
                 // Close the editor sheet; cards remain closed unless the user taps the expand arrow.
-                _uiState.update { it.copy(editorState = null) }
+                _uiState.update { it.copy(editorState = null, noticeMessage = null) }
                 viewModelScope.launch {
-                    val result = repository.saveEntries(entriesToSave)
-                    result.onFailure { err ->
-                        _uiState.update { state ->
-                            state.copy(
-                                errorMessage = err.message ?: "Failed to save vocabulary to Firebase.",
-                            )
+                    if (entriesToSave.isNotEmpty()) {
+                        repository.saveEntries(entriesToSave).getOrElse { err ->
+                            _uiState.update { state ->
+                                state.copy(
+                                    errorMessage = err.message ?: "Failed to save vocabulary to Firebase.",
+                                )
+                            }
+                            return@launch
                         }
+                    }
+                    // Bulk import: words that already exist get only their new synonyms/antonyms added.
+                    var summary: VocabularyRules.MergeSummary? = null
+                    if (check.clashing.isNotEmpty()) {
+                        summary = repository.mergeIntoExisting(check.clashing).getOrElse { err ->
+                            _uiState.update { it.copy(errorMessage = err.message ?: "Failed to merge words.") }
+                            return@launch
+                        }
+                    }
+                    if (check.mergedRepeats > 0 || summary != null) {
+                        val notice = describeResult(entriesToSave.size, check.mergedRepeats, summary)
+                        _uiState.update { it.copy(noticeMessage = notice) }
                     }
                 }
                 return true
             }
         }
+    }
+
+    private fun showEditorError(editor: VocabularyEditorState, message: String) {
+        _uiState.update { it.copy(editorState = editor.copy(validationError = message)) }
+    }
+
+    private fun describeResult(added: Int, repeats: Int, merge: VocabularyRules.MergeSummary?): String = buildString {
+        if (added > 0) append("Added $added. ")
+        if (repeats > 0) append("Repeated words in the list were combined ($repeats). ")
+        if (merge != null) {
+            if (merge.wordsUpdated > 0) {
+                append("Updated ${merge.wordsUpdated} existing (")
+                append("synonyms +${merge.addedSynonyms}, antonyms +${merge.addedAntonyms}). ")
+            } else {
+                append("Nothing new to add to existing words. ")
+            }
+            if (merge.limitReached) {
+                append("Some items were not added: a word holds at most ${VocabularyRules.MAX_RELATIONS} ")
+                append("synonyms or antonyms.")
+            }
+        }
+    }.trim()
+
+    fun onConfirmMerge() {
+        val prompt = _uiState.value.mergePrompt ?: return
+        _uiState.update { it.copy(mergePrompt = null, editorState = null, noticeMessage = null) }
+        viewModelScope.launch {
+            repository.mergeIntoExisting(listOf(prompt.incoming))
+                .onSuccess { s -> _uiState.update { it.copy(noticeMessage = describeResult(0, 0, s)) } }
+                .onFailure { err ->
+                    _uiState.update { it.copy(errorMessage = err.message ?: "Failed to merge words.") }
+                }
+        }
+    }
+
+    fun onDismissMerge() {
+        _uiState.update { it.copy(mergePrompt = null) }
+    }
+
+    fun onDismissNotice() {
+        _uiState.update { it.copy(noticeMessage = null) }
     }
 
     fun onRequestDelete(entry: VocabularyEntry) {
