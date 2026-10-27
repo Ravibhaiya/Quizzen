@@ -206,15 +206,23 @@ class VocabularyRulesTest {
     }
 
     @Test
-    fun `mergeDuplicateWords keeps one entry per word and the last one wins`() {
+    fun `mergeDuplicateWords keeps one entry per word and the last one wins while combining relations`() {
         val first = VocabularyEntry(
             id = "a",
-            wordDetails = WordDetails(word = "Diligent", meaningEnglish = "Hard-working"),
+            wordDetails = WordDetails(
+                word = "Diligent",
+                meaningEnglish = "Hard-working",
+                meaningHinglish = "Mehanti",
+            ),
+            synonyms = listOf(WordDetails(word = "Assiduous", meaningEnglish = "Careful")),
+            antonyms = listOf(WordDetails(word = "Lazy", meaningEnglish = "Idle")),
             createdAt = 5L,
         )
         val other = VocabularyEntry(wordDetails = WordDetails(word = "Lazy", meaningEnglish = "Idle"))
         val repeat = VocabularyEntry(
             wordDetails = WordDetails(word = "  diligent ", meaningEnglish = "Industrious"),
+            synonyms = listOf(WordDetails(word = "Tireless", meaningEnglish = "Persistent")),
+            antonyms = listOf(WordDetails(word = "Slothful", meaningEnglish = "Inactive")),
             createdAt = 9L,
         )
 
@@ -222,6 +230,9 @@ class VocabularyRulesTest {
 
         assertEquals(listOf("diligent ", "Lazy").map { it.trim().lowercase() }, merged.map { it.wordDetails.word.trim().lowercase() })
         assertEquals("Industrious", merged[0].wordDetails.meaningEnglish)
+        assertEquals("Mehanti", merged[0].wordDetails.meaningHinglish)
+        assertEquals(listOf("Assiduous", "Tireless"), merged[0].synonyms.map { it.word })
+        assertEquals(listOf("Lazy", "Slothful"), merged[0].antonyms.map { it.word })
         assertEquals("a", merged[0].id)
         assertEquals(5L, merged[0].createdAt)
     }
@@ -264,9 +275,41 @@ class VocabularyRulesTest {
     private val abate = entry("abate", id = "a1", synonyms = listOf("reduce", "lessen"), antonyms = listOf("increase"))
 
     @Test
-    fun `wordKey ignores case, extra and non-breaking spaces and curly apostrophes`() {
+    fun `wordKey ignores case, extra spaces, hyphens, edge punctuation, and curly apostrophes`() {
         assertEquals("don't", VocabularyRules.wordKey(" Don\u2019t "))
         assertEquals("give up", VocabularyRules.wordKey("Give  \u00A0up"))
+        assertEquals("hard working", VocabularyRules.wordKey("Hard-working"))
+        assertEquals("hard working", VocabularyRules.wordKey("hard\u2013working."))
+        assertEquals("diligent", VocabularyRules.wordKey(" \"Diligent!\" "))
+    }
+
+    @Test
+    fun `documentIdForWord produces identical deterministic IDs for equivalent word keys`() {
+        val id1 = VocabularyRules.documentIdForWord("Hard-working")
+        val id2 = VocabularyRules.documentIdForWord("  hard working. ")
+        assertEquals(id1, id2)
+        assertTrue(id1.startsWith("word_hard_working_"))
+    }
+
+    @Test
+    fun `findDuplicateMainWords and findEntryRelationConflict catch intra-JSON duplicates and conflicts`() {
+        val dupes = VocabularyRules.findDuplicateMainWords(
+            listOf(
+                entry("Abandon"),
+                entry("Brisk"),
+                entry("  abandon. "),
+            ),
+        )
+        assertEquals(listOf("Abandon"), dupes)
+
+        val selfSyn = entry("Abate", synonyms = listOf("abate"))
+        assertEquals("Word \"Abate\" cannot list itself (\"abate\") as a synonym.", VocabularyRules.findEntryRelationConflict(selfSyn))
+
+        val dupSyn = entry("Abate", synonyms = listOf("Reduce", " reduce "))
+        assertEquals("Word \"Abate\" has a duplicate synonym \"reduce\".", VocabularyRules.findEntryRelationConflict(dupSyn))
+
+        val crossConflict = entry("Abate", synonyms = listOf("Reduce"), antonyms = listOf("reduce"))
+        assertEquals("Word \"Abate\" lists \"reduce\" as both a synonym and an antonym.", VocabularyRules.findEntryRelationConflict(crossConflict))
     }
 
     @Test
@@ -319,11 +362,44 @@ class VocabularyRulesTest {
         val result = VocabularyRules.mergeRelations(abate, incoming)
         assertEquals(listOf("reduce", "lessen", "subside"), result.entry.synonyms.map { it.word })
         assertEquals(listOf("increase", "intensify"), result.entry.antonyms.map { it.word })
+        assertEquals(listOf("subside"), result.addedSynonymWords)
+        assertEquals(listOf("intensify"), result.addedAntonymWords)
         assertEquals(1, result.addedSynonyms)
         assertEquals(1, result.addedAntonyms)
         assertEquals(1, result.skipped)
         assertEquals("a1", result.entry.id)
         assertTrue(result.changed)
+    }
+
+    @Test
+    fun `mergeRelations fills blank Hinglish and example on existing synonyms and antonyms without overwriting`() {
+        val existingWithBlankSynonym = VocabularyEntry(
+            id = "a1",
+            wordDetails = WordDetails(word = "abate", meaningEnglish = "become less"),
+            synonyms = listOf(
+                WordDetails(word = "reduce", meaningEnglish = "make smaller", meaningHinglish = "", exampleSentence = ""),
+            ),
+        )
+        val incomingWithDetails = VocabularyEntry(
+            wordDetails = WordDetails(word = "abate", meaningEnglish = "different english"),
+            synonyms = listOf(
+                WordDetails(
+                    word = "Reduce",
+                    meaningEnglish = "ignored english",
+                    meaningHinglish = "Kam karna",
+                    exampleSentence = "Reduce the speed.",
+                ),
+            ),
+        )
+
+        val result = VocabularyRules.mergeRelations(existingWithBlankSynonym, incomingWithDetails)
+        assertTrue(result.changed)
+        assertEquals(0, result.addedSynonyms)
+        assertEquals(1, result.enrichedRelations)
+        val updatedSyn = result.entry.synonyms.single()
+        assertEquals("make smaller", updatedSyn.meaningEnglish)
+        assertEquals("Kam karna", updatedSyn.meaningHinglish)
+        assertEquals("Reduce the speed.", updatedSyn.exampleSentence)
     }
 
     @Test

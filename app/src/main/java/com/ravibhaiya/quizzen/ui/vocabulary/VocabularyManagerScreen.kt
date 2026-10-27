@@ -1,5 +1,6 @@
 package com.ravibhaiya.quizzen.ui.vocabulary
 
+import androidx.activity.compose.BackHandler
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.tween
@@ -41,6 +42,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
@@ -68,6 +70,7 @@ import com.ravibhaiya.quizzen.ui.components.PrimaryButton
 import com.ravibhaiya.quizzen.ui.components.QuizzenIcons
 import com.ravibhaiya.quizzen.ui.components.QuizzenScreen
 import com.ravibhaiya.quizzen.ui.components.ScreenHeader
+import com.ravibhaiya.quizzen.ui.components.SelectAllButton
 import com.ravibhaiya.quizzen.ui.components.bouncyClickable
 import com.ravibhaiya.quizzen.ui.components.cssShadow
 import com.ravibhaiya.quizzen.ui.components.rememberHaptics
@@ -83,6 +86,31 @@ fun VocabularyManagerScreen(
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
     val haptics = rememberHaptics(hapticEnabled)
+
+    BackHandler(enabled = state.isSelectionMode) {
+        haptics.click()
+        viewModel.onToggleSelectionMode()
+    }
+
+    val hasNotifications = state.pendingApprovalCount > 0
+    val notifBtnBg by animateColorAsState(
+        targetValue = if (state.isNotificationsOpen || hasNotifications) {
+            MaterialTheme.colorScheme.primaryContainer
+        } else {
+            MaterialTheme.colorScheme.surfaceContainer
+        },
+        animationSpec = tween(200),
+        label = "notifBtnBg",
+    )
+    val notifBtnTint by animateColorAsState(
+        targetValue = if (state.isNotificationsOpen || hasNotifications) {
+            MaterialTheme.colorScheme.onPrimaryContainer
+        } else {
+            MaterialTheme.colorScheme.onSurface
+        },
+        animationSpec = tween(200),
+        label = "notifBtnTint",
+    )
 
     val searchBtnBg by animateColorAsState(
         targetValue = if (state.isSearchActive) {
@@ -118,7 +146,11 @@ fun VocabularyManagerScreen(
                     title = stringResource(R.string.feature_vocabulary),
                     onBack = {
                         haptics.click()
-                        onBack()
+                        if (state.isSelectionMode) {
+                            viewModel.onToggleSelectionMode()
+                        } else {
+                            onBack()
+                        }
                     },
                     trailing = {
                         Row(
@@ -159,35 +191,60 @@ fun VocabularyManagerScreen(
                                 )
                             }
 
-                            Box(
-                                modifier = Modifier
-                                    .size(48.dp)
-                                    .testTag("header_add_word_button")
-                                    .cssShadow(
-                                        MaterialTheme.colorScheme.primary.copy(alpha = 0.28f),
-                                        offsetY = 4.dp,
-                                        blur = 12.dp,
-                                        spread = (-2).dp,
-                                        shape = CircleShape,
-                                    )
-                                    .bouncyClickable(
-                                        shape = CircleShape,
-                                        pressedScale = 0.88f,
-                                        role = Role.Button,
-                                        onClick = {
-                                            haptics.click()
-                                            viewModel.onStartAdd()
+                            Box(contentAlignment = Alignment.TopEnd) {
+                                Box(
+                                    modifier = Modifier
+                                        .size(48.dp)
+                                        .testTag("header_notifications_button")
+                                        .cssShadow(
+                                            NeutralShadowColor.copy(alpha = 0.05f),
+                                            offsetY = 2.dp,
+                                            blur = 6.dp,
+                                            spread = 0.dp,
+                                            shape = CircleShape,
+                                        )
+                                        .bouncyClickable(
+                                            shape = CircleShape,
+                                            pressedScale = 0.88f,
+                                            role = Role.Button,
+                                            onClick = {
+                                                haptics.click()
+                                                viewModel.onOpenNotifications()
+                                            },
+                                        )
+                                        .background(notifBtnBg),
+                                    contentAlignment = Alignment.Center,
+                                ) {
+                                    Icon(
+                                        imageVector = QuizzenIcons.Bell,
+                                        contentDescription = if (state.pendingApprovalCount > 0) {
+                                            stringResource(R.string.cd_notifications_pending, state.pendingApprovalCount)
+                                        } else {
+                                            stringResource(R.string.cd_notifications)
                                         },
+                                        tint = notifBtnTint,
+                                        modifier = Modifier.size(20.dp),
                                     )
-                                    .background(MaterialTheme.colorScheme.primary),
-                                contentAlignment = Alignment.Center,
-                            ) {
-                                Icon(
-                                    imageVector = QuizzenIcons.Plus,
-                                    contentDescription = stringResource(R.string.add_word),
-                                    tint = MaterialTheme.colorScheme.onPrimary,
-                                    modifier = Modifier.size(22.dp),
-                                )
+                                }
+                                if (state.pendingApprovalCount > 0) {
+                                    Box(
+                                        modifier = Modifier
+                                            .testTag("notification_badge")
+                                            .background(MaterialTheme.colorScheme.primary, CircleShape)
+                                            .border(2.dp, MaterialTheme.colorScheme.surface, CircleShape)
+                                            .padding(horizontal = 6.dp, vertical = 2.dp),
+                                        contentAlignment = Alignment.Center,
+                                    ) {
+                                        Text(
+                                            text = state.pendingApprovalCount.toString(),
+                                            style = MaterialTheme.typography.labelSmall.copy(
+                                                fontSize = 10.5.sp,
+                                                fontWeight = FontWeight.ExtraBold,
+                                            ),
+                                            color = MaterialTheme.colorScheme.onPrimary,
+                                        )
+                                    }
+                                }
                             }
                         }
                     },
@@ -235,30 +292,61 @@ fun VocabularyManagerScreen(
                     }
                 }
 
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(bottom = 12.dp),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically,
-                ) {
-                    Text(
-                        text = stringResource(R.string.vocabulary_subtitle),
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        modifier = Modifier.weight(1f),
-                    )
-                    Box(
+                if (state.isSelectionMode) {
+                    Row(
                         modifier = Modifier
-                            .background(MaterialTheme.colorScheme.primaryContainer, CircleShape)
-                            .padding(horizontal = 12.dp, vertical = 5.dp),
+                            .fillMaxWidth()
+                            .padding(bottom = 12.dp),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically,
                     ) {
-                        val total = state.filteredEntries.size
-                        Text(
-                            text = stringResource(R.string.word_count_badge, total),
-                            style = MaterialTheme.typography.labelSmall.copy(fontSize = 12.sp),
-                            color = MaterialTheme.colorScheme.onPrimaryContainer,
+                        SelectAllButton(
+                            label = stringResource(R.string.select_all),
+                            active = state.allFilteredSelected,
+                            onClick = {
+                                haptics.click()
+                                viewModel.onSelectAllFiltered()
+                            },
+                            modifier = Modifier.testTag("select_all_words_button"),
                         )
+                        Box(
+                            modifier = Modifier
+                                .background(MaterialTheme.colorScheme.primaryContainer, CircleShape)
+                                .padding(horizontal = 12.dp, vertical = 6.dp),
+                        ) {
+                            Text(
+                                text = stringResource(R.string.selected_words_count, state.selectedIds.size),
+                                style = MaterialTheme.typography.labelSmall.copy(fontSize = 12.sp),
+                                color = MaterialTheme.colorScheme.onPrimaryContainer,
+                            )
+                        }
+                    }
+                } else {
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(bottom = 12.dp),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        Text(
+                            text = stringResource(R.string.vocabulary_subtitle),
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            modifier = Modifier.weight(1f),
+                        )
+                        Box(
+                            modifier = Modifier
+                                .background(MaterialTheme.colorScheme.primaryContainer, CircleShape)
+                                .padding(horizontal = 12.dp, vertical = 5.dp),
+                        ) {
+                            val total = state.filteredEntries.size
+                            Text(
+                                text = stringResource(R.string.word_count_badge, total),
+                                style = MaterialTheme.typography.labelSmall.copy(fontSize = 12.sp),
+                                color = MaterialTheme.colorScheme.onPrimaryContainer,
+                            )
+                        }
                     }
                 }
             }
@@ -307,6 +395,16 @@ fun VocabularyManagerScreen(
                                 haptics.click()
                                 viewModel.onRequestDelete(entry)
                             },
+                            selectionMode = state.isSelectionMode,
+                            selected = entry.id in state.selectedIds,
+                            onToggleSelect = {
+                                haptics.tick()
+                                viewModel.onToggleSelectWord(entry.id)
+                            },
+                            onLongPress = {
+                                haptics.heavyClick()
+                                viewModel.onLongPressWord(entry.id)
+                            },
                         )
                     }
                 }
@@ -330,14 +428,76 @@ fun VocabularyManagerScreen(
                         .windowInsetsPadding(WindowInsets.navigationBars)
                         .padding(start = 18.dp, end = 18.dp, top = 14.dp, bottom = 26.dp),
                 ) {
-                    PrimaryButton(
-                        text = stringResource(R.string.add_word),
-                        onClick = {
-                            haptics.click()
-                            viewModel.onStartAdd()
-                        },
-                        modifier = Modifier.testTag("footer_add_word_button"),
-                    )
+                    if (state.isSelectionMode) {
+                        val hasSelection = state.selectedIds.isNotEmpty()
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.spacedBy(12.dp),
+                        ) {
+                            Box(
+                                modifier = Modifier
+                                    .weight(1f)
+                                    .testTag("cancel_selection_button")
+                                    .bouncyClickable(
+                                        shape = CircleShape,
+                                        role = Role.Button,
+                                        onClick = {
+                                            haptics.click()
+                                            viewModel.onToggleSelectionMode()
+                                        },
+                                    )
+                                    .background(MaterialTheme.colorScheme.surfaceContainerHigh, CircleShape)
+                                    .padding(vertical = 18.dp),
+                                contentAlignment = Alignment.Center,
+                            ) {
+                                Text(
+                                    text = stringResource(R.string.cancel),
+                                    style = MaterialTheme.typography.titleMedium,
+                                    color = MaterialTheme.colorScheme.onSurface,
+                                    textAlign = TextAlign.Center,
+                                )
+                            }
+                            Box(
+                                modifier = Modifier
+                                    .weight(1f)
+                                    .alpha(if (hasSelection) 1f else 0.45f)
+                                    .testTag("delete_selected_button")
+                                    .let { mod ->
+                                        if (hasSelection) {
+                                            mod.bouncyClickable(
+                                                shape = CircleShape,
+                                                role = Role.Button,
+                                                onClick = {
+                                                    haptics.click()
+                                                    viewModel.onRequestDeleteSelected()
+                                                },
+                                            )
+                                        } else {
+                                            mod
+                                        }
+                                    }
+                                    .background(MaterialTheme.quizzen.error, CircleShape)
+                                    .padding(vertical = 18.dp),
+                                contentAlignment = Alignment.Center,
+                            ) {
+                                Text(
+                                    text = stringResource(R.string.delete_selected_words, state.selectedIds.size),
+                                    style = MaterialTheme.typography.titleMedium,
+                                    color = MaterialTheme.colorScheme.onPrimary,
+                                    textAlign = TextAlign.Center,
+                                )
+                            }
+                        }
+                    } else {
+                        PrimaryButton(
+                            text = stringResource(R.string.add_word),
+                            onClick = {
+                                haptics.click()
+                                viewModel.onStartAdd()
+                            },
+                            modifier = Modifier.testTag("footer_add_word_button"),
+                        )
+                    }
                 }
             }
         }
@@ -348,6 +508,7 @@ fun VocabularyManagerScreen(
         VocabularyEditorSheet(
             state = editorState,
             onUpdateJsonText = viewModel::onUpdateJsonText,
+            onUpdateConfirmText = viewModel::onUpdateEditConfirmText,
             onInsertTemplate = {
                 haptics.tick()
                 viewModel.onInsertSampleTemplate()
@@ -364,23 +525,55 @@ fun VocabularyManagerScreen(
     if (mergePrompt != null) {
         MergeWordConfirmSheet(
             prompt = mergePrompt,
+            onUpdateConfirmText = viewModel::onUpdateMergeConfirmText,
             onConfirm = {
-                haptics.heavyClick()
-                viewModel.onConfirmMerge()
+                if (viewModel.onConfirmMerge()) {
+                    haptics.heavyClick()
+                }
             },
             onDismiss = viewModel::onDismissMerge,
         )
     }
 
     val pendingDelete = state.pendingDelete
-    if (pendingDelete != null) {
+    if (pendingDelete.isNotEmpty()) {
         DeleteWordConfirmSheet(
-            entry = pendingDelete,
+            entries = pendingDelete,
+            confirmText = state.deleteConfirmText,
+            onUpdateConfirmText = viewModel::onUpdateDeleteConfirmText,
             onConfirm = {
-                haptics.error()
-                viewModel.onConfirmDelete()
+                if (viewModel.onConfirmDelete()) {
+                    haptics.error()
+                }
             },
             onDismiss = viewModel::onCancelDelete,
+        )
+    }
+
+    if (state.isNotificationsOpen) {
+        DatabaseNotificationsSheet(
+            requests = state.pendingApprovalRequests,
+            onReviewMerge = { wordKey ->
+                haptics.click()
+                viewModel.onRequestMergeDatabaseDuplicates(wordKey)
+            },
+            onReviewAllMerges = {
+                haptics.click()
+                viewModel.onRequestMergeDatabaseDuplicates(null)
+            },
+            onDeleteDuplicates = { entries ->
+                haptics.click()
+                viewModel.onRequestDeleteDuplicateEntries(entries)
+            },
+            onEditEntry = { entry ->
+                haptics.click()
+                viewModel.onStartEdit(entry)
+            },
+            onDeleteEntry = { entry ->
+                haptics.click()
+                viewModel.onRequestDelete(entry)
+            },
+            onDismiss = viewModel::onDismissNotifications,
         )
     }
 }

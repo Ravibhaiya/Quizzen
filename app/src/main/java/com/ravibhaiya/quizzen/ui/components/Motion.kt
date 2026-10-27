@@ -4,8 +4,10 @@ import androidx.compose.animation.core.CubicBezierEasing
 import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.spring
+import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.LocalIndication
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.runtime.Composable
@@ -39,26 +41,40 @@ fun Modifier.pressScale(interactionSource: MutableInteractionSource, pressedScal
 }
 
 /**
- * Clip + ripple + click with the press-scale behavior. Backgrounds/shadows must be chained
+ * Clip + ripple + click (and optional long-click) with the press-scale behavior. Backgrounds/shadows must be chained
  * between [pressScale] and this call by the caller, or use [bouncyClickable] for the simple case.
  */
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
 fun Modifier.bouncyClickable(
     shape: Shape,
     pressedScale: Float = 0.96f,
     enabled: Boolean = true,
     role: Role = Role.Button,
+    onLongClick: (() -> Unit)? = null,
     onClick: () -> Unit,
 ): Modifier {
     val source = remember { MutableInteractionSource() }
-    return this
-        .pressScale(source, pressedScale)
-        .clip(shape)
-        .clickable(
+    val clickModifier = if (onLongClick != null) {
+        Modifier.combinedClickable(
+            interactionSource = source,
+            indication = LocalIndication.current,
+            enabled = enabled,
+            role = role,
+            onLongClick = onLongClick,
+            onClick = onClick,
+        )
+    } else {
+        Modifier.clickable(
             interactionSource = source,
             indication = LocalIndication.current,
             enabled = enabled,
             role = role,
             onClick = onClick,
         )
+    }
+    return this
+        .pressScale(source, pressedScale)
+        .clip(shape)
+        .then(clickModifier)
 }

@@ -62,11 +62,14 @@ import com.ravibhaiya.quizzen.ui.components.bouncyClickable
 import com.ravibhaiya.quizzen.ui.components.cssShadow
 import com.ravibhaiya.quizzen.ui.theme.quizzen
 
+import androidx.compose.ui.draw.alpha
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun VocabularyEditorSheet(
     state: VocabularyEditorState,
     onUpdateJsonText: (String) -> Unit,
+    onUpdateConfirmText: (String) -> Unit = {},
     onInsertTemplate: () -> Unit,
     onSave: () -> Unit,
     onDismiss: () -> Unit,
@@ -180,6 +183,18 @@ fun VocabularyEditorSheet(
                     onValueChange = onUpdateJsonText,
                     hasError = state.validationError != null,
                 )
+
+                if (state.isEditing) {
+                    ConfirmKeywordField(
+                        label = stringResource(R.string.type_confirm_to_edit),
+                        value = state.confirmText,
+                        placeholder = stringResource(R.string.hint_type_confirm),
+                        isMatched = state.canSave,
+                        accentColor = MaterialTheme.colorScheme.primary,
+                        onValueChange = onUpdateConfirmText,
+                        testTag = "edit_confirm_input",
+                    )
+                }
             }
 
             if (state.validationError != null) {
@@ -212,9 +227,88 @@ fun VocabularyEditorSheet(
             PrimaryButton(
                 text = stringResource(if (state.isEditing) R.string.save_word else R.string.save_words),
                 onClick = onSave,
+                enabled = state.canSave,
                 modifier = Modifier.testTag("save_word_button"),
             )
         }
+    }
+}
+
+@Composable
+private fun ConfirmKeywordField(
+    label: String,
+    value: String,
+    placeholder: String,
+    isMatched: Boolean,
+    accentColor: Color,
+    onValueChange: (String) -> Unit,
+    testTag: String,
+) {
+    var focused by remember { mutableStateOf(false) }
+    val shape = RoundedCornerShape(18.dp)
+    val bgColor by animateColorAsState(
+        targetValue = if (focused) MaterialTheme.colorScheme.surface else MaterialTheme.colorScheme.surfaceContainer,
+        animationSpec = tween(200),
+        label = "confirmFieldBg",
+    )
+    val borderColor by animateColorAsState(
+        targetValue = when {
+            isMatched -> accentColor
+            focused -> accentColor.copy(alpha = 0.45f)
+            else -> MaterialTheme.colorScheme.surfaceContainerHigh
+        },
+        animationSpec = tween(200),
+        label = "confirmFieldBorder",
+    )
+
+    Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+        Text(
+            text = label,
+            style = MaterialTheme.typography.labelLarge.copy(fontSize = 13.5.sp, fontWeight = FontWeight.SemiBold),
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            modifier = Modifier.padding(start = 4.dp),
+        )
+        BasicTextField(
+            value = value,
+            onValueChange = onValueChange,
+            singleLine = true,
+            textStyle = MaterialTheme.typography.titleMedium.copy(
+                color = MaterialTheme.colorScheme.onSurface,
+                fontFamily = FontFamily.Monospace,
+                fontWeight = FontWeight.Bold,
+                letterSpacing = 1.2.sp,
+            ),
+            cursorBrush = SolidColor(accentColor),
+            keyboardOptions = KeyboardOptions(
+                capitalization = KeyboardCapitalization.Characters,
+                autoCorrectEnabled = false,
+                imeAction = ImeAction.Done,
+            ),
+            modifier = Modifier
+                .fillMaxWidth()
+                .testTag(testTag)
+                .onFocusChanged { focused = it.isFocused }
+                .clip(shape)
+                .background(bgColor, shape)
+                .border(2.dp, borderColor, shape)
+                .padding(horizontal = 16.dp, vertical = 14.dp),
+            decorationBox = { innerTextField ->
+                Box(contentAlignment = Alignment.CenterStart) {
+                    if (value.isEmpty()) {
+                        Text(
+                            text = placeholder,
+                            style = MaterialTheme.typography.titleMedium.copy(
+                                color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.45f),
+                                fontFamily = FontFamily.Monospace,
+                                fontWeight = FontWeight.Bold,
+                                letterSpacing = 1.2.sp,
+                            ),
+                        )
+                    }
+                    innerTextField()
+                }
+            },
+        )
     }
 }
 
@@ -290,10 +384,13 @@ private fun JsonCodeField(
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun DeleteWordConfirmSheet(
-    entry: VocabularyEntry,
+    entries: List<VocabularyEntry>,
+    confirmText: String,
+    onUpdateConfirmText: (String) -> Unit,
     onConfirm: () -> Unit,
     onDismiss: () -> Unit,
 ) {
+    val canDelete = confirmText == VocabularyManagerViewModel.REQUIRED_DELETE_CONFIRM
     ModalBottomSheet(
         onDismissRequest = onDismiss,
         sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true),
@@ -314,18 +411,36 @@ fun DeleteWordConfirmSheet(
             modifier = Modifier
                 .fillMaxWidth()
                 .windowInsetsPadding(WindowInsets.navigationBars)
+                .imePadding()
                 .padding(start = 20.dp, end = 20.dp, top = 14.dp, bottom = 26.dp),
             verticalArrangement = Arrangement.spacedBy(14.dp),
         ) {
             Text(
-                text = stringResource(R.string.delete_word_title, entry.wordDetails.word),
+                text = if (entries.size == 1) {
+                    stringResource(R.string.delete_word_title, entries.first().wordDetails.word)
+                } else {
+                    stringResource(R.string.delete_words_title, entries.size)
+                },
                 style = MaterialTheme.typography.headlineMedium,
                 color = MaterialTheme.colorScheme.onSurface,
             )
             Text(
-                text = stringResource(R.string.delete_word_message),
+                text = if (entries.size == 1) {
+                    stringResource(R.string.delete_word_message)
+                } else {
+                    stringResource(R.string.delete_words_message, entries.size)
+                },
                 style = MaterialTheme.typography.bodyLarge,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+            ConfirmKeywordField(
+                label = stringResource(R.string.type_delete_to_confirm),
+                value = confirmText,
+                placeholder = stringResource(R.string.hint_type_delete),
+                isMatched = canDelete,
+                accentColor = MaterialTheme.quizzen.error,
+                onValueChange = onUpdateConfirmText,
+                testTag = "delete_confirm_input",
             )
             Spacer(Modifier.height(4.dp))
             Row(
@@ -351,8 +466,15 @@ fun DeleteWordConfirmSheet(
                 Box(
                     modifier = Modifier
                         .weight(1f)
+                        .alpha(if (canDelete) 1f else 0.45f)
                         .testTag("confirm_delete_button")
-                        .bouncyClickable(CircleShape, role = Role.Button, onClick = onConfirm)
+                        .let { mod ->
+                            if (canDelete) {
+                                mod.bouncyClickable(CircleShape, role = Role.Button, onClick = onConfirm)
+                            } else {
+                                mod
+                            }
+                        }
                         .background(MaterialTheme.quizzen.error, CircleShape)
                         .padding(vertical = 16.dp),
                     contentAlignment = Alignment.Center,
@@ -373,9 +495,11 @@ fun DeleteWordConfirmSheet(
 @Composable
 fun MergeWordConfirmSheet(
     prompt: MergePrompt,
+    onUpdateConfirmText: (String) -> Unit = {},
     onConfirm: () -> Unit,
     onDismiss: () -> Unit,
 ) {
+    val canConfirm = prompt.canConfirm
     ModalBottomSheet(
         onDismissRequest = onDismiss,
         sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true),
@@ -396,19 +520,121 @@ fun MergeWordConfirmSheet(
             modifier = Modifier
                 .fillMaxWidth()
                 .windowInsetsPadding(WindowInsets.navigationBars)
+                .imePadding()
                 .padding(start = 20.dp, end = 20.dp, top = 14.dp, bottom = 26.dp),
-            verticalArrangement = Arrangement.spacedBy(14.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp),
         ) {
             Text(
-                text = stringResource(R.string.merge_word_title, prompt.existingWord),
+                text = if (prompt.items.size == 1) {
+                    stringResource(R.string.merge_word_title, prompt.existingWord)
+                } else {
+                    stringResource(R.string.merge_words_title, prompt.items.size)
+                },
                 style = MaterialTheme.typography.headlineMedium,
                 color = MaterialTheme.colorScheme.onSurface,
             )
             Text(
-                text = stringResource(R.string.merge_word_message, prompt.newSynonyms, prompt.newAntonyms),
-                style = MaterialTheme.typography.bodyLarge,
+                text = stringResource(R.string.merge_word_message),
+                style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
+
+            Column(
+                modifier = Modifier
+                    .weight(1f, fill = false)
+                    .verticalScroll(rememberScrollState()),
+                verticalArrangement = Arrangement.spacedBy(10.dp),
+            ) {
+                if (prompt.newEntriesToSave.isNotEmpty()) {
+                    val newWordNames = prompt.newEntriesToSave.joinToString(", ") { it.wordDetails.word }
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .background(MaterialTheme.colorScheme.primaryContainer, RoundedCornerShape(16.dp))
+                            .padding(horizontal = 14.dp, vertical = 10.dp),
+                    ) {
+                        Text(
+                            text = stringResource(
+                                R.string.merge_new_words_summary,
+                                prompt.newEntriesToSave.size,
+                                newWordNames,
+                            ),
+                            style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.SemiBold),
+                            color = MaterialTheme.colorScheme.onPrimaryContainer,
+                        )
+                    }
+                }
+
+                for (item in prompt.items) {
+                    Column(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .background(MaterialTheme.colorScheme.surfaceContainer, RoundedCornerShape(16.dp))
+                            .padding(horizontal = 14.dp, vertical = 10.dp),
+                        verticalArrangement = Arrangement.spacedBy(4.dp),
+                    ) {
+                        Text(
+                            text = item.existingWord,
+                            style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
+                            color = MaterialTheme.colorScheme.onSurface,
+                        )
+                        if (item.addedSynonyms.isNotEmpty()) {
+                            Text(
+                                text = stringResource(
+                                    R.string.merge_item_new_synonyms,
+                                    item.addedSynonyms.size,
+                                    item.addedSynonyms.joinToString(", "),
+                                ),
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            )
+                        }
+                        if (item.addedAntonyms.isNotEmpty()) {
+                            Text(
+                                text = stringResource(
+                                    R.string.merge_item_new_antonyms,
+                                    item.addedAntonyms.size,
+                                    item.addedAntonyms.joinToString(", "),
+                                ),
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            )
+                        }
+                        if (item.mainDetailsEnriched) {
+                            Text(
+                                text = stringResource(R.string.merge_item_main_details_filled),
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            )
+                        }
+                        if (item.enrichedRelations > 0) {
+                            Text(
+                                text = stringResource(R.string.merge_item_relations_enriched, item.enrichedRelations),
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            )
+                        }
+                        if (!item.hasChanges) {
+                            Text(
+                                text = stringResource(R.string.merge_item_no_changes),
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            )
+                        }
+                    }
+                }
+            }
+
+            ConfirmKeywordField(
+                label = stringResource(R.string.type_confirm_to_merge),
+                value = prompt.confirmText,
+                placeholder = stringResource(R.string.hint_type_confirm),
+                isMatched = canConfirm,
+                accentColor = MaterialTheme.colorScheme.primary,
+                onValueChange = onUpdateConfirmText,
+                testTag = "merge_confirm_input",
+            )
+
             Spacer(Modifier.height(4.dp))
             Row(
                 modifier = Modifier.fillMaxWidth(),
@@ -433,8 +659,15 @@ fun MergeWordConfirmSheet(
                 Box(
                     modifier = Modifier
                         .weight(1f)
+                        .alpha(if (canConfirm) 1f else 0.45f)
                         .testTag("confirm_merge_button")
-                        .bouncyClickable(CircleShape, role = Role.Button, onClick = onConfirm)
+                        .let { mod ->
+                            if (canConfirm) {
+                                mod.bouncyClickable(CircleShape, role = Role.Button, onClick = onConfirm)
+                            } else {
+                                mod
+                            }
+                        }
                         .background(MaterialTheme.colorScheme.primary, CircleShape)
                         .padding(vertical = 16.dp),
                     contentAlignment = Alignment.Center,

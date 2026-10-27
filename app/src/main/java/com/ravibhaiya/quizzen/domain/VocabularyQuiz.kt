@@ -136,4 +136,11 @@ object VocabularyQuizRules {
      */
     val FALLBACK_ENTRIES: List<VocabularyEntry>
         get() = VocabularyFallbackData.ENTRIES
+
+    /**
+     * 25 duplicate test entries matching [FALLBACK_ENTRIES] (12 identical and 13 with extra synonyms/antonyms)
+     * used to test duplicate/merge approval notifications in the Database Manager.
+     */
+    val TEST_DUPLICATE_ENTRIES: List<VocabularyEntry>
+        get() = VocabularyDuplicateTestData.ENTRIES
 }

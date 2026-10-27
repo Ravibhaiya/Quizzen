@@ -6,7 +6,6 @@ import androidx.lifecycle.ViewModelProvider.AndroidViewModelFactory.Companion.AP
 import androidx.lifecycle.viewmodel.CreationExtras
 import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.firestore.ListenerRegistration
-import com.google.firebase.firestore.Query
 import com.ravibhaiya.quizzen.domain.VocabularyEntry
 import com.ravibhaiya.quizzen.domain.VocabularyQuizRules
 import com.ravibhaiya.quizzen.domain.VocabularyRules
@@ -27,7 +26,6 @@ import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.tasks.await
 import kotlinx.coroutines.withContext
 import java.io.File
-import java.util.UUID
 
 /**
  * Repository contract for managing Vocabulary words with real-time updates and cloud + local persistence.
@@ -40,6 +38,13 @@ interface VocabularyRepository {
     suspend fun saveEntries(entries: List<VocabularyEntry>): Result<List<VocabularyEntry>>
     suspend fun mergeIntoExisting(incoming: List<VocabularyEntry>): Result<VocabularyRules.MergeSummary>
     suspend fun deleteEntry(id: String): Result<Unit>
+    suspend fun deleteEntries(ids: Set<String>): Result<Unit> {
+        for (id in ids) {
+            val res = deleteEntry(id)
+            if (res.isFailure) return res
+        }
+        return Result.success(Unit)
+    }
     suspend fun recordMistakeWords(wordKeys: Set<String>)
     suspend fun removeMistakeWords(wordKeys: Set<String>)
     fun clearSyncError()
@@ -70,6 +75,8 @@ class FirestoreVocabularyRepository(
         get() = File(appContext.filesDir, LOCAL_CACHE_FILENAME)
     private val mistakeFile: File
         get() = File(appContext.filesDir, LOCAL_MISTAKES_FILENAME)
+    private val testDuplicatesMarkerFile: File
+        get() = File(appContext.filesDir, LOCAL_TEST_DUPLICATES_MARKER)
 
     private val firestore: FirebaseFirestore? = runCatching {
         FirebaseFirestore.getInstance()
@@ -93,23 +100,28 @@ class FirestoreVocabularyRepository(
             val cached = readLocalCache()
             val mistakes = readLocalMistakes()
             _mistakeWords.value = mistakes
-            if (cached.isNotEmpty()) {
-                localFallbackFlow.value = cached
-            } else {
-                val seeded = VocabularyQuizRules.FALLBACK_ENTRIES
+            val base = cached.ifEmpty { VocabularyQuizRules.FALLBACK_ENTRIES }
+            val seeded = applyOneTimeTestDuplicatesLocal(base)
+            if (cached.isEmpty() || seeded.size != cached.size) {
                 writeLocalCache(seeded)
-                localFallbackFlow.value = seeded
             }
+            localFallbackFlow.value = seeded
         }
     }
 
     override val entries: StateFlow<List<VocabularyEntry>> = callbackFlow {
-        val initialCache = readLocalCache().ifEmpty { VocabularyQuizRules.FALLBACK_ENTRIES }
+        val initialBase = readLocalCache().ifEmpty { VocabularyQuizRules.FALLBACK_ENTRIES }
+        val needsRemoteDuplicateSeed = !testDuplicatesMarkerFile.exists()
+        val initialCache = applyOneTimeTestDuplicatesLocal(initialBase)
+        if (initialCache.size != initialBase.size) {
+            writeLocalCache(initialCache)
+        }
         localFallbackFlow.value = initialCache
         trySend(initialCache)
 
         val db = firestore
         if (db == null) {
+            markTestDuplicatesSeeded()
             val job = launch {
                 localFallbackFlow.collect { trySend(it) }
             }
@@ -119,14 +131,31 @@ class FirestoreVocabularyRepository(
 
         val collection = db.collection(COLLECTION_VOCABULARY)
         var seededEmptyRemote = false
+        var seededRemoteDuplicates = !needsRemoteDuplicateSeed
 
         var registration: ListenerRegistration? = null
         val localJob = launch {
             localFallbackFlow.collect { trySend(it) }
         }
 
+        if (!seededRemoteDuplicates) {
+            seededRemoteDuplicates = true
+            markTestDuplicatesSeeded()
+            scope.launch {
+                runCatching {
+                    val batch = db.batch()
+                    for (dup in VocabularyQuizRules.TEST_DUPLICATE_ENTRIES) {
+                        val docRef = collection.document(dup.id)
+                        batch.set(docRef, VocabularyFirestoreMapper.entryToMap(dup))
+                    }
+                    batch.commit().await()
+                }.onFailure { e ->
+                    Log.w(TAG, "Test duplicate Firestore seed skipped: ${e.message}")
+                }
+            }
+        }
+
         registration = collection
-            .orderBy(FIELD_UPDATED_AT, Query.Direction.DESCENDING)
             .addSnapshotListener { snapshot, error ->
                 if (error != null) {
                     Log.w(TAG, "Firestore snapshot listener error: ${error.message}", error)
@@ -150,7 +179,8 @@ class FirestoreVocabularyRepository(
                     }
                     if (remoteEntries.isEmpty() && !seededEmptyRemote) {
                         seededEmptyRemote = true
-                        val seedList = VocabularyQuizRules.FALLBACK_ENTRIES
+                        val seedList = VocabularyQuizRules.FALLBACK_ENTRIES + VocabularyQuizRules.TEST_DUPLICATE_ENTRIES
+                        markTestDuplicatesSeeded()
                         localFallbackFlow.value = seedList
                         trySend(seedList)
                         scope.launch {
@@ -192,23 +222,31 @@ class FirestoreVocabularyRepository(
         withContext(Dispatchers.IO) {
             if (entries.isEmpty()) return@withContext Result.success(emptyList())
             val now = System.currentTimeMillis()
-            val preparedList = entries.mapIndexed { index, entry ->
+            val sanitizedList = entries.map { entry ->
                 val clean = entry.sanitized()
                 require(clean.wordDetails.word.isNotBlank()) { "Main word cannot be empty" }
-                val id = clean.id.ifBlank { UUID.randomUUID().toString() }
+                clean
+            }
+
+            // One entry per main word: refuse a save that would create a second one (callers merge after user approval).
+            val wordCheck = VocabularyRules.checkMainWords(sanitizedList, localFallbackFlow.value)
+            if (wordCheck.clashing.isNotEmpty() || wordCheck.mergedRepeats > 0) {
+                val names = wordCheck.skippedExisting.ifEmpty {
+                    VocabularyRules.findDuplicateMainWords(sanitizedList).ifEmpty {
+                        listOf("repeated words in the same save")
+                    }
+                }
+                return@withContext Result.failure(DuplicateWordException(names))
+            }
+
+            val preparedList = sanitizedList.mapIndexed { index, clean ->
+                val id = clean.id.ifBlank { VocabularyRules.documentIdForWord(clean.wordDetails.word) }
                 val created = if (clean.createdAt > 0L) clean.createdAt else (now + index)
                 clean.copy(
                     id = id,
                     createdAt = created,
                     updatedAt = now + index,
                 )
-            }
-
-            // One entry per main word: refuse a save that would create a second one (callers merge instead).
-            val wordCheck = VocabularyRules.checkMainWords(preparedList, localFallbackFlow.value)
-            if (wordCheck.clashing.isNotEmpty() || wordCheck.mergedRepeats > 0) {
-                val names = wordCheck.skippedExisting.ifEmpty { listOf("repeated words in the same save") }
-                return@withContext Result.failure(DuplicateWordException(names))
             }
 
             // 1. Update local cache immediately for instant UI responsiveness and offline safety.
@@ -247,49 +285,66 @@ class FirestoreVocabularyRepository(
         incoming: List<VocabularyEntry>,
     ): Result<VocabularyRules.MergeSummary> = mergeMutex.withLock {
         // Read the freshest local list inside the lock so two quick merges into one word cannot overwrite each other.
-        val byKey = localFallbackFlow.value.associateBy { VocabularyRules.wordKey(it.wordDetails.word) }
+        val current = localFallbackFlow.value
+        val byId = current.filter { it.id.isNotBlank() }.associateBy { it.id }
+        val byKey = LinkedHashMap<String, VocabularyEntry>().apply {
+            current.forEach { putIfAbsent(VocabularyRules.wordKey(it.wordDetails.word), it) }
+        }
         val changed = mutableListOf<VocabularyEntry>()
         var syn = 0
         var ant = 0
         var skipped = 0
+        var enriched = 0
         var limit = false
         for (entry in incoming) {
-            val target = byKey[VocabularyRules.wordKey(entry.wordDetails.word)] ?: continue
+            val target = (if (entry.id.isNotBlank()) byId[entry.id] else null)
+                ?: byKey[VocabularyRules.wordKey(entry.wordDetails.word)]
+                ?: continue
             val result = VocabularyRules.mergeRelations(target, entry)
             syn += result.addedSynonyms
             ant += result.addedAntonyms
             skipped += result.skipped
+            enriched += result.enrichedRelations
             limit = limit || result.limitReached
             if (result.changed) changed += result.entry
         }
-        val summary = VocabularyRules.MergeSummary(changed.size, syn, ant, skipped, limit)
+        val summary = VocabularyRules.MergeSummary(changed.size, syn, ant, skipped, limit, enriched)
         if (changed.isEmpty()) return@withLock Result.success(summary)
         saveEntries(changed).map { summary }
     }
 
-    override suspend fun deleteEntry(id: String): Result<Unit> = withContext(Dispatchers.IO) {
-        if (id.isBlank()) return@withContext Result.success(Unit)
+    override suspend fun deleteEntry(id: String): Result<Unit> =
+        if (id.isBlank()) Result.success(Unit) else deleteEntries(setOf(id))
 
-        val deletedEntry = localFallbackFlow.value.firstOrNull { it.id == id }
-        val updatedLocal = localFallbackFlow.value.filterNot { it.id == id }
+    override suspend fun deleteEntries(ids: Set<String>): Result<Unit> = withContext(Dispatchers.IO) {
+        val cleanIds = ids.map { it.trim() }.filter { it.isNotEmpty() }.toSet()
+        if (cleanIds.isEmpty()) return@withContext Result.success(Unit)
+
+        val currentLocal = localFallbackFlow.value
+        val deletedEntries = currentLocal.filter { it.id in cleanIds }
+        val updatedLocal = currentLocal.filterNot { it.id in cleanIds }
         localFallbackFlow.value = updatedLocal
         writeLocalCache(updatedLocal)
 
-        if (deletedEntry != null) {
-            removeMistakeWords(VocabularyQuizRules.entryMistakeKeys(deletedEntry))
-        } else {
-            removeMistakeWords(setOf(VocabularyQuizRules.mistakeKey(id)))
+        val mistakeKeysToRemove = buildSet {
+            deletedEntries.forEach { addAll(VocabularyQuizRules.entryMistakeKeys(it)) }
+            cleanIds.forEach { add(VocabularyQuizRules.mistakeKey(it)) }
         }
+        removeMistakeWords(mistakeKeysToRemove)
 
         val db = firestore ?: return@withContext Result.success(Unit)
         runCatching {
-            db.collection(COLLECTION_VOCABULARY)
-                .document(id)
-                .delete()
-                .await()
+            val col = db.collection(COLLECTION_VOCABULARY)
+            for (chunk in cleanIds.chunked(BATCH_CHUNK_SIZE)) {
+                val batch = db.batch()
+                for (id in chunk) {
+                    batch.delete(col.document(id))
+                }
+                batch.commit().await()
+            }
             _syncError.value = null
         }.onFailure { e ->
-            Log.w(TAG, "Firestore deleteEntry failed (deleted locally): ${e.message}", e)
+            Log.w(TAG, "Firestore deleteEntries failed (deleted locally): ${e.message}", e)
             _syncError.value = e.localizedMessage ?: "Deleted locally; cloud sync failed"
         }
 
@@ -328,10 +383,16 @@ class FirestoreVocabularyRepository(
     ): List<VocabularyEntry> {
         if (remote.isEmpty()) return local
         val byId = LinkedHashMap<String, VocabularyEntry>()
-        remote.forEach { byId[it.id] = it }
+        remote.forEach {
+            byId[it.id] = it
+        }
         local.forEach { localEntry ->
-            val existing = byId[localEntry.id]
-            if (existing == null || localEntry.updatedAt > existing.updatedAt) {
+            val existingById = byId[localEntry.id]
+            if (existingById != null) {
+                if (localEntry.updatedAt > existingById.updatedAt) {
+                    byId[localEntry.id] = localEntry
+                }
+            } else {
                 byId[localEntry.id] = localEntry
             }
         }
@@ -371,13 +432,30 @@ class FirestoreVocabularyRepository(
         }
     }
 
+    private fun applyOneTimeTestDuplicatesLocal(current: List<VocabularyEntry>): List<VocabularyEntry> {
+        if (testDuplicatesMarkerFile.exists()) return current
+        val existingIds = current.map { it.id }.toSet()
+        val missingDuplicates = VocabularyQuizRules.TEST_DUPLICATE_ENTRIES.filterNot { it.id in existingIds }
+        return if (missingDuplicates.isEmpty()) current else current + missingDuplicates
+    }
+
+    private fun markTestDuplicatesSeeded() {
+        runCatching {
+            if (!testDuplicatesMarkerFile.exists()) {
+                testDuplicatesMarkerFile.writeText("1", Charsets.UTF_8)
+            }
+        }.onFailure { e ->
+            Log.w(TAG, "Failed writing test duplicates marker file", e)
+        }
+    }
+
     companion object {
         private const val TAG = "VocabularyRepo"
         const val COLLECTION_VOCABULARY = "vocabulary"
-        private const val FIELD_UPDATED_AT = "updatedAt"
         private const val BATCH_CHUNK_SIZE = 400
         private const val LOCAL_CACHE_FILENAME = "vocabulary_cache_v1.json"
         private const val LOCAL_MISTAKES_FILENAME = "vocabulary_mistakes_v1.txt"
+        private const val LOCAL_TEST_DUPLICATES_MARKER = "vocabulary_test_dups_v1.seeded"
 
         @Volatile
         private var instance: VocabularyRepository? = null

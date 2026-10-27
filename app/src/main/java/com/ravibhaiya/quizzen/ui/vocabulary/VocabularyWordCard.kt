@@ -48,6 +48,18 @@ import com.ravibhaiya.quizzen.ui.components.cssShadow
 import com.ravibhaiya.quizzen.ui.theme.QuizzenShapes
 import com.ravibhaiya.quizzen.ui.theme.quizzen
 
+import androidx.compose.animation.animateColorAsState
+import androidx.compose.foundation.ExperimentalFoundationApi
+import androidx.compose.foundation.LocalIndication
+import androidx.compose.foundation.border
+import androidx.compose.foundation.combinedClickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.runtime.remember
+import androidx.compose.ui.semantics.selected
+import androidx.compose.ui.semantics.semantics
+import com.ravibhaiya.quizzen.ui.components.pressScale
+
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
 internal fun VocabularyWordCard(
     entry: VocabularyEntry,
@@ -55,12 +67,26 @@ internal fun VocabularyWordCard(
     onToggleExpand: () -> Unit,
     onEdit: () -> Unit,
     onDelete: () -> Unit,
+    selectionMode: Boolean = false,
+    selected: Boolean = false,
+    onToggleSelect: () -> Unit = {},
+    onLongPress: () -> Unit = {},
 ) {
     val shape = RoundedCornerShape(28.dp)
+    val cardInteractionSource = remember { MutableInteractionSource() }
     val chevronRotation by animateFloatAsState(
         targetValue = if (expanded) 180f else 0f,
         animationSpec = tween(250, easing = EmphasizedEasing),
         label = "chevronRotation",
+    )
+    val borderColor by animateColorAsState(
+        targetValue = if (selectionMode && selected) {
+            MaterialTheme.colorScheme.primary
+        } else {
+            Color.Transparent
+        },
+        animationSpec = tween(200),
+        label = "cardSelectBorder",
     )
     val resources = LocalContext.current.resources
     val initial = entry.wordDetails.word.firstOrNull()?.uppercaseChar()?.toString() ?: "V"
@@ -69,9 +95,21 @@ internal fun VocabularyWordCard(
         modifier = Modifier
             .fillMaxWidth()
             .testTag("word_card_${entry.id}")
+            .pressScale(cardInteractionSource, pressedScale = 0.98f)
             .cssShadow(NeutralShadowColor.copy(alpha = 0.05f), offsetY = 2.dp, blur = 6.dp, spread = 0.dp, shape = shape)
             .clip(shape)
             .background(MaterialTheme.colorScheme.surfaceContainer)
+            .border(2.dp, borderColor, shape)
+            .combinedClickable(
+                interactionSource = cardInteractionSource,
+                indication = LocalIndication.current,
+                onClick = {
+                    if (selectionMode) {
+                        onToggleSelect()
+                    }
+                },
+                onLongClick = onLongPress,
+            )
             .padding(horizontal = 18.dp, vertical = 14.dp),
     ) {
         Row(
@@ -79,6 +117,48 @@ internal fun VocabularyWordCard(
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(14.dp),
         ) {
+            if (selectionMode) {
+                val checkShape = RoundedCornerShape(9.dp)
+                val checkBg by animateColorAsState(
+                    targetValue = if (selected) MaterialTheme.colorScheme.primary else Color.Transparent,
+                    animationSpec = tween(200),
+                    label = "wordSelectBg",
+                )
+                val checkBorder by animateColorAsState(
+                    targetValue = if (selected) {
+                        MaterialTheme.colorScheme.primary
+                    } else {
+                        MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.45f)
+                    },
+                    animationSpec = tween(200),
+                    label = "wordSelectBorder",
+                )
+                Box(
+                    modifier = Modifier
+                        .size(28.dp)
+                        .testTag("select_word_${entry.id}")
+                        .semantics { this.selected = selected }
+                        .bouncyClickable(
+                            shape = checkShape,
+                            pressedScale = 0.88f,
+                            role = Role.Checkbox,
+                            onClick = onToggleSelect,
+                        )
+                        .border(2.dp, checkBorder, checkShape)
+                        .background(checkBg, checkShape),
+                    contentAlignment = Alignment.Center,
+                ) {
+                    if (selected) {
+                        Icon(
+                            imageVector = QuizzenIcons.CheckBold,
+                            contentDescription = stringResource(R.string.cd_select_word, entry.wordDetails.word),
+                            tint = MaterialTheme.colorScheme.onPrimary,
+                            modifier = Modifier.size(16.dp),
+                        )
+                    }
+                }
+            }
+
             BlobLetter(
                 letter = initial,
                 shape = QuizzenShapes.BlobA,
@@ -106,20 +186,22 @@ internal fun VocabularyWordCard(
                         verticalAlignment = Alignment.CenterVertically,
                         horizontalArrangement = Arrangement.spacedBy(8.dp),
                     ) {
-                        CardActionIconButton(
-                            icon = QuizzenIcons.Edit,
-                            contentDescription = stringResource(R.string.cd_edit_word, entry.wordDetails.word),
-                            tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                            onClick = onEdit,
-                            modifier = Modifier.testTag("edit_word_${entry.id}"),
-                        )
-                        CardActionIconButton(
-                            icon = QuizzenIcons.Trash,
-                            contentDescription = stringResource(R.string.cd_delete_word, entry.wordDetails.word),
-                            tint = MaterialTheme.quizzen.error,
-                            onClick = onDelete,
-                            modifier = Modifier.testTag("delete_word_${entry.id}"),
-                        )
+                        if (!selectionMode) {
+                            CardActionIconButton(
+                                icon = QuizzenIcons.Edit,
+                                contentDescription = stringResource(R.string.cd_edit_word, entry.wordDetails.word),
+                                tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                                onClick = onEdit,
+                                modifier = Modifier.testTag("edit_word_${entry.id}"),
+                            )
+                            CardActionIconButton(
+                                icon = QuizzenIcons.Trash,
+                                contentDescription = stringResource(R.string.cd_delete_word, entry.wordDetails.word),
+                                tint = MaterialTheme.quizzen.error,
+                                onClick = onDelete,
+                                modifier = Modifier.testTag("delete_word_${entry.id}"),
+                            )
+                        }
                         Box(
                             modifier = Modifier
                                 .size(40.dp)

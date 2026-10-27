@@ -152,13 +152,44 @@
         <item quantity="other">%1$d antonyms</item>
     </plurals>
     <string name="value_not_provided">—</string>
+    <string name="cd_notifications">Approval notifications</string>
+    <string name="cd_notifications_pending">Approval notifications (%1$d pending)</string>
+    <string name="cd_select_word">Select %1$s</string>
+    <string name="selected_words_count">%1$d selected</string>
+    <string name="delete_selected_words">Delete (%1$d)</string>
     <string name="delete_word_title">Delete \"%1$s\"?</string>
+    <string name="delete_words_title">Delete %1$d words?</string>
     <string name="delete_word_message">This will permanently remove this word along with its synonyms and antonyms.</string>
+    <string name="delete_words_message">This will permanently remove these %1$d words along with their synonyms and antonyms.</string>
+    <string name="type_delete_to_confirm">Type DELETE in capital letters to confirm</string>
+    <string name="hint_type_delete">DELETE</string>
+    <string name="type_confirm_to_edit">Type CONFIRM in capital letters to save changes</string>
+    <string name="type_confirm_to_merge">Type CONFIRM in capital letters to approve database changes</string>
+    <string name="hint_type_confirm">CONFIRM</string>
     <string name="cancel">Cancel</string>
     <string name="delete">Delete</string>
     <string name="merge_word_title">\"%1$s\" already exists</string>
-    <string name="merge_word_message">New synonyms: %1$d. New antonyms: %2$d. Existing meanings and example are kept.</string>
-    <string name="merge">Merge</string>
+    <string name="merge_words_title">%1$d existing words found</string>
+    <string name="merge_word_message">Review every change below before updating your database. Existing meanings and examples are never overwritten.</string>
+    <string name="merge_item_new_synonyms">+ Synonyms (%1$d): %2$s</string>
+    <string name="merge_item_new_antonyms">+ Antonyms (%1$d): %2$s</string>
+    <string name="merge_item_main_details_filled">+ Fills blank Hinglish meaning or example sentence</string>
+    <string name="merge_item_relations_enriched">+ Fills blank Hinglish/example on %1$d existing synonym(s)/antonym(s)</string>
+    <string name="merge_item_no_changes">Exact duplicate — nothing new to merge. Delete the duplicate entry so only one word remains.</string>
+    <string name="merge_new_words_summary">New words to add (%1$d): %2$s</string>
+    <string name="notifications_sheet_title">Approval Requests</string>
+    <string name="notifications_sheet_subtitle">Review database changes (such as AI additions or merge requests) that require your approval.</string>
+    <string name="notifications_empty_title">No pending requests</string>
+    <string name="notifications_empty_subtitle">When words are added directly to the database (for example via AI), any merge requests or items needing your approval will appear here.</string>
+    <string name="notification_badge_merge">MERGE REQUEST</string>
+    <string name="notification_badge_duplicate">DUPLICATE WORD</string>
+    <string name="notification_badge_issue">DATA REVIEW</string>
+    <string name="notification_merge_card_subtitle">%1$d database entries found for \"%2$s\".</string>
+    <string name="notification_review_all_merges">Review All Merge Requests (%1$d)</string>
+    <string name="review_merge">Review &amp; Merge</string>
+    <string name="delete_duplicate">Delete Duplicate</string>
+    <string name="edit_json">Edit JSON</string>
+    <string name="merge">Approve &amp; Merge</string>
 
     <!-- Vocabulary Quiz -->
     <string name="vocabulary_word_count_title">Words to Attempt</string>

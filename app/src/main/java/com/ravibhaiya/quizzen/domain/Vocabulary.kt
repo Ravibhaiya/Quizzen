@@ -65,25 +65,42 @@ object VocabularyRules {
     }
 
     /**
-     * Collapses entries that share the same word (case-insensitive) into one: the last occurrence wins,
-     * it keeps the position of the first, and it inherits a missing id / earlier creation time.
+     * Collapses entries that share the same word (case-insensitive) into one: the last occurrence wins for
+     * main word details (inheriting blank Hinglish/example, missing id, and earlier creation time from the
+     * first), while synonyms and antonyms from all occurrences are combined without duplicates.
      * Duplicate synonyms and antonyms inside an entry (same word, case-insensitive) are also collapsed,
      * keeping the first. Used before saving so one import can never create two documents for a word.
      */
     fun mergeDuplicateWords(entries: List<VocabularyEntry>): List<VocabularyEntry> {
         val byWord = LinkedHashMap<String, VocabularyEntry>()
         for (raw in entries) {
+            val key = wordKey(raw.wordDetails.word)
+            val cleanSynonyms = raw.synonyms
+                .distinctBy { wordKey(it.word) }
+                .filterNot { wordKey(it.word) == key }
+                .take(MAX_RELATIONS)
+            val synKeys = cleanSynonyms.map { wordKey(it.word) }.toSet()
+            val cleanAntonyms = raw.antonyms
+                .distinctBy { wordKey(it.word) }
+                .filterNot { wordKey(it.word) == key || wordKey(it.word) in synKeys }
+                .take(MAX_RELATIONS)
             val entry = raw.copy(
-                synonyms = raw.synonyms.distinctBy { it.word.trim().lowercase() },
-                antonyms = raw.antonyms.distinctBy { it.word.trim().lowercase() },
+                synonyms = cleanSynonyms,
+                antonyms = cleanAntonyms,
             )
-            val key = wordKey(entry.wordDetails.word)
             val previous = byWord[key]
             byWord[key] = if (previous == null) {
                 entry
             } else {
-                entry.copy(
+                val mergedRelations = mergeRelations(previous, entry).entry
+                val latestDetails = entry.wordDetails.copy(
+                    meaningEnglish = entry.wordDetails.meaningEnglish.ifBlank { previous.wordDetails.meaningEnglish },
+                    meaningHinglish = entry.wordDetails.meaningHinglish.ifBlank { previous.wordDetails.meaningHinglish },
+                    exampleSentence = entry.wordDetails.exampleSentence.ifBlank { previous.wordDetails.exampleSentence },
+                )
+                mergedRelations.copy(
                     id = entry.id.ifBlank { previous.id },
+                    wordDetails = latestDetails,
                     createdAt = listOf(entry.createdAt, previous.createdAt).filter { it > 0L }.minOrNull() ?: 0L,
                 )
             }
@@ -92,22 +109,103 @@ object VocabularyRules {
     }
 
     private val whitespaceRun = Regex("[\\s\\u00A0]+")
+    private val hyphenOrDash = Regex("[-\\u2010\\u2011\\u2012\\u2013\\u2014\\u2015]+")
+    private val edgePunctuation = Regex("^[.,;:!?\"()\\[\\]{}]+|[.,;:!?\"()\\[\\]{}]+$")
+    private val nonSlugChars = Regex("[^a-z0-9]+")
 
     /** Most synonyms (and most antonyms) one word can hold; the same limit is enforced by `firestore.rules`. */
     const val MAX_RELATIONS = 30
 
     /**
-     * The identity of a main word: capitalization, extra or non-breaking spaces and curly versus straight
-     * apostrophes are ignored. Only ever applied to main words for the uniqueness rule; synonyms and antonyms
-     * are never compared with other entries' main words.
+     * The identity of a main word: capitalization, extra or non-breaking spaces, hyphens versus spaces,
+     * surrounding punctuation, and curly versus straight apostrophes are ignored. Only ever applied to main
+     * words for the uniqueness rule; synonyms and antonyms are never compared with other entries' main words.
      */
     fun wordKey(word: String): String =
         Normalizer.normalize(word, Normalizer.Form.NFC)
             .replace('\u2018', '\'')
             .replace('\u2019', '\'')
+            .trim()
+            .replace(edgePunctuation, "")
+            .replace(hyphenOrDash, " ")
             .replace(whitespaceRun, " ")
             .trim()
             .lowercase()
+
+    /**
+     * Deterministic document ID derived from [wordKey] so the same main word always maps to the same
+     * Firestore document ID and cannot create duplicate documents across devices or retries.
+     */
+    fun documentIdForWord(word: String): String {
+        val key = wordKey(word)
+        require(key.isNotEmpty()) { "Main word cannot be empty" }
+        val slug = key.replace(nonSlugChars, "_").trim('_').take(48)
+        val hash = key.fold(0x811c9dc5.toInt()) { acc, ch ->
+            (acc xor ch.code) * 0x01000193
+        }.toUInt().toString(16).padStart(8, '0')
+        return if (slug.isNotEmpty()) "word_${slug}_$hash" else "word_$hash"
+    }
+
+    /**
+     * Returns the display names of any main words that appear more than once in [entries] (compared via [wordKey]).
+     */
+    fun findDuplicateMainWords(entries: List<VocabularyEntry>): List<String> {
+        val seen = LinkedHashMap<String, String>()
+        val duplicates = LinkedHashSet<String>()
+        for (entry in entries) {
+            val rawWord = entry.wordDetails.word.trim()
+            val key = wordKey(rawWord)
+            if (key.isEmpty()) continue
+            val firstWord = seen[key]
+            if (firstWord != null) {
+                duplicates.add(firstWord)
+            } else {
+                seen[key] = rawWord
+            }
+        }
+        return duplicates.toList()
+    }
+
+    /**
+     * Checks a single entry for internal synonym/antonym duplicates or conflicts so nothing is silently
+     * dropped without the user's awareness. Returns a human-readable error message, or `null` if clean.
+     */
+    fun findEntryRelationConflict(entry: VocabularyEntry): String? {
+        val label = entry.wordDetails.word.trim()
+        val mainKey = wordKey(label)
+        if (entry.synonyms.size > MAX_RELATIONS) {
+            return "Word \"$label\" has ${entry.synonyms.size} synonyms (maximum is $MAX_RELATIONS)."
+        }
+        if (entry.antonyms.size > MAX_RELATIONS) {
+            return "Word \"$label\" has ${entry.antonyms.size} antonyms (maximum is $MAX_RELATIONS)."
+        }
+        val synKeys = HashSet<String>()
+        for (syn in entry.synonyms) {
+            val synWord = syn.word.trim()
+            val key = wordKey(synWord)
+            if (key == mainKey) {
+                return "Word \"$label\" cannot list itself (\"$synWord\") as a synonym."
+            }
+            if (!synKeys.add(key)) {
+                return "Word \"$label\" has a duplicate synonym \"$synWord\"."
+            }
+        }
+        val antKeys = HashSet<String>()
+        for (ant in entry.antonyms) {
+            val antWord = ant.word.trim()
+            val key = wordKey(antWord)
+            if (key == mainKey) {
+                return "Word \"$label\" cannot list itself (\"$antWord\") as an antonym."
+            }
+            if (key in synKeys) {
+                return "Word \"$label\" lists \"$antWord\" as both a synonym and an antonym."
+            }
+            if (!antKeys.add(key)) {
+                return "Word \"$label\" has a duplicate antonym \"$antWord\"."
+            }
+        }
+        return null
+    }
 
     /**
      * Result of [checkMainWords]: [toSave] are new words (or unchanged/edited ones), [clashing] are incoming entries
@@ -145,6 +243,10 @@ object VocabularyRules {
         val skipped: Int,
         val limitReached: Boolean,
         val changed: Boolean,
+        val addedSynonymWords: List<String> = emptyList(),
+        val addedAntonymWords: List<String> = emptyList(),
+        val enrichedRelations: Int = 0,
+        val mainDetailsEnriched: Boolean = false,
     )
 
     data class MergeSummary(
@@ -153,12 +255,14 @@ object VocabularyRules {
         val addedAntonyms: Int,
         val skipped: Int,
         val limitReached: Boolean,
+        val enrichedRelations: Int = 0,
     )
 
     /**
      * Adds the new synonyms and antonyms of [incoming] to [existing]. The existing word, meanings and example are
-     * never overwritten (a blank Hinglish meaning or example is filled in). An item is skipped when it equals the main
-     * word, is already in either list, or would push a list past [MAX_RELATIONS].
+     * never overwritten (a blank Hinglish meaning or example on the main word or on an existing synonym/antonym is
+     * filled in). An item is skipped when it equals the main word, is already in either list (with no blank fields
+     * to fill), or would push a list past [MAX_RELATIONS].
      */
     fun mergeRelations(existing: VocabularyEntry, incoming: VocabularyEntry): MergeResult {
         val clean = incoming.sanitized()
@@ -168,19 +272,41 @@ object VocabularyRules {
         val synonyms = existing.synonyms.toMutableList()
         val antonyms = existing.antonyms.toMutableList()
         var skipped = 0
+        var enrichedRelations = 0
         var limitReached = false
+        val addedSynWords = mutableListOf<String>()
+        val addedAntWords = mutableListOf<String>()
 
         fun absorb(
             source: List<WordDetails>,
             target: MutableList<WordDetails>,
             own: MutableSet<String>,
             other: Set<String>,
+            addedWords: MutableList<String>,
         ): Int {
             var added = 0
             for (item in source) {
                 val key = wordKey(item.word)
                 when {
-                    key == mainKey || key in own || key in other -> skipped++
+                    key == mainKey || key in other -> skipped++
+                    key in own -> {
+                        val idx = target.indexOfFirst { wordKey(it.word) == key }
+                        if (idx >= 0) {
+                            val current = target[idx]
+                            val updated = current.copy(
+                                meaningHinglish = current.meaningHinglish.ifBlank { item.meaningHinglish },
+                                exampleSentence = current.exampleSentence.ifBlank { item.exampleSentence },
+                            )
+                            if (updated != current) {
+                                target[idx] = updated
+                                enrichedRelations++
+                            } else {
+                                skipped++
+                            }
+                        } else {
+                            skipped++
+                        }
+                    }
                     target.size >= MAX_RELATIONS -> {
                         skipped++
                         limitReached = true
@@ -188,6 +314,7 @@ object VocabularyRules {
                     else -> {
                         target += item
                         own += key
+                        addedWords += item.word
                         added++
                     }
                 }
@@ -195,19 +322,24 @@ object VocabularyRules {
             return added
         }
 
-        val addedSyn = absorb(clean.synonyms, synonyms, synKeys, antKeys)
-        val addedAnt = absorb(clean.antonyms, antonyms, antKeys, synKeys)
+        val addedSyn = absorb(clean.synonyms, synonyms, synKeys, antKeys, addedSynWords)
+        val addedAnt = absorb(clean.antonyms, antonyms, antKeys, synKeys, addedAntWords)
         val mainDetails = existing.wordDetails.copy(
             meaningHinglish = existing.wordDetails.meaningHinglish.ifBlank { clean.wordDetails.meaningHinglish },
             exampleSentence = existing.wordDetails.exampleSentence.ifBlank { clean.wordDetails.exampleSentence },
         )
+        val mainEnriched = mainDetails != existing.wordDetails
         return MergeResult(
             entry = existing.copy(wordDetails = mainDetails, synonyms = synonyms, antonyms = antonyms),
             addedSynonyms = addedSyn,
             addedAntonyms = addedAnt,
             skipped = skipped,
             limitReached = limitReached,
-            changed = addedSyn + addedAnt > 0 || mainDetails != existing.wordDetails,
+            changed = addedSyn + addedAnt > 0 || enrichedRelations > 0 || mainEnriched,
+            addedSynonymWords = addedSynWords,
+            addedAntonymWords = addedAntWords,
+            enrichedRelations = enrichedRelations,
+            mainDetailsEnriched = mainEnriched,
         )
     }
 

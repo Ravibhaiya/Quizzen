@@ -68,7 +68,8 @@ object VocabularyFirestoreMapper {
 
         val updatedAt = (data["updatedAt"] as? Number)?.toLong() ?: 0L
         val createdAt = (data["createdAt"] as? Number)?.toLong() ?: updatedAt
-        val resolvedId = (data["id"] as? String)?.takeIf { it.isNotBlank() } ?: docId
+        val resolvedId = docId.takeIf { it.isNotBlank() }
+            ?: (data["id"] as? String)?.takeIf { it.isNotBlank() }.orEmpty()
 
         return VocabularyEntry(
             id = resolvedId,
