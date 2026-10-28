@@ -37,6 +37,9 @@ jobs:
           GOOGLE_SERVICES_JSON: ${{ secrets.GOOGLE_SERVICES_JSON }}
         run: python3 tools/ci_google_services.py
 
+      - name: Check the docs only mention code that exists
+        run: python3 tools/check_docs.py
+
       - name: Check generated logo drawables are in sync with design/quizzen-logo.svg
         run: |
           python3 tools/generate_logo_drawables.py
