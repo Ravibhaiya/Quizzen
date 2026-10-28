@@ -186,7 +186,8 @@ AI assistants edit this repo over many sessions, so docs drift unless every chan
    text everywhere (docs, README, tests, the `strings.xml` entries) instead of leaving "legacy" notes.
 4. Constants live in one place and are only referred to by name in docs and comments, with the numbers written once in
    `docs/BEHAVIOR_SPEC.md` (see the Powers & Roots limits, `MAX_RELATIONS`, `WRONG_REPEATS`).
-5. Say in the final message which docs you changed, and what you could not verify (for example "Gradle not run").
+5. Do not commit tool scratch files (plans, metadata, screenshots, `.aistudio/`); the repo only holds what the app, the build or the docs need.
+6. Say in the final message which docs you changed, and what you could not verify (for example "Gradle not run").
 
 ## Mistake repeats
 
