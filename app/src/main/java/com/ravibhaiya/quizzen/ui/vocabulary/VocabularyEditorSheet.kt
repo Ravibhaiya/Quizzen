@@ -227,7 +227,7 @@ fun VocabularyEditorSheet(
             PrimaryButton(
                 text = stringResource(if (state.isEditing) R.string.save_word else R.string.save_words),
                 onClick = onSave,
-                enabled = state.canSave,
+                enabled = state.canSave && !state.isSaving,
                 modifier = Modifier.testTag("save_word_button"),
             )
         }

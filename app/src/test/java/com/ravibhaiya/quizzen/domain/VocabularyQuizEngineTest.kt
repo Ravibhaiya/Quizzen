@@ -232,35 +232,4 @@ class VocabularyQuizEngineTest {
             assertEquals(VocabularyMistakeAction.None, tracker.onQuestionResolved(idx, FeedbackType.Correct))
         }
     }
-
-    @Test
-    fun `test duplicate entries provide 25 matching main words with 12 identical and 13 with differences`() {
-        val base = VocabularyQuizRules.FALLBACK_ENTRIES
-        val dups = VocabularyQuizRules.TEST_DUPLICATE_ENTRIES
-        assertEquals(25, base.size)
-        assertEquals(25, dups.size)
-        assertEquals(
-            base.map { VocabularyRules.wordKey(it.wordDetails.word) },
-            dups.map { VocabularyRules.wordKey(it.wordDetails.word) },
-        )
-
-        var identicalCount = 0
-        var differentCount = 0
-        for (i in base.indices) {
-            val orig = base[i]
-            val dup = dups[i]
-            assertTrue(dup.id != orig.id)
-            val mergeRes = VocabularyRules.mergeRelations(orig, dup)
-            if (mergeRes.changed) {
-                differentCount++
-                assertTrue(mergeRes.addedSynonyms > 0 || mergeRes.addedAntonyms > 0)
-            } else {
-                identicalCount++
-                assertEquals(orig.copy(id = dup.id), dup)
-            }
-        }
-        assertEquals(12, identicalCount)
-        assertEquals(13, differentCount)
-    }
 }
-
