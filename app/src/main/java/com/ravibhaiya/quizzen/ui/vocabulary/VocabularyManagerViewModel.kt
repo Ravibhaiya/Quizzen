@@ -55,6 +55,7 @@ data class MergePrompt(
     val newEntriesToSave: List<VocabularyEntry> = emptyList(),
     val redundantDuplicateIdsToDelete: Set<String> = emptySet(),
     val confirmText: String = "",
+    val isSaving: Boolean = false,
 ) {
     val incoming: VocabularyEntry get() = items.first().incomingEntry
     val existingWord: String get() = items.first().existingWord
@@ -346,7 +347,8 @@ class VocabularyManagerViewModel(
     }
 
     fun onDismissEditor() {
-        _uiState.update { it.copy(editorState = null) }
+        // While a save is running the result must stay visible: closing now would hide a failure.
+        _uiState.update { if (it.editorState?.isSaving == true) it else it.copy(editorState = null) }
     }
 
     fun onUpdateJsonText(json: String) {
@@ -502,19 +504,25 @@ class VocabularyManagerViewModel(
                     return false // editor stays open behind the approval sheet until user confirms
                 }
 
-                // 5. All words are brand-new (or a confirmed single-word edit): save to database.
-                _uiState.update { it.copy(editorState = null, noticeMessage = null) }
+                // 5. All words are brand-new (or a confirmed single-word edit): save to the database. Saving needs
+                //    internet and the editor stays open until the server confirmed it, so nothing the user typed is
+                //    lost when it fails.
+                _uiState.update { state ->
+                    state.copy(editorState = editor.copy(isSaving = true, validationError = null))
+                }
                 viewModelScope.launch {
-                    if (newEntriesToSave.isNotEmpty()) {
-                        repository.saveEntries(newEntriesToSave).getOrElse { err ->
+                    repository.saveEntries(newEntriesToSave)
+                        .onSuccess { saved ->
                             _uiState.update { state ->
                                 state.copy(
-                                    errorMessage = err.message ?: "Failed to save vocabulary to Firebase.",
+                                    editorState = null,
+                                    noticeMessage = describeSaved(saved.size, editor.isEditing),
                                 )
                             }
-                            return@launch
                         }
-                    }
+                        .onFailure { err ->
+                            failEditor(err.message ?: "Failed to save vocabulary to Firebase.")
+                        }
                 }
                 return true
             }
@@ -524,6 +532,33 @@ class VocabularyManagerViewModel(
     private fun showEditorError(editor: VocabularyEditorState, message: String) {
         _uiState.update { it.copy(editorState = editor.copy(validationError = message)) }
     }
+
+    /** A save failed: keep the editor (and the typed JSON) open and show why. */
+    private fun failEditor(message: String) {
+        _uiState.update { state ->
+            val current = state.editorState
+            if (current != null) {
+                state.copy(editorState = current.copy(isSaving = false, validationError = message))
+            } else {
+                state.copy(errorMessage = message)
+            }
+        }
+    }
+
+    /** A merge failed: close only the approval sheet and show why (inside the editor if it is open). */
+    private fun failMerge(message: String) {
+        _uiState.update { state ->
+            val editor = state.editorState
+            if (editor != null) {
+                state.copy(mergePrompt = null, editorState = editor.copy(validationError = message))
+            } else {
+                state.copy(mergePrompt = null, errorMessage = message)
+            }
+        }
+    }
+
+    private fun describeSaved(count: Int, edited: Boolean): String =
+        if (edited) "Word updated in the database." else "Added $count new word(s) to the database."
 
     private fun describeResult(added: Int, merge: VocabularyRules.MergeSummary?, deletedDuplicates: Int = 0): String =
         buildString {
@@ -558,14 +593,14 @@ class VocabularyManagerViewModel(
 
     fun onConfirmMerge(): Boolean {
         val prompt = _uiState.value.mergePrompt ?: return false
-        if (!prompt.canConfirm) return false
-        _uiState.update { it.copy(mergePrompt = null, editorState = null, noticeMessage = null) }
+        if (!prompt.canConfirm || prompt.isSaving) return false
+        // The approval sheet (and the editor behind it) stay open until the server confirmed everything.
+        _uiState.update { it.copy(mergePrompt = prompt.copy(isSaving = true)) }
         viewModelScope.launch {
             if (prompt.newEntriesToSave.isNotEmpty()) {
-                repository.saveEntries(prompt.newEntriesToSave).getOrElse { err ->
-                    _uiState.update { state ->
-                        state.copy(errorMessage = err.message ?: "Failed to save vocabulary to Firebase.")
-                    }
+                val saveFailure = repository.saveEntries(prompt.newEntriesToSave).exceptionOrNull()
+                if (saveFailure != null) {
+                    failMerge(saveFailure.message ?: "Failed to save vocabulary to Firebase.")
                     return@launch
                 }
             }
@@ -573,13 +608,14 @@ class VocabularyManagerViewModel(
             val incomingToMerge = prompt.changedItems.map { it.incomingEntry }
             if (incomingToMerge.isNotEmpty()) {
                 summary = repository.mergeIntoExisting(incomingToMerge).getOrElse { err ->
-                    _uiState.update { it.copy(errorMessage = err.message ?: "Failed to merge words.") }
+                    failMerge(err.message ?: "Failed to merge words.")
                     return@launch
                 }
             }
             if (prompt.redundantDuplicateIdsToDelete.isNotEmpty()) {
-                repository.deleteEntries(prompt.redundantDuplicateIdsToDelete).getOrElse { err ->
-                    _uiState.update { it.copy(errorMessage = err.message ?: "Failed to clean up duplicate entries.") }
+                val deleteFailure = repository.deleteEntries(prompt.redundantDuplicateIdsToDelete).exceptionOrNull()
+                if (deleteFailure != null) {
+                    failMerge(deleteFailure.message ?: "Failed to clean up duplicate entries.")
                     return@launch
                 }
             }
@@ -588,8 +624,12 @@ class VocabularyManagerViewModel(
                 merge = summary,
                 deletedDuplicates = prompt.redundantDuplicateIdsToDelete.size,
             )
-            if (notice.isNotEmpty()) {
-                _uiState.update { it.copy(noticeMessage = notice) }
+            _uiState.update {
+                it.copy(
+                    mergePrompt = null,
+                    editorState = null,
+                    noticeMessage = if (notice.isEmpty()) null else notice,
+                )
             }
         }
         return true
@@ -635,7 +675,7 @@ class VocabularyManagerViewModel(
     }
 
     fun onDismissMerge() {
-        _uiState.update { it.copy(mergePrompt = null) }
+        _uiState.update { if (it.mergePrompt?.isSaving == true) it else it.copy(mergePrompt = null) }
     }
 
     fun onDismissNotice() {
@@ -693,14 +733,16 @@ class VocabularyManagerViewModel(
             )
         }
         viewModelScope.launch {
-            val result = repository.deleteEntries(targetIds)
-            result.onFailure { err ->
-                _uiState.update { state ->
-                    state.copy(
-                        errorMessage = err.message ?: "Failed to delete word from Firebase.",
-                    )
+            // The words leave the list only after the server confirmed the delete (it needs internet).
+            repository.deleteEntries(targetIds)
+                .onSuccess {
+                    _uiState.update { it.copy(noticeMessage = "Deleted ${targetIds.size} word(s) from the database.") }
                 }
-            }
+                .onFailure { err ->
+                    _uiState.update { state ->
+                        state.copy(errorMessage = err.message ?: "Failed to delete word from Firebase.")
+                    }
+                }
         }
         return true
     }

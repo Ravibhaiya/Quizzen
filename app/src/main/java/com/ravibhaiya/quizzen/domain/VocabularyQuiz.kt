@@ -132,15 +132,9 @@ object VocabularyQuizRules {
 
     /**
      * Built-in starter vocabulary entries (25 rich words with multiple synonyms, antonyms, English & Hinglish meanings,
-     * and example sentences) so the Vocabulary quiz works immediately out of the box even before Firestore words are added.
+     * and example sentences) so the Vocabulary quiz works out of the box even before the user's own words exist.
+     * Read-only: these are never written to the database.
      */
     val FALLBACK_ENTRIES: List<VocabularyEntry>
         get() = VocabularyFallbackData.ENTRIES
-
-    /**
-     * 25 duplicate test entries matching [FALLBACK_ENTRIES] (12 identical and 13 with extra synonyms/antonyms)
-     * used to test duplicate/merge approval notifications in the Database Manager.
-     */
-    val TEST_DUPLICATE_ENTRIES: List<VocabularyEntry>
-        get() = VocabularyDuplicateTestData.ENTRIES
 }

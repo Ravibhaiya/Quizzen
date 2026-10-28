@@ -9,6 +9,7 @@ truth: `docs/reference/quizzen-web-reference.html`.
 
 ```bash
 ./gradlew testDebugUnitTest lintDebug assembleDebug   # run before finishing any change
+python3 tools/check_docs.py                           # docs must not name code or files that no longer exist
 ```
 
 Nothing may be committed that fails these. If you cannot run Gradle, say so explicitly and keep changes small and
@@ -149,6 +150,44 @@ nothing. The rules, so this stays consistent:
 - A question still open restarts with a **full timer**; an answered one comes back answered with **Next** ready. Do not add resume to
   `PracticeViewModel`/`PracticeSession` without the owner asking (see "Mistake repeats").
 - Any change here updates `docs/BEHAVIOR_SPEC.md` ("Resume an unfinished quiz") and `docs/ARCHITECTURE.md` in the same change.
+
+## Vocabulary database (Cloud Firestore)
+
+The owner is the only user (no login, no accounts). Cloud Firestore is the **only source of truth** for the words; the rules,
+so this stays consistent (details in `docs/BEHAVIOR_SPEC.md` "Vocabulary Manager" and `docs/ARCHITECTURE.md` "Vocabulary database"):
+
+- **Every write needs internet** and is confirmed by the server before anything on the phone changes. All writes go through
+  `FirestoreVocabularyRepository.inCloud` and use `runTransaction(...).await()`; never use a plain `set`/`delete`/`batch.commit`
+  (Firestore would queue them while offline and report success later), never write to the database "locally first", never add
+  a silent retry or queue. Failure = `Result.failure` and nothing changed.
+- **The server list is the truth**: the snapshot listener replaces the known list; never merge the local file back into it (that
+  brings deleted words back on other devices). The local JSON file (`vocabulary_cache_v1.json`) is a read-only copy for offline
+  reading and quizzes.
+- **Merging** (`mergeIntoExisting`) reads the word from the server inside the transaction, so two devices cannot overwrite each
+  other. New words are written create-only; edits replace. Merge rules live only in `VocabularyRules` (`domain/Vocabulary.kt`).
+- **ViewModel**: the editor and the approval sheet stay open while saving (`isSaving`) and a failure is shown inline; typed JSON
+  must never be lost. Notices ("Added N new word(s) to the database.") are shown only after the server confirmed.
+- **Never seed the database**: no starter words, no test or demo data in production code. `VocabularyQuizRules.FALLBACK_ENTRIES`
+  is a read-only fallback for the quiz only.
+- `firestore.rules` and `VocabularyRules.MAX_RELATIONS` must agree (`tools/check_docs.py` checks it). The rules are open on
+  purpose (single owner, no login); do not add `request.auth` checks unless the owner asks, and keep `google-services.json` and
+  the APK private.
+- Tests use a fake `VocabularyRepository` that can fail every write; add a case there for each new write path.
+
+## Keeping docs consistent (do this in the same change)
+
+AI assistants edit this repo over many sessions, so docs drift unless every change updates them. Before you finish:
+
+1. Behavior changed -> `docs/BEHAVIOR_SPEC.md`. Structure, new file, class or data flow -> `docs/ARCHITECTURE.md`. Look/tokens ->
+   `docs/DESIGN_SYSTEM.md`. A new rule for future work -> this file. A user-visible feature -> the feature list in `README.md`.
+2. Use the real names from the code in backticks (the checker `python3 tools/check_docs.py` fails on names/files that do not
+   exist, and CI runs it). Rename something -> search the docs for the old name.
+3. Do not describe things that are not implemented (for example timeouts, migrations or files). If you remove a feature, remove its
+   text everywhere (docs, README, tests, the `strings.xml` entries) instead of leaving "legacy" notes.
+4. Constants live in one place and are only referred to by name in docs and comments, with the numbers written once in
+   `docs/BEHAVIOR_SPEC.md` (see the Powers & Roots limits, `MAX_RELATIONS`, `WRONG_REPEATS`).
+5. Do not commit tool scratch files (plans, metadata, screenshots, `.aistudio/`); the repo only holds what the app, the build or the docs need.
+6. Say in the final message which docs you changed, and what you could not verify (for example "Gradle not run").
 
 ## Mistake repeats
 

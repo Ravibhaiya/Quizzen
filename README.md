@@ -28,7 +28,7 @@ springy press animations. It is a native re-implementation of the original singl
 - **Settings** bottom sheet with a persisted Haptic Feedback switch.
 - Light theme only (by design, regardless of the system dark-mode setting), edge-to-edge, IME-aware layouts, 440 dp max content width on large screens.
 - **Vocabulary (Language)**: choose **Synonyms**, **Antonyms**, or both simultaneously, select **5 to 25 words** to attempt, review all selected words on a pre-quiz **Study** page, and take a finite **4-option MCQ quiz** with inline feedback, post-answer meaning reveals, manual **Next** button progression, and local mistake tracking (saving wrong/timed-out words locally, prioritizing them in future quizzes, and automatically deleting a word once all questions for that word are answered right in a session). If the app is closed (or the quiz left) mid-quiz, the Vocabulary setup screen offers **Resume** from the question you stopped at (or **Discard**); only Vocabulary can be resumed.
-- **Database Manager -> Vocabulary**: add/edit vocabulary words via single/bulk JSON format with Cloud Firestore sync + offline cache, collapsible cards, horizontal synonym/antonym count badges, and header search.
+- **Database Manager -> Vocabulary**: add/edit vocabulary words via single/bulk JSON format saved to Cloud Firestore (internet is required to add, merge or delete, and a word counts as added only after the server confirmed it; the words can still be read offline), collapsible cards, horizontal synonym/antonym count badges, and header search.
 - Other tiles (Fixed Preposition, Phrasal Verb) are placeholders, exactly as in the prototype (they show "Coming soon").
 
 ## Tech stack
@@ -58,7 +58,7 @@ plan gets 2,000 minutes and 500 MB of storage a month, and this setup uses rough
 
 | Workflow | When it runs | What it does |
 |---|---|---|
-| `ci.yml` | pull requests (not for docs-only changes) | unit tests, lint, debug build, logo-sync check; uploads nothing |
+| `ci.yml` | pull requests (not for docs-only changes) | docs check, unit tests, lint, debug build, logo-sync check; uploads nothing |
 | `release-check.yml` | pull requests that change build settings, dependencies or shrinker rules | optimized (R8) release build |
 | `apk.yml` | only when you press **Run workflow** in the Actions tab, or push a `v*` tag | optimized APK, kept 14 days (debug APK optional) |
 

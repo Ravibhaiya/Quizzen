@@ -22,6 +22,7 @@ import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Test
+import java.io.IOException
 
 @OptIn(ExperimentalCoroutinesApi::class)
 class VocabularyManagerViewModelTest {
@@ -249,9 +250,8 @@ class VocabularyManagerViewModelTest {
         }
 
     @Test
-    fun `search toggle and firebase save failure error surface in state`() = runTest(dispatcher) {
-        val repo = FakeVocabularyRepository(failWrites = true)
-        val vm = VocabularyManagerViewModel(repo)
+    fun `search toggle works and a successful save shows an Added notice`() = runTest(dispatcher) {
+        val vm = VocabularyManagerViewModel(FakeVocabularyRepository())
         advanceUntilIdle()
 
         assertFalse(vm.uiState.value.isSearchActive)
@@ -266,11 +266,92 @@ class VocabularyManagerViewModelTest {
         vm.onStartAdd()
         vm.onUpdateJsonText("""{"word": "Apex", "meaningEnglish": "The top or highest part"}""")
         assertTrue(vm.onSaveEntry())
+        // The editor stays open (and busy) until the server confirmed the save.
+        assertTrue(vm.uiState.value.editorState!!.isSaving)
         advanceUntilIdle()
 
-        assertNotNull(vm.uiState.value.errorMessage)
+        assertNull(vm.uiState.value.editorState)
+        assertEquals(1, vm.uiState.value.entries.size)
+        assertEquals("Added 1 new word(s) to the database.", vm.uiState.value.noticeMessage)
+    }
+
+    @Test
+    fun `a failed save (no internet) keeps the editor and typed JSON open and adds nothing`() = runTest(dispatcher) {
+        val repo = FakeVocabularyRepository(failWrites = true)
+        val vm = VocabularyManagerViewModel(repo)
+        advanceUntilIdle()
+
+        val json = """{"word": "Apex", "meaningEnglish": "The top or highest part"}"""
+        vm.onStartAdd()
+        vm.onUpdateJsonText(json)
+        assertTrue(vm.onSaveEntry())
+        advanceUntilIdle()
+
+        val editor = vm.uiState.value.editorState
+        assertNotNull(editor)
+        assertFalse(editor!!.isSaving)
+        assertEquals(FakeVocabularyRepository.OFFLINE_MESSAGE, editor.validationError)
+        assertEquals(json, editor.jsonText)
+        assertTrue(vm.uiState.value.entries.isEmpty())
+        assertNull(vm.uiState.value.noticeMessage)
+
+        // Back online: the same editor can simply save again.
+        repo.failWrites = false
+        assertTrue(vm.onSaveEntry())
+        advanceUntilIdle()
+        assertNull(vm.uiState.value.editorState)
+        assertEquals(1, vm.uiState.value.entries.size)
+    }
+
+    @Test
+    fun `a failed merge keeps the editor open with the error and merges nothing until it works`() =
+        runTest(dispatcher) {
+            val repo = repoWithAbate()
+            val vm = VocabularyManagerViewModel(repo)
+            advanceUntilIdle()
+
+            vm.onStartAdd()
+            vm.onUpdateJsonText(word("abate", synonyms = listOf("subside")))
+            assertFalse(vm.onSaveEntry())
+            advanceUntilIdle()
+            vm.onUpdateMergeConfirmText("CONFIRM")
+
+            repo.failWrites = true
+            assertTrue(vm.onConfirmMerge())
+            // Busy: a second tap on CONFIRM while the first is still running is ignored.
+            assertFalse(vm.onConfirmMerge())
+            advanceUntilIdle()
+
+            assertNull(vm.uiState.value.mergePrompt)
+            assertEquals(FakeVocabularyRepository.OFFLINE_MESSAGE, vm.uiState.value.editorState!!.validationError)
+            assertEquals(1, vm.uiState.value.entries.single().synonyms.size)
+            assertNull(vm.uiState.value.noticeMessage)
+        }
+
+    @Test
+    fun `a failed delete keeps the word in the list and shows the error`() = runTest(dispatcher) {
+        val repo = repoWithAbate()
+        val vm = VocabularyManagerViewModel(repo)
+        advanceUntilIdle()
+
+        repo.failWrites = true
+        vm.onRequestDelete(vm.uiState.value.entries.single())
+        vm.onUpdateDeleteConfirmText("DELETE")
+        assertTrue(vm.onConfirmDelete())
+        advanceUntilIdle()
+
+        assertEquals(1, vm.uiState.value.entries.size)
+        assertEquals(FakeVocabularyRepository.OFFLINE_MESSAGE, vm.uiState.value.errorMessage)
         vm.onDismissError()
         assertNull(vm.uiState.value.errorMessage)
+
+        repo.failWrites = false
+        vm.onRequestDelete(vm.uiState.value.entries.single())
+        vm.onUpdateDeleteConfirmText("DELETE")
+        assertTrue(vm.onConfirmDelete())
+        advanceUntilIdle()
+        assertTrue(vm.uiState.value.entries.isEmpty())
+        assertEquals("Deleted 1 word(s) from the database.", vm.uiState.value.noticeMessage)
     }
 
     private fun word(
@@ -528,8 +609,9 @@ class VocabularyManagerViewModelTest {
             assertEquals(0, vm.uiState.value.pendingApprovalCount)
         }
 
+    /** Like the real repository: every write fails as a whole (nothing changes) while [failWrites] is on. */
     private class FakeVocabularyRepository(
-        private val failWrites: Boolean = false,
+        var failWrites: Boolean = false,
     ) : VocabularyRepository {
         private val flow = MutableStateFlow<List<VocabularyEntry>>(emptyList())
         override val entries: Flow<List<VocabularyEntry>> = flow
@@ -543,11 +625,7 @@ class VocabularyManagerViewModelTest {
             saveEntries(listOf(entry)).map { it.first() }
 
         override suspend fun saveEntries(entries: List<VocabularyEntry>): Result<List<VocabularyEntry>> {
-            if (failWrites) {
-                val msg = "Failed to save vocabulary to Firebase: Permission denied"
-                errorFlow.value = msg
-                return Result.failure(IllegalStateException(msg))
-            }
+            if (failWrites) return Result.failure(IOException(OFFLINE_MESSAGE))
             val savedList = entries.map { entry ->
                 val id = entry.id.ifBlank { "id-${++counter}" }
                 entry.copy(id = id)
@@ -560,6 +638,7 @@ class VocabularyManagerViewModelTest {
         override suspend fun mergeIntoExisting(
             incoming: List<VocabularyEntry>,
         ): Result<VocabularyRules.MergeSummary> {
+            if (failWrites) return Result.failure(IOException(OFFLINE_MESSAGE))
             val current = flow.value
             val byId = current.filter { it.id.isNotBlank() }.associateBy { it.id }
             val byKey = LinkedHashMap<String, VocabularyEntry>().apply {
@@ -588,11 +667,7 @@ class VocabularyManagerViewModelTest {
         }
 
         override suspend fun deleteEntry(id: String): Result<Unit> {
-            if (failWrites) {
-                val msg = "Failed to delete word from Firebase"
-                errorFlow.value = msg
-                return Result.failure(IllegalStateException(msg))
-            }
+            if (failWrites) return Result.failure(IOException(OFFLINE_MESSAGE))
             flow.value = flow.value.filterNot { it.id == id }
             return Result.success(Unit)
         }
@@ -607,6 +682,10 @@ class VocabularyManagerViewModelTest {
 
         override fun clearSyncError() {
             errorFlow.value = null
+        }
+
+        companion object {
+            const val OFFLINE_MESSAGE = "No internet connection. Nothing was saved. Connect and try again."
         }
     }
 }
