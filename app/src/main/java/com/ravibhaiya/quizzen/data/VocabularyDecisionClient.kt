@@ -1,5 +1,6 @@
 package com.ravibhaiya.quizzen.data
 
+import android.content.Context
 import androidx.lifecycle.ViewModelProvider.AndroidViewModelFactory.Companion.APPLICATION_KEY
 import androidx.lifecycle.viewmodel.CreationExtras
 import com.ravibhaiya.quizzen.domain.VocabularyDecisionFinding
@@ -12,8 +13,11 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.emptyFlow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
 import kotlinx.coroutines.withTimeout
+import java.io.File
 import java.io.IOException
 import java.net.HttpURLConnection
 import java.net.URL
@@ -21,11 +25,13 @@ import java.net.URL
 /**
  * Thrown when `gemini-decision-1` hits a temporary rate limit (`HTTP 429` / `50K TPM`), server overload,
  * or network timeout so the UI can place verification in **Pending** status and automatically re-verify
- * after [retrySeconds] (default 60 seconds).
+ * after [retrySeconds] (default 60 seconds). Any findings from batches that completed before the pause
+ * are carried in [partialFindings].
  */
 class DecisionPendingRetryException(
     message: String,
     val retrySeconds: Int = DEFAULT_RETRY_SECONDS,
+    val partialFindings: List<VocabularyDecisionFinding> = emptyList(),
     cause: Throwable? = null,
 ) : IOException(message, cause) {
     companion object {
@@ -53,11 +59,27 @@ interface VocabularyDecisionClient {
 /**
  * Production implementation calling the Google Gemini Decisions API
  * (`POST https://generativelanguage.googleapis.com/v1beta/decisions`) with `model = "gemini-decision-1"`.
+ *
+ * Implements **Option B** incremental verification:
+ * - Builds request plans and parses responses on [Dispatchers.IO] in batches of at most
+ *   [VocabularyDecisionRules.BATCH_MAX_QUESTIONS] (`100`) questions.
+ * - Persists verified word fingerprints (`entryId -> entryContentDigest`) and active findings on-device
+ *   (`vocabulary_decision_state_v1.json`) after every completed batch so unchanged words are never
+ *   re-checked across app restarts or 60-second rate-limit retries.
  */
 class GeminiDecisionClient(
     private val settingsRepository: SettingsRepository? = null,
+    context: Context? = null,
     private val apiKeyProvider: () -> String = { DataStoreSettingsRepository.effectiveGeminiApiKey() },
+    private val requestExecutor: ((apiKey: String, requestJson: String) -> String)? = null,
 ) : VocabularyDecisionClient {
+
+    private val appContext = context?.applicationContext
+    private val stateMutex = Mutex()
+    private var memorySnapshot: VocabularyDecisionRules.DecisionVerificationSnapshot? = null
+
+    private val stateFile: File?
+        get() = appContext?.filesDir?.let { File(it, LOCAL_STATE_FILENAME) }
 
     override val isConfigured: Boolean
         get() = DataStoreSettingsRepository.sanitizeApiKey(apiKeyProvider()).isNotEmpty()
@@ -71,7 +93,7 @@ class GeminiDecisionClient(
     override suspend fun analyze(
         entries: List<VocabularyEntry>,
         dismissedKeys: Set<String>,
-    ): Result<List<VocabularyDecisionFinding>> {
+    ): Result<List<VocabularyDecisionFinding>> = withContext(Dispatchers.IO) {
         val storedKey = DataStoreSettingsRepository.sanitizeApiKey(
             settingsRepository?.geminiApiKey?.first().orEmpty(),
         )
@@ -80,30 +102,90 @@ class GeminiDecisionClient(
         }
 
         if (apiKey.isEmpty()) {
-            return Result.failure(IllegalStateException(MISSING_API_KEY_MESSAGE))
+            return@withContext Result.failure(IllegalStateException(MISSING_API_KEY_MESSAGE))
         }
 
-        val plan = VocabularyDecisionRules.buildRequestPlan(entries, dismissedKeys)
-            ?: return Result.success(emptyList())
+        val currentDigests = entries
+            .filter { it.id.isNotBlank() && it.wordDetails.word.isNotBlank() }
+            .associate { it.id to VocabularyDecisionRules.entryContentDigest(it) }
 
-        val cacheKey = "$apiKey:${plan.requestJson.hashCode()}"
-        cachedResults[cacheKey]?.let { cached ->
-            return Result.success(cached)
+        val initialState = stateMutex.withLock {
+            val loaded = loadSnapshotLocked()
+            val validVerifiedDigests = loaded.verifiedDigests.filter { (id, digest) ->
+                currentDigests[id] == digest
+            }
+            val verifiedIds = validVerifiedDigests.keys
+            val validFindings = loaded.findings.filter { finding ->
+                finding.key !in dismissedKeys && when (finding) {
+                    is VocabularyDecisionFinding.DuplicateOrVariant ->
+                        finding.primaryId in verifiedIds && finding.duplicateId in verifiedIds
+                    is VocabularyDecisionFinding.MeaningConflict ->
+                        finding.entryId in verifiedIds
+                }
+            }
+            val pruned = VocabularyDecisionRules.DecisionVerificationSnapshot(
+                verifiedDigests = validVerifiedDigests,
+                findings = validFindings,
+            )
+            if (pruned != loaded) {
+                saveSnapshotLocked(pruned)
+            }
+            pruned
         }
 
-        return withContext(Dispatchers.IO) {
+        val batches = VocabularyDecisionRules.buildRequestBatches(
+            entries = entries,
+            dismissedKeys = dismissedKeys,
+            verifiedEntryIds = initialState.verifiedDigests.keys,
+            maxQuestionsPerBatch = VocabularyDecisionRules.BATCH_MAX_QUESTIONS,
+        )
+
+        if (batches.isEmpty()) {
+            return@withContext Result.success(initialState.findings)
+        }
+
+        val workingDigests = LinkedHashMap(initialState.verifiedDigests)
+        val findingsByKey = LinkedHashMap<String, VocabularyDecisionFinding>()
+        for (existingFinding in initialState.findings) {
+            findingsByKey[existingFinding.key] = existingFinding
+        }
+
+        for (batch in batches) {
             try {
                 val responseBody = withTimeout(DECISION_TIMEOUT_MS) {
-                    postDecisionRequest(apiKey, plan.requestJson)
+                    val custom = requestExecutor
+                    if (custom != null) {
+                        custom(apiKey, batch.requestJson)
+                    } else {
+                        postDecisionRequest(apiKey, batch.requestJson)
+                    }
                 }
-                val findings = VocabularyDecisionRules.parseResponse(responseBody, plan)
-                cachedResults[cacheKey] = findings
-                Result.success(findings)
+                val batchFindings = VocabularyDecisionRules.parseResponse(responseBody, batch)
+                for (finding in batchFindings) {
+                    if (finding.key !in dismissedKeys) {
+                        findingsByKey[finding.key] = finding
+                    }
+                }
+                for (coveredId in batch.coveredEntryIds) {
+                    val digest = currentDigests[coveredId]
+                    if (digest != null) {
+                        workingDigests[coveredId] = digest
+                    }
+                }
+                stateMutex.withLock {
+                    saveSnapshotLocked(
+                        VocabularyDecisionRules.DecisionVerificationSnapshot(
+                            verifiedDigests = LinkedHashMap(workingDigests),
+                            findings = findingsByKey.values.toList(),
+                        ),
+                    )
+                }
             } catch (e: CancellationException) {
                 if (e is kotlinx.coroutines.TimeoutCancellationException) {
-                    Result.failure(
+                    return@withContext Result.failure(
                         DecisionPendingRetryException(
                             message = "Gemini Decision 1 timed out. Verification is pending and will automatically retry in 60 seconds.",
+                            partialFindings = findingsByKey.values.toList(),
                             cause = e,
                         ),
                     )
@@ -111,9 +193,46 @@ class GeminiDecisionClient(
                     throw e
                 }
             } catch (e: DecisionPendingRetryException) {
-                Result.failure(e)
+                return@withContext Result.failure(
+                    DecisionPendingRetryException(
+                        message = e.message ?: "Verification is pending and will automatically retry in 60 seconds.",
+                        retrySeconds = e.retrySeconds,
+                        partialFindings = findingsByKey.values.toList(),
+                        cause = e,
+                    ),
+                )
             } catch (e: Exception) {
-                Result.failure(wrapDecisionError(e))
+                val wrapped = wrapDecisionError(e, findingsByKey.values.toList())
+                return@withContext Result.failure(wrapped)
+            }
+        }
+
+        Result.success(findingsByKey.values.toList())
+    }
+
+    private fun loadSnapshotLocked(): VocabularyDecisionRules.DecisionVerificationSnapshot {
+        memorySnapshot?.let { return it }
+        val file = stateFile
+        val decoded = if (file != null && file.exists()) {
+            runCatching {
+                VocabularyDecisionRules.decodeVerificationSnapshot(file.readText(Charsets.UTF_8))
+            }.getOrDefault(VocabularyDecisionRules.DecisionVerificationSnapshot())
+        } else {
+            VocabularyDecisionRules.DecisionVerificationSnapshot()
+        }
+        memorySnapshot = decoded
+        return decoded
+    }
+
+    private fun saveSnapshotLocked(snapshot: VocabularyDecisionRules.DecisionVerificationSnapshot) {
+        memorySnapshot = snapshot
+        val file = stateFile ?: return
+        runCatching {
+            val tmp = File(file.parentFile, "${file.name}.tmp")
+            tmp.writeText(VocabularyDecisionRules.encodeVerificationSnapshot(snapshot), Charsets.UTF_8)
+            if (!tmp.renameTo(file)) {
+                file.writeText(VocabularyDecisionRules.encodeVerificationSnapshot(snapshot), Charsets.UTF_8)
+                tmp.delete()
             }
         }
     }
@@ -164,19 +283,31 @@ class GeminiDecisionClient(
         }
     }
 
-    private fun wrapDecisionError(error: Exception): IOException {
-        if (error is DecisionPendingRetryException) return error
+    private fun wrapDecisionError(
+        error: Exception,
+        partialFindings: List<VocabularyDecisionFinding> = emptyList(),
+    ): IOException {
+        if (error is DecisionPendingRetryException) {
+            return DecisionPendingRetryException(
+                message = error.message ?: "Verification is pending and will automatically retry in 60 seconds.",
+                retrySeconds = error.retrySeconds,
+                partialFindings = partialFindings.ifEmpty { error.partialFindings },
+                cause = error,
+            )
+        }
         val msg = error.message.orEmpty()
         val lower = msg.lowercase()
         if ("rate limit" in lower || "quota" in lower || "resource_exhausted" in lower || "429" in lower) {
             return DecisionPendingRetryException(
                 message = "Gemini Decision 1 rate limit (50K TPM) reached. Verification is placed in pending status and will automatically re-verify in 60 seconds.",
+                partialFindings = partialFindings,
                 cause = error,
             )
         }
         if (error is java.net.SocketTimeoutException) {
             return DecisionPendingRetryException(
                 message = "Gemini Decision 1 connection timed out. Verification is placed in pending status and will automatically re-verify in 60 seconds.",
+                partialFindings = partialFindings,
                 cause = error,
             )
         }
@@ -205,11 +336,16 @@ class GeminiDecisionClient(
         private const val DECISION_TIMEOUT_MS = 30_000L
         private const val CONNECT_TIMEOUT_MS = 15_000
         private const val READ_TIMEOUT_MS = 25_000
+        private const val LOCAL_STATE_FILENAME = "vocabulary_decision_state_v1.json"
         const val MISSING_API_KEY_MESSAGE =
             "Gemini API key is missing. Open Settings -> Gemini API Key and paste your key to run AI checks."
-        private val cachedResults = java.util.concurrent.ConcurrentHashMap<String, List<VocabularyDecisionFinding>>()
     }
 }
 
-fun CreationExtras.geminiDecisionClient(): VocabularyDecisionClient =
-    GeminiDecisionClient(DataStoreSettingsRepository(checkNotNull(this[APPLICATION_KEY])))
+fun CreationExtras.geminiDecisionClient(): VocabularyDecisionClient {
+    val app = checkNotNull(this[APPLICATION_KEY])
+    return GeminiDecisionClient(
+        settingsRepository = DataStoreSettingsRepository(app),
+        context = app,
+    )
+}

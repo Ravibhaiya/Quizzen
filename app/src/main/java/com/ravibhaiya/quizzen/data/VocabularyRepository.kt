@@ -199,10 +199,17 @@ class FirestoreVocabularyRepository(
         withContext(Dispatchers.IO) {
             if (entries.isEmpty()) return@withContext Result.success(emptyList())
             val now = System.currentTimeMillis()
-            val sanitizedList = entries.map { entry ->
+            val sanitizedList = mutableListOf<VocabularyEntry>()
+            for (entry in entries) {
                 val clean = entry.sanitized()
-                require(clean.wordDetails.word.isNotBlank()) { "Main word cannot be empty" }
-                clean
+                if (clean.wordDetails.word.isBlank()) {
+                    return@withContext Result.failure(IllegalArgumentException("Main word cannot be empty"))
+                }
+                val lengthError = VocabularyRules.validateFieldLengths(clean)
+                if (lengthError != null) {
+                    return@withContext Result.failure(IllegalArgumentException(lengthError))
+                }
+                sanitizedList += clean
             }
 
             // One entry per main word: refuse a save that would create a second one (callers merge after approval).
@@ -217,20 +224,11 @@ class FirestoreVocabularyRepository(
                 return@withContext Result.failure(DuplicateWordException(names))
             }
 
-            val preparedList = sanitizedList.mapIndexed { index, clean ->
-                val id = clean.id.ifBlank { VocabularyRules.documentIdForWord(clean.wordDetails.word) }
-                val created = if (clean.createdAt > 0L) clean.createdAt else (now + index)
-                clean.copy(
-                    id = id,
-                    createdAt = created,
-                    updatedAt = now + index,
-                )
-            }
-
-            // A word that is new to this device must still not exist on the server (another device may have just
-            // added it); an edit of a known word replaces it.
-            val knownIds = known.map { it.id }.toSet()
-            val createOnlyIds = preparedList.map { it.id }.filterNot { it in knownIds }.toSet()
+            // Only entries with no ID before saving are create-only; renamed words keep their old ID while new words
+            // with that old spelling get a disambiguated ID so nothing is overwritten.
+            val preparedBatch = VocabularyRules.prepareEntriesForSave(sanitizedList, known, now)
+            val preparedList = preparedBatch.entries
+            val createOnlyIds = preparedBatch.createOnlyIds
 
             val outcome = inCloud { db -> commitEntries(db, preparedList, createOnlyIds) }
             val alreadyThere = outcome.getOrElse { return@withContext Result.failure(it) }

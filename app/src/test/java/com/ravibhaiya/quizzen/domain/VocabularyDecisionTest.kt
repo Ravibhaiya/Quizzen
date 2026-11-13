@@ -155,4 +155,136 @@ class VocabularyDecisionTest {
         assertTrue(plan.requestJson.contains("listed antonym \\\"Turn away\\\""))
         assertTrue(plan.requestJson.contains("listed synonym \\\"House\\\""))
     }
+
+    @Test
+    fun `Option B skips meaning, synonym and antonym checks on verified words while still comparing unverified words against all existing words`() {
+        val verifiedOld = listOf(
+            VocabularyEntry(
+                id = "word_accommodate",
+                wordDetails = WordDetails(word = "Accommodate", meaningEnglish = "Provide lodging"),
+                synonyms = listOf(WordDetails(word = "Lodge", meaningEnglish = "Give shelter")),
+                antonyms = listOf(WordDetails(word = "Evict", meaningEnglish = "Expel")),
+                createdAt = 100L,
+                updatedAt = 100L,
+            ),
+            VocabularyEntry(
+                id = "word_color",
+                wordDetails = WordDetails(word = "Color", meaningEnglish = "Visual hue"),
+                synonyms = listOf(WordDetails(word = "Tint", meaningEnglish = "Shade")),
+                createdAt = 110L,
+                updatedAt = 110L,
+            ),
+            VocabularyEntry(
+                id = "word_colour_old",
+                wordDetails = WordDetails(word = "Colour", meaningEnglish = "British spelling of color"),
+                createdAt = 120L,
+                updatedAt = 120L,
+            ),
+        )
+        val newUnverified = VocabularyEntry(
+            id = "word_accomodate_new",
+            wordDetails = WordDetails(word = "Accomodate", meaningEnglish = "Provide room for"),
+            synonyms = listOf(WordDetails(word = "House", meaningEnglish = "Provide shelter")),
+            createdAt = 500L,
+            updatedAt = 500L,
+        )
+
+        val verifiedIds = verifiedOld.map { it.id }.toSet()
+        val batches = VocabularyDecisionRules.buildRequestBatches(
+            entries = verifiedOld + newUnverified,
+            verifiedEntryIds = verifiedIds,
+        )
+        assertEquals(1, batches.size)
+        val batch = batches.single()
+
+        // 1. Conflict checks (main meaning + synonyms + antonyms) are generated ONLY for the new unverified word
+        assertTrue(batch.conflictQuestions.all { it.entryId == "word_accomodate_new" })
+        assertEquals(2, batch.conflictQuestions.size) // 1 main + 1 synonym
+
+        // 2. Duplicate pair check compares the new unverified word against the old verified word ("Accommodate" vs "Accomodate"),
+        //    and does NOT re-compare the two already-verified words ("Color" vs "Colour")
+        assertTrue(
+            batch.pairQuestions.any {
+                it.primaryId == "word_accommodate" && it.duplicateId == "word_accomodate_new"
+            },
+        )
+        assertTrue(
+            batch.pairQuestions.none {
+                it.primaryId in verifiedIds && it.duplicateId in verifiedIds
+            },
+        )
+        assertEquals(setOf("word_accomodate_new"), batch.coveredEntryIds)
+    }
+
+    @Test
+    fun `buildRequestBatches chunks large databases into 100-question batches with dedicated pair slots and newest words first`() {
+        // 80 words each with 2 synonyms and 1 antonym = 320 conflict questions (> 250 old cap) + typo pairs
+        val entries = (1..80).map { i ->
+            VocabularyEntry(
+                id = "word_$i",
+                wordDetails = WordDetails(word = "TermNumber$i", meaningEnglish = "Distinctmeaning$i"),
+                synonyms = listOf(
+                    WordDetails(word = "SynA$i", meaningEnglish = "SynmeaningA$i"),
+                    WordDetails(word = "SynB$i", meaningEnglish = "SynmeaningB$i"),
+                ),
+                antonyms = listOf(
+                    WordDetails(word = "AntA$i", meaningEnglish = "AntmeaningA$i"),
+                ),
+                createdAt = i.toLong(),
+                updatedAt = i.toLong(),
+            )
+        } + listOf(
+            VocabularyEntry(
+                id = "word_newest_typo",
+                wordDetails = WordDetails(word = "TermNumber80Typo", meaningEnglish = "Distinctmeaning80"),
+                createdAt = 999L,
+                updatedAt = 999L,
+            ),
+        )
+
+        val batches = VocabularyDecisionRules.buildRequestBatches(entries)
+        assertTrue(batches.size >= 4)
+        assertTrue(batches.all { it.totalQuestions <= VocabularyDecisionRules.BATCH_MAX_QUESTIONS })
+
+        // First batch must include pair questions (never starved by the 321 conflict questions)
+        // and must prioritize the newest word ("word_newest_typo") first!
+        val firstBatch = batches.first()
+        assertTrue(firstBatch.pairQuestions.isNotEmpty())
+        assertEquals("word_newest_typo", firstBatch.conflictQuestions.first().entryId)
+
+        // Across all batches, every entry is covered
+        val allCovered = batches.flatMap { it.coveredEntryIds }.toSet()
+        assertEquals(entries.map { it.id }.toSet(), allCovered)
+    }
+
+    @Test
+    fun `encodeVerificationSnapshot and decodeVerificationSnapshot round-trip digests and findings`() {
+        val original = VocabularyDecisionRules.DecisionVerificationSnapshot(
+            verifiedDigests = mapOf("w1" to 12345, "w2" to -67890),
+            findings = listOf(
+                VocabularyDecisionFinding.DuplicateOrVariant(
+                    primaryId = "w1",
+                    duplicateId = "w2",
+                    kind = DecisionDuplicateKind.SPELLING_OR_TYPO,
+                    probability = 0.96,
+                    confidence = 0.98,
+                ),
+                VocabularyDecisionFinding.MeaningConflict(
+                    entryId = "w1",
+                    probability = 0.91,
+                    confidence = 0.94,
+                    conflictingTarget = VocabularyRules.ConflictingRelationTarget(
+                        isAntonym = true,
+                        index = 1,
+                        details = WordDetails(word = "Frank", meaningEnglish = "Honest"),
+                        conflictingWordLabel = "Antonym \"Frank\"",
+                        reason = "Listed under antonyms by mistake.",
+                    ),
+                ),
+            ),
+        )
+        val encoded = VocabularyDecisionRules.encodeVerificationSnapshot(original)
+        val decoded = VocabularyDecisionRules.decodeVerificationSnapshot(encoded)
+        assertEquals(original, decoded)
+    }
 }

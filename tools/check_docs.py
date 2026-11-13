@@ -19,7 +19,13 @@ ALLOWED = {
     "FrameTimingMetric", "StartupTimingMetric", "RenderEffect",
 }
 
-tracked = subprocess.check_output(["git", "ls-files"], text=True).split("\n")
+try:
+    tracked = subprocess.check_output(["git", "ls-files"], text=True, stderr=subprocess.DEVNULL).split("\n")
+except Exception:
+    tracked = [
+        p for p in (glob.glob("**/*", recursive=True) + glob.glob(".github/**/*", recursive=True))
+        if not p.startswith(("build/", "app/build/", ".gradle/", ".aistudio/"))
+    ]
 tracked = [t for t in tracked if t]
 stems = {t.split("/")[-1].rsplit(".", 1)[0] for t in tracked} | {t.split("/")[-1] for t in tracked}
 
@@ -47,6 +53,21 @@ kotlin_limit = re.search(r"const val MAX_RELATIONS = (\d+)", corpus)
 rules_limits = set(re.findall(r"(?:synonyms|antonyms)\.size\(\) <= (\d+)", corpus))
 if not kotlin_limit or rules_limits != {kotlin_limit.group(1)}:
     problems.append(f"MAX_RELATIONS ({kotlin_limit and kotlin_limit.group(1)}) differs from firestore.rules {rules_limits}")
+
+word_limit = re.search(r"const val MAX_WORD_LENGTH = (\d+)", corpus)
+rules_word = set(re.findall(r"details\.word\.size\(\) <= (\d+)", corpus))
+if not word_limit or rules_word != {word_limit.group(1)}:
+    problems.append(f"MAX_WORD_LENGTH ({word_limit and word_limit.group(1)}) differs from firestore.rules {rules_word}")
+
+meaning_limit = re.search(r"const val MAX_MEANING_LENGTH = (\d+)", corpus)
+rules_meaning = set(re.findall(r"details\.meaning(?:English|Hinglish)\.size\(\) <= (\d+)", corpus))
+if not meaning_limit or rules_meaning != {meaning_limit.group(1)}:
+    problems.append(f"MAX_MEANING_LENGTH ({meaning_limit and meaning_limit.group(1)}) differs from firestore.rules {rules_meaning}")
+
+example_limit = re.search(r"const val MAX_EXAMPLE_LENGTH = (\d+)", corpus)
+rules_example = set(re.findall(r"details\.exampleSentence\.size\(\) <= (\d+)", corpus))
+if not example_limit or rules_example != {example_limit.group(1)}:
+    problems.append(f"MAX_EXAMPLE_LENGTH ({example_limit and example_limit.group(1)}) differs from firestore.rules {rules_example}")
 
 if problems:
     print("Docs are out of date:\n  " + "\n  ".join(problems))

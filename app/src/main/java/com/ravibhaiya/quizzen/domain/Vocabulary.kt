@@ -116,6 +116,115 @@ object VocabularyRules {
     /** Most synonyms (and most antonyms) one word can hold; the same limit is enforced by `firestore.rules`. */
     const val MAX_RELATIONS = 30
 
+    /** Maximum length for a word field (`wordDetails.word`, synonym/antonym `word`); enforced by `firestore.rules`. */
+    const val MAX_WORD_LENGTH = 120
+
+    /** Maximum length for an English or Hinglish meaning; enforced by `firestore.rules`. */
+    const val MAX_MEANING_LENGTH = 500
+
+    /** Maximum length for an example sentence; enforced by `firestore.rules`. */
+    const val MAX_EXAMPLE_LENGTH = 600
+
+    private fun firestoreStringSize(value: String): Int =
+        maxOf(value.length, value.toByteArray(Charsets.UTF_8).size)
+
+    /**
+     * Checks that the main word and all synonyms/antonyms stay within the character/UTF-8 byte limits
+     * enforced by `firestore.rules` ([MAX_WORD_LENGTH], [MAX_MEANING_LENGTH], [MAX_EXAMPLE_LENGTH]).
+     * Returns a clear human-readable error message, or `null` if all fields are within limits.
+     */
+    fun validateFieldLengths(entry: VocabularyEntry): String? {
+        val clean = entry.sanitized()
+        val mainLabel = clean.wordDetails.word.ifBlank { "Main word" }
+        validateDetailsLengths(clean.wordDetails, "Word \"$mainLabel\"")?.let { return it }
+        for ((idx, syn) in clean.synonyms.withIndex()) {
+            val synLabel = syn.word.ifBlank { "#${idx + 1}" }
+            validateDetailsLengths(syn, "Synonym \"$synLabel\" in \"$mainLabel\"")?.let { return it }
+        }
+        for ((idx, ant) in clean.antonyms.withIndex()) {
+            val antLabel = ant.word.ifBlank { "#${idx + 1}" }
+            validateDetailsLengths(ant, "Antonym \"$antLabel\" in \"$mainLabel\"")?.let { return it }
+        }
+        return null
+    }
+
+    private fun validateDetailsLengths(details: WordDetails, subjectLabel: String): String? {
+        val wordLen = firestoreStringSize(details.word)
+        if (wordLen > MAX_WORD_LENGTH) {
+            return "$subjectLabel is too long ($wordLen/$MAX_WORD_LENGTH characters)."
+        }
+        val engLen = firestoreStringSize(details.meaningEnglish)
+        if (engLen > MAX_MEANING_LENGTH) {
+            return "English meaning for ${subjectLabel.replaceFirstChar { it.lowercase() }} is too long ($engLen/$MAX_MEANING_LENGTH characters)."
+        }
+        val hinLen = firestoreStringSize(details.meaningHinglish)
+        if (hinLen > MAX_MEANING_LENGTH) {
+            return "Hinglish meaning for ${subjectLabel.replaceFirstChar { it.lowercase() }} is too long ($hinLen/$MAX_MEANING_LENGTH characters)."
+        }
+        val exLen = firestoreStringSize(details.exampleSentence)
+        if (exLen > MAX_EXAMPLE_LENGTH) {
+            return "Example sentence for ${subjectLabel.replaceFirstChar { it.lowercase() }} is too long ($exLen/$MAX_EXAMPLE_LENGTH characters)."
+        }
+        return null
+    }
+
+    /**
+     * Result of [prepareEntriesForSave]: [entries] have assigned document IDs and timestamps, and
+     * [createOnlyIds] contains the IDs of entries that had no ID before saving and must be created fresh.
+     */
+    data class PreparedSaveBatch(
+        val entries: List<VocabularyEntry>,
+        val createOnlyIds: Set<String>,
+    )
+
+    /**
+     * Prepares [entries] for saving against [existing] database entries:
+     * - Only entries with a blank `id` (`entry.id.isBlank()`) are marked in [PreparedSaveBatch.createOnlyIds].
+     * - Editing an existing word (`entry.id.isNotBlank()`) keeps its document ID and is not create-only.
+     * - If a new entry (`entry.id.isBlank()`) has a default [documentIdForWord] that is already used by an
+     *   entry in [existing] (for example, because an older entry was originally created under that spelling
+     *   and later renamed to a corrected spelling), a disambiguated ID (`${baseId}_2`, `${baseId}_3`, ...)
+     *   is assigned so re-adding the old spelling never overwrites the renamed word.
+     */
+    fun prepareEntriesForSave(
+        entries: List<VocabularyEntry>,
+        existing: List<VocabularyEntry>,
+        now: Long,
+    ): PreparedSaveBatch {
+        val existingById = existing.filter { it.id.isNotBlank() }.associateBy { it.id }
+        val allocatedNewIds = HashSet<String>()
+        val createOnlyIds = LinkedHashSet<String>()
+        val prepared = entries.mapIndexed { index, raw ->
+            val clean = raw.sanitized()
+            val isNew = clean.id.isBlank()
+            val assignedId = if (!isNew) {
+                clean.id
+            } else {
+                val key = wordKey(clean.wordDetails.word)
+                val baseId = documentIdForWord(clean.wordDetails.word)
+                var candidate = baseId
+                var suffix = 2
+                while (
+                    candidate in allocatedNewIds ||
+                    (existingById[candidate] != null && wordKey(existingById.getValue(candidate).wordDetails.word) != key)
+                ) {
+                    candidate = "${baseId}_$suffix"
+                    suffix++
+                }
+                allocatedNewIds += candidate
+                createOnlyIds += candidate
+                candidate
+            }
+            val created = if (clean.createdAt > 0L) clean.createdAt else (now + index)
+            clean.copy(
+                id = assignedId,
+                createdAt = created,
+                updatedAt = now + index,
+            )
+        }
+        return PreparedSaveBatch(entries = prepared, createOnlyIds = createOnlyIds)
+    }
+
     /**
      * The identity of a main word: capitalization, extra or non-breaking spaces, hyphens versus spaces,
      * surrounding punctuation, and curly versus straight apostrophes are ignored. Only ever applied to main
@@ -167,10 +276,12 @@ object VocabularyRules {
     }
 
     /**
-     * Checks a single entry for internal synonym/antonym duplicates or conflicts so nothing is silently
-     * dropped without the user's awareness. Returns a human-readable error message, or `null` if clean.
+     * Checks a single entry for field length limits or internal synonym/antonym duplicates or conflicts
+     * so nothing is silently dropped or rejected with a cryptic permission error. Returns a human-readable
+     * error message, or `null` if clean.
      */
     fun findEntryRelationConflict(entry: VocabularyEntry): String? {
+        validateFieldLengths(entry)?.let { return it }
         val label = entry.wordDetails.word.trim()
         val mainKey = wordKey(label)
         if (entry.synonyms.size > MAX_RELATIONS) {

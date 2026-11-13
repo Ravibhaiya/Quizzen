@@ -440,9 +440,10 @@ class VocabularyManagerViewModel(
                             DecisionPendingRetryException.DEFAULT_RETRY_SECONDS
                         else -> 0
                     }
+                    val partial = (err as? DecisionPendingRetryException)?.partialFindings.orEmpty()
                     val message = err.message ?: "gemini-decision-1 check failed."
                     if (retrySeconds > 0) {
-                        schedulePendingDecisionRetry(retrySeconds, message)
+                        schedulePendingDecisionRetry(retrySeconds, message, partial)
                     } else {
                         _uiState.update {
                             it.copy(
@@ -468,14 +469,35 @@ class VocabularyManagerViewModel(
             "temporarily busy" in lower
     }
 
-    private fun schedulePendingDecisionRetry(retrySeconds: Int, message: String) {
+    private fun schedulePendingDecisionRetry(
+        retrySeconds: Int,
+        message: String,
+        partialFindings: List<VocabularyDecisionFinding> = emptyList(),
+    ) {
         pendingRetryJob?.cancel()
         val totalSeconds = retrySeconds.coerceAtLeast(1)
-        _uiState.update {
-            it.copy(
+        _uiState.update { state ->
+            val validIds = state.entries.map { it.id }.toSet()
+            val mergedFindings = if (partialFindings.isEmpty()) {
+                state.decisionFindings
+            } else {
+                val byKey = LinkedHashMap<String, VocabularyDecisionFinding>()
+                state.decisionFindings.forEach { byKey[it.key] = it }
+                partialFindings.forEach { byKey[it.key] = it }
+                byKey.values.filter { finding ->
+                    when (finding) {
+                        is VocabularyDecisionFinding.DuplicateOrVariant ->
+                            finding.primaryId in validIds && finding.duplicateId in validIds
+                        is VocabularyDecisionFinding.MeaningConflict ->
+                            finding.entryId in validIds
+                    }
+                }
+            }
+            state.copy(
                 isDecisionRunning = false,
                 isDecisionPendingRetry = true,
                 decisionRetryRemainingSeconds = totalSeconds,
+                decisionFindings = mergedFindings,
                 decisionError = message,
             )
         }
@@ -991,14 +1013,47 @@ class VocabularyManagerViewModel(
     }
 
     /** A merge failed: close only the approval sheet and show why (inside the editor if it is open). */
-    private fun failMerge(message: String) {
+    private fun failMerge(
+        message: String,
+        partialNotice: String? = null,
+        updatedEditorJson: String? = null,
+    ) {
         _uiState.update { state ->
             val editor = state.editorState
             if (editor != null) {
-                state.copy(mergePrompt = null, editorState = editor.copy(validationError = message))
+                state.copy(
+                    mergePrompt = null,
+                    noticeMessage = partialNotice ?: state.noticeMessage,
+                    editorState = editor.copy(
+                        jsonText = updatedEditorJson ?: editor.jsonText,
+                        validationError = message,
+                    ),
+                )
             } else {
-                state.copy(mergePrompt = null, errorMessage = message)
+                state.copy(
+                    mergePrompt = null,
+                    noticeMessage = partialNotice ?: state.noticeMessage,
+                    errorMessage = message,
+                )
             }
+        }
+    }
+
+    private fun stripNothingSavedPhrase(rawMessage: String): String =
+        rawMessage
+            .replace(" Nothing was saved.", "")
+            .replace("Nothing was saved. ", "")
+            .replace("Nothing was saved.", "")
+            .trim()
+
+    private fun formatRemainingMergeJson(remainingEntries: List<VocabularyEntry>): String? {
+        if (remainingEntries.isEmpty()) return null
+        return if (remainingEntries.size == 1) {
+            VocabularyJsonFormat.formatSingle(remainingEntries.single())
+        } else {
+            "[\n" + remainingEntries.joinToString(",\n") { entry ->
+                VocabularyJsonFormat.formatSingle(entry).prependIndent("  ")
+            } + "\n]"
         }
     }
 
@@ -1042,30 +1097,53 @@ class VocabularyManagerViewModel(
         // The approval sheet (and the editor behind it) stay open until the server confirmed everything.
         _uiState.update { it.copy(mergePrompt = prompt.copy(isSaving = true)) }
         viewModelScope.launch {
+            var savedNewCount = 0
             if (prompt.newEntriesToSave.isNotEmpty()) {
                 val saveFailure = repository.saveEntries(prompt.newEntriesToSave).exceptionOrNull()
                 if (saveFailure != null) {
                     failMerge(saveFailure.message ?: "Failed to save vocabulary to Firebase.")
                     return@launch
                 }
+                savedNewCount = prompt.newEntriesToSave.size
             }
             var summary: VocabularyRules.MergeSummary? = null
             val incomingToMerge = prompt.changedItems.map { it.incomingEntry }
             if (incomingToMerge.isNotEmpty()) {
                 summary = repository.mergeIntoExisting(incomingToMerge).getOrElse { err ->
-                    failMerge(err.message ?: "Failed to merge words.")
+                    if (savedNewCount > 0) {
+                        val completed = describeResult(added = savedNewCount, merge = null)
+                        val cause = stripNothingSavedPhrase(err.message ?: "Failed to merge words.")
+                        failMerge(
+                            message = "$completed Merging existing word(s) failed: $cause",
+                            partialNotice = completed,
+                            updatedEditorJson = formatRemainingMergeJson(incomingToMerge),
+                        )
+                    } else {
+                        failMerge(err.message ?: "Failed to merge words.")
+                    }
                     return@launch
                 }
             }
             if (prompt.redundantDuplicateIdsToDelete.isNotEmpty()) {
                 val deleteFailure = repository.deleteEntries(prompt.redundantDuplicateIdsToDelete).exceptionOrNull()
                 if (deleteFailure != null) {
-                    failMerge(deleteFailure.message ?: "Failed to clean up duplicate entries.")
+                    val completed = describeResult(added = savedNewCount, merge = summary)
+                    if (completed.isNotEmpty()) {
+                        val cause = stripNothingSavedPhrase(
+                            deleteFailure.message ?: "Failed to clean up duplicate entries.",
+                        )
+                        failMerge(
+                            message = "$completed Removing duplicate entry(s) failed: $cause",
+                            partialNotice = completed,
+                        )
+                    } else {
+                        failMerge(deleteFailure.message ?: "Failed to clean up duplicate entries.")
+                    }
                     return@launch
                 }
             }
             val notice = describeResult(
-                added = prompt.newEntriesToSave.size,
+                added = savedNewCount,
                 merge = summary,
                 deletedDuplicates = prompt.redundantDuplicateIdsToDelete.size,
             )

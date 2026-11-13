@@ -442,4 +442,73 @@ class VocabularyRulesTest {
         assertFalse(result.changed)
         assertEquals(2, result.skipped)
     }
+
+    @Test
+    fun `prepareEntriesForSave marks only blank-id entries as createOnly and disambiguates IDs when a renamed word occupies the old deterministic ID`() {
+        // 1. "Accomodate" was originally created with deterministic ID for "Accomodate", then renamed to "Accommodate"
+        val oldAccomodateId = VocabularyRules.documentIdForWord("Accomodate")
+        val renamedAccommodate = VocabularyEntry(
+            id = oldAccomodateId,
+            wordDetails = WordDetails(word = "Accommodate", meaningEnglish = "Provide lodging or sufficient space"),
+            synonyms = listOf(WordDetails(word = "Lodge", meaningEnglish = "Provide housing")),
+            createdAt = 100L,
+            updatedAt = 200L,
+        )
+
+        // 2. Editing an existing word (non-blank ID) is NOT create-only and keeps its ID
+        val editBatch = VocabularyRules.prepareEntriesForSave(
+            entries = listOf(renamedAccommodate.copy(wordDetails = renamedAccommodate.wordDetails.copy(meaningHinglish = "Thahrana"))),
+            existing = listOf(renamedAccommodate),
+            now = 300L,
+        )
+        assertTrue(editBatch.createOnlyIds.isEmpty())
+        assertEquals(oldAccomodateId, editBatch.entries.single().id)
+
+        // 3. Re-importing "Accomodate" as a new entry (blank ID) is create-only and gets a disambiguated ID so it never overwrites "Accommodate"
+        val reimportedOldSpelling = VocabularyEntry(
+            id = "",
+            wordDetails = WordDetails(word = "Accomodate", meaningEnglish = "Misspelled entry"),
+        )
+        val addBatch = VocabularyRules.prepareEntriesForSave(
+            entries = listOf(reimportedOldSpelling),
+            existing = listOf(renamedAccommodate),
+            now = 400L,
+        )
+        val assigned = addBatch.entries.single()
+        assertEquals("${oldAccomodateId}_2", assigned.id)
+        assertEquals(setOf("${oldAccomodateId}_2"), addBatch.createOnlyIds)
+    }
+
+    @Test
+    fun `validateFieldLengths and findEntryRelationConflict enforce firestore rules length limits with clear messages`() {
+        val tooLongWord = "a".repeat(VocabularyRules.MAX_WORD_LENGTH + 5)
+        val wordEntry = VocabularyEntry(
+            wordDetails = WordDetails(word = tooLongWord, meaningEnglish = "Valid meaning"),
+        )
+        val wordError = VocabularyRules.findEntryRelationConflict(wordEntry)
+        assertTrue(wordError!!.contains("${VocabularyRules.MAX_WORD_LENGTH} characters"))
+
+        val tooLongMeaning = "m".repeat(VocabularyRules.MAX_MEANING_LENGTH + 10)
+        val meaningEntry = VocabularyEntry(
+            wordDetails = WordDetails(word = "Abate", meaningEnglish = tooLongMeaning),
+        )
+        val meaningError = VocabularyRules.findEntryRelationConflict(meaningEntry)
+        assertTrue(meaningError!!.contains("English meaning for word \"Abate\" is too long"))
+        assertTrue(meaningError.contains("${VocabularyRules.MAX_MEANING_LENGTH} characters"))
+
+        val tooLongExample = "e".repeat(VocabularyRules.MAX_EXAMPLE_LENGTH + 20)
+        val synExampleEntry = VocabularyEntry(
+            wordDetails = WordDetails(word = "Abate", meaningEnglish = "Become less intense"),
+            synonyms = listOf(
+                WordDetails(
+                    word = "Subside",
+                    meaningEnglish = "Die down",
+                    exampleSentence = tooLongExample,
+                ),
+            ),
+        )
+        val exampleError = VocabularyRules.findEntryRelationConflict(synExampleEntry)
+        assertTrue(exampleError!!.contains("Example sentence for synonym \"Subside\" in \"Abate\" is too long"))
+        assertTrue(exampleError.contains("${VocabularyRules.MAX_EXAMPLE_LENGTH} characters"))
+    }
 }

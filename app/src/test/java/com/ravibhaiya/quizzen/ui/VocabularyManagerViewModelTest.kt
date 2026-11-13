@@ -935,9 +935,109 @@ class VocabularyManagerViewModelTest {
             assertEquals(1, vm.uiState.value.pendingApprovalCount)
         }
 
+    @Test
+    fun `partial merge failure after saving new words reports completed step honestly and prunes saved words from editor JSON`() =
+        runTest(dispatcher) {
+            val repo = repoWithAbate()
+            val vm = VocabularyManagerViewModel(repo)
+            advanceUntilIdle()
+
+            // Bulk JSON with 1 brand-new word ("abandon") and 1 existing word ("abate" with new synonym "subside")
+            vm.onStartAdd()
+            vm.onUpdateJsonText(
+                "[" + listOf(
+                    word("abandon", synonyms = listOf("desert")),
+                    word("abate", synonyms = listOf("subside")),
+                ).joinToString(",") + "]",
+            )
+            assertFalse(vm.onSaveEntry())
+            advanceUntilIdle()
+
+            val prompt = vm.uiState.value.mergePrompt
+            assertNotNull(prompt)
+            assertEquals(1, prompt!!.newEntriesToSave.size)
+            assertEquals(1, prompt.items.size)
+
+            // Step 1 (saveEntries for "abandon") succeeds, Step 2 (mergeIntoExisting for "abate") fails
+            repo.failMergeOnly = true
+            vm.onUpdateMergeConfirmText("CONFIRM")
+            assertTrue(vm.onConfirmMerge())
+            advanceUntilIdle()
+
+            // "abandon" is already saved in the database!
+            assertEquals(2, vm.uiState.value.entries.size)
+            assertTrue(vm.uiState.value.entries.any { it.wordDetails.word.equals("abandon", ignoreCase = true) })
+
+            // Error message honestly reports that 1 new word was added and only merging failed (never "Nothing was saved.")
+            val validationError = vm.uiState.value.editorState!!.validationError!!
+            assertTrue(validationError.contains("Added 1 new word(s)."))
+            assertTrue(validationError.contains("Merging existing word(s) failed:"))
+            assertFalse(validationError.contains("Nothing was saved."))
+            assertEquals("Added 1 new word(s).", vm.uiState.value.noticeMessage)
+
+            // Editor JSON was pruned to only the remaining unmerged word ("abate"), so retrying succeeds cleanly
+            assertFalse(vm.uiState.value.editorState!!.jsonText.contains("abandon"))
+            assertTrue(vm.uiState.value.editorState!!.jsonText.contains("abate"))
+
+            repo.failMergeOnly = false
+            assertFalse(vm.onSaveEntry())
+            advanceUntilIdle()
+            vm.onUpdateMergeConfirmText("CONFIRM")
+            assertTrue(vm.onConfirmMerge())
+            advanceUntilIdle()
+
+            assertNull(vm.uiState.value.editorState)
+            assertEquals(
+                listOf("reduce", "subside"),
+                vm.uiState.value.entries.first { it.id == "a1" }.synonyms.map { it.word },
+            )
+        }
+
+    @Test
+    fun `renaming Accomodate to Accommodate and re-adding Accomodate keeps both entries without overwriting`() =
+        runTest(dispatcher) {
+            val repo = FakeVocabularyRepository()
+            val vm = VocabularyManagerViewModel(repo)
+            advanceUntilIdle()
+
+            // 1. Add "Accomodate"
+            vm.onStartAdd()
+            vm.onUpdateJsonText(word("Accomodate", synonyms = listOf("Lodge")))
+            assertTrue(vm.onSaveEntry())
+            advanceUntilIdle()
+            val original = vm.uiState.value.entries.single()
+            assertEquals(VocabularyRules.documentIdForWord("Accomodate"), original.id)
+
+            // 2. Rename "Accomodate" to "Accommodate" (keeps original document ID)
+            vm.onStartEdit(original)
+            vm.onUpdateJsonText(word("Accommodate", synonyms = listOf("Lodge", "House")))
+            vm.onUpdateEditConfirmText("CONFIRM")
+            assertTrue(vm.onSaveEntry())
+            advanceUntilIdle()
+
+            val renamed = vm.uiState.value.entries.single()
+            assertEquals(original.id, renamed.id)
+            assertEquals("Accommodate", renamed.wordDetails.word)
+            assertEquals(listOf("Lodge", "House"), renamed.synonyms.map { it.word })
+
+            // 3. Import "Accomodate" again as a brand-new word -> does NOT overwrite "Accommodate"
+            vm.onStartAdd()
+            vm.onUpdateJsonText(word("Accomodate", synonyms = listOf("Shelter")))
+            assertTrue(vm.onSaveEntry())
+            advanceUntilIdle()
+
+            assertEquals(2, vm.uiState.value.entries.size)
+            val keptRenamed = vm.uiState.value.entries.first { it.wordDetails.word == "Accommodate" }
+            val newlyAdded = vm.uiState.value.entries.first { it.wordDetails.word == "Accomodate" }
+            assertEquals(listOf("Lodge", "House"), keptRenamed.synonyms.map { it.word })
+            assertEquals(listOf("Shelter"), newlyAdded.synonyms.map { it.word })
+            assertEquals("${original.id}_2", newlyAdded.id)
+        }
+
     /** Like the real repository: every write fails as a whole (nothing changes) while [failWrites] is on. */
     private class FakeVocabularyRepository(
         var failWrites: Boolean = false,
+        var failMergeOnly: Boolean = false,
     ) : VocabularyRepository {
         private val flow = MutableStateFlow<List<VocabularyEntry>>(emptyList())
         override val entries: Flow<List<VocabularyEntry>> = flow
@@ -945,17 +1045,22 @@ class VocabularyManagerViewModelTest {
         override val mistakeWords: Flow<Set<String>> = mistakesFlow
         private val errorFlow = MutableStateFlow<String?>(null)
         override val syncError: Flow<String?> = errorFlow
-        private var counter = 0
 
         override suspend fun saveEntry(entry: VocabularyEntry): Result<VocabularyEntry> =
             saveEntries(listOf(entry)).map { it.first() }
 
         override suspend fun saveEntries(entries: List<VocabularyEntry>): Result<List<VocabularyEntry>> {
             if (failWrites) return Result.failure(IOException(OFFLINE_MESSAGE))
-            val savedList = entries.map { entry ->
-                val id = entry.id.ifBlank { "id-${++counter}" }
-                entry.copy(id = id)
+            for (entry in entries) {
+                val lengthError = VocabularyRules.validateFieldLengths(entry)
+                if (lengthError != null) return Result.failure(IllegalArgumentException(lengthError))
             }
+            val prepared = VocabularyRules.prepareEntriesForSave(
+                entries = entries,
+                existing = flow.value,
+                now = System.currentTimeMillis(),
+            )
+            val savedList = prepared.entries
             val savedIds = savedList.map { it.id }.toSet()
             flow.value = flow.value.filterNot { it.id in savedIds } + savedList
             return Result.success(savedList)
@@ -964,7 +1069,7 @@ class VocabularyManagerViewModelTest {
         override suspend fun mergeIntoExisting(
             incoming: List<VocabularyEntry>,
         ): Result<VocabularyRules.MergeSummary> {
-            if (failWrites) return Result.failure(IOException(OFFLINE_MESSAGE))
+            if (failWrites || failMergeOnly) return Result.failure(IOException(OFFLINE_MESSAGE))
             val current = flow.value
             val byId = current.filter { it.id.isNotBlank() }.associateBy { it.id }
             val byKey = LinkedHashMap<String, VocabularyEntry>().apply {
