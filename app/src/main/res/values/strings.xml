@@ -22,7 +22,7 @@
     <string name="haptic_feedback">Haptic Feedback</string>
     <string name="database_manager">Database Manager</string>
     <string name="gemini_api_key">Gemini API Key</string>
-    <string name="gemini_api_key_subtitle">Stored locally on this device for testing (never published to GitHub). Used by gemini-decision-1 in Vocabulary Manager.</string>
+    <string name="gemini_api_key_subtitle">Saved privately on this device. Used by Gemini Decision 1 to verify duplicates and conflicts in Vocabulary Manager.</string>
     <string name="gemini_api_key_placeholder">Paste Gemini API key…</string>
     <string name="gemini_api_key_status_saved">Configured</string>
     <string name="gemini_api_key_status_missing">Add key</string>

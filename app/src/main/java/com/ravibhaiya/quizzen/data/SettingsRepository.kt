@@ -58,11 +58,19 @@ class DataStoreSettingsRepository(context: Context) : SettingsRepository {
         private val HAPTIC_KEY = booleanPreferencesKey("haptic_enabled")
         private val GEMINI_API_KEY = stringPreferencesKey("gemini_api_key")
         private const val PLACEHOLDER_KEY = "YOUR_GEMINI_API_KEY"
-        private const val INVALID_CONTAINER_DEFAULT_KEY = "AIzaSyCvEfk76snr0nRPLqxyPDa91oADq_-4SNk"
+        private const val INVALID_CONTAINER_KEY_SHA256 =
+            "1238bfb6c827dbce27869dda4886e148174fd475baaaac03ff41242e45dc0f7b"
 
         @Volatile
         var latestCachedApiKey: String = ""
             internal set
+
+        private fun isInvalidContainerPlaceholder(key: String): Boolean {
+            val digest = java.security.MessageDigest.getInstance("SHA-256")
+                .digest(key.toByteArray(Charsets.UTF_8))
+                .joinToString("") { "%02x".format(it) }
+            return digest == INVALID_CONTAINER_KEY_SHA256
+        }
 
         fun sanitizeApiKey(raw: String): String {
             var s = raw.trim()
@@ -75,7 +83,7 @@ class DataStoreSettingsRepository(context: Context) : SettingsRepository {
                 s = s.substring(7).trim()
             }
             s = s.replace("\\s+".toRegex(), "")
-            if (s.isEmpty() || s == PLACEHOLDER_KEY || s == INVALID_CONTAINER_DEFAULT_KEY) {
+            if (s.isEmpty() || s == PLACEHOLDER_KEY || isInvalidContainerPlaceholder(s)) {
                 return ""
             }
             return s

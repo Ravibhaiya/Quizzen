@@ -1,3 +1,5 @@
+import java.security.MessageDigest
+
 plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.android)
@@ -20,7 +22,13 @@ android {
         // Add a language here when the app gets translated. (AGP 8.8+ renames this to `androidResources.localeFilters`.)
         resourceConfigurations += listOf("en")
 
-        val invalidKeys = setOf("YOUR_GEMINI_API_KEY", "AIzaSyCvEfk76snr0nRPLqxyPDa91oADq_-4SNk")
+        fun String.isPlaceholderKey(): Boolean {
+            if (this == "YOUR_GEMINI_API_KEY") return true
+            val digest = MessageDigest.getInstance("SHA-256")
+                .digest(toByteArray(Charsets.UTF_8))
+                .joinToString("") { "%02x".format(it) }
+            return digest == "1238bfb6c827dbce27869dda4886e148174fd475baaaac03ff41242e45dc0f7b"
+        }
         val envFile = rootProject.file(".env")
         val fileKey = if (envFile.exists()) {
             envFile.readLines()
@@ -29,14 +37,14 @@ android {
                 ?.substringAfter("GEMINI_API_KEY=")
                 ?.trim()
                 ?.removeSurrounding("\"")
-                ?.takeIf { it.isNotBlank() && it !in invalidKeys }
+                ?.takeIf { it.isNotBlank() && !it.isPlaceholderKey() }
         } else {
             null
         }
         val envVarKey = System.getenv("GEMINI_API_KEY")
             ?.trim()
             ?.removeSurrounding("\"")
-            ?.takeIf { it.isNotBlank() && it !in invalidKeys }
+            ?.takeIf { it.isNotBlank() && !it.isPlaceholderKey() }
         val rawGeminiKey = (fileKey ?: envVarKey ?: "")
             .trim()
             .removeSurrounding("\"")
