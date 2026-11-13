@@ -19,6 +19,29 @@ android {
         // The app is English only; drop the translations that Material and AndroidX libraries bundle (smaller APK).
         // Add a language here when the app gets translated. (AGP 8.8+ renames this to `androidResources.localeFilters`.)
         resourceConfigurations += listOf("en")
+
+        val invalidKeys = setOf("YOUR_GEMINI_API_KEY", "AIzaSyCvEfk76snr0nRPLqxyPDa91oADq_-4SNk")
+        val envFile = rootProject.file(".env")
+        val fileKey = if (envFile.exists()) {
+            envFile.readLines()
+                .map { it.trim() }
+                .firstOrNull { it.startsWith("GEMINI_API_KEY=") }
+                ?.substringAfter("GEMINI_API_KEY=")
+                ?.trim()
+                ?.removeSurrounding("\"")
+                ?.takeIf { it.isNotBlank() && it !in invalidKeys }
+        } else {
+            null
+        }
+        val envVarKey = System.getenv("GEMINI_API_KEY")
+            ?.trim()
+            ?.removeSurrounding("\"")
+            ?.takeIf { it.isNotBlank() && it !in invalidKeys }
+        val rawGeminiKey = (fileKey ?: envVarKey ?: "")
+            .trim()
+            .removeSurrounding("\"")
+        val escapedGeminiKey = rawGeminiKey.replace("\\", "\\\\").replace("\"", "\\\"")
+        buildConfigField("String", "GEMINI_API_KEY", "\"$escapedGeminiKey\"")
     }
 
     // A shared debug key (`debug.keystore` in the project root, never committed) keeps debug APKs signed the same on every
@@ -64,6 +87,7 @@ android {
 
     buildFeatures {
         compose = true
+        buildConfig = true
     }
 
     testOptions {

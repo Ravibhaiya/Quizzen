@@ -208,6 +208,110 @@ object VocabularyRules {
     }
 
     /**
+     * Pinpoints the exact synonym or antonym item inside [entry] that causes a relation conflict or
+     * semantic meaning conflict so the editor can open focused on just that single word.
+     */
+    data class ConflictingRelationTarget(
+        val isAntonym: Boolean,
+        val index: Int,
+        val details: WordDetails,
+        val conflictingWordLabel: String,
+        val reason: String,
+    ) {
+        val word: String get() = details.word.trim()
+    }
+
+    /**
+     * Returns the exact synonym or antonym target where a deterministic relation conflict occurs in [entry],
+     * or `null` if no relation word is in conflict.
+     */
+    fun findEntryRelationConflictTarget(entry: VocabularyEntry): ConflictingRelationTarget? {
+        val label = entry.wordDetails.word.trim()
+        val mainKey = wordKey(label)
+        val synKeys = HashSet<String>()
+        for ((index, syn) in entry.synonyms.withIndex()) {
+            val synWord = syn.word.trim()
+            val key = wordKey(synWord)
+            if (key == mainKey) {
+                return ConflictingRelationTarget(
+                    isAntonym = false,
+                    index = index,
+                    details = syn,
+                    conflictingWordLabel = "Synonym \"$synWord\"",
+                    reason = "Word \"$label\" cannot list itself (\"$synWord\") as a synonym.",
+                )
+            }
+            if (!synKeys.add(key)) {
+                return ConflictingRelationTarget(
+                    isAntonym = false,
+                    index = index,
+                    details = syn,
+                    conflictingWordLabel = "Synonym \"$synWord\"",
+                    reason = "Word \"$label\" has a duplicate synonym \"$synWord\".",
+                )
+            }
+            if (!syn.trimmed().isValid) {
+                return ConflictingRelationTarget(
+                    isAntonym = false,
+                    index = index,
+                    details = syn,
+                    conflictingWordLabel = "Synonym \"$synWord\"",
+                    reason = "Synonym \"$synWord\" in \"$label\" is missing a required English meaning.",
+                )
+            }
+        }
+        val antKeys = HashSet<String>()
+        for ((index, ant) in entry.antonyms.withIndex()) {
+            val antWord = ant.word.trim()
+            val key = wordKey(antWord)
+            if (key == mainKey) {
+                return ConflictingRelationTarget(
+                    isAntonym = true,
+                    index = index,
+                    details = ant,
+                    conflictingWordLabel = "Antonym \"$antWord\"",
+                    reason = "Word \"$label\" cannot list itself (\"$antWord\") as an antonym.",
+                )
+            }
+            if (key in synKeys) {
+                return ConflictingRelationTarget(
+                    isAntonym = true,
+                    index = index,
+                    details = ant,
+                    conflictingWordLabel = "Synonym & Antonym \"$antWord\"",
+                    reason = "Word \"$label\" lists \"$antWord\" as both a synonym and an antonym.",
+                )
+            }
+            if (!antKeys.add(key)) {
+                return ConflictingRelationTarget(
+                    isAntonym = true,
+                    index = index,
+                    details = ant,
+                    conflictingWordLabel = "Antonym \"$antWord\"",
+                    reason = "Word \"$label\" has a duplicate antonym \"$antWord\".",
+                )
+            }
+            if (!ant.trimmed().isValid) {
+                return ConflictingRelationTarget(
+                    isAntonym = true,
+                    index = index,
+                    details = ant,
+                    conflictingWordLabel = "Antonym \"$antWord\"",
+                    reason = "Antonym \"$antWord\" in \"$label\" is missing a required English meaning.",
+                )
+            }
+        }
+        return null
+    }
+
+    /**
+     * Returns a short label naming the specific synonym or antonym word where a relation conflict
+     * occurs in [entry], or `null` if no relation word is in conflict.
+     */
+    fun findEntryRelationConflictWord(entry: VocabularyEntry): String? =
+        findEntryRelationConflictTarget(entry)?.conflictingWordLabel
+
+    /**
      * Result of [checkMainWords]: [toSave] are new words (or unchanged/edited ones), [clashing] are incoming entries
      * whose main word already belongs to another saved entry, [mergedRepeats] counts repeats collapsed inside the batch.
      */
@@ -379,6 +483,43 @@ object VocabularyJsonFormat {
 
     fun formatSingle(entry: VocabularyEntry): String =
         formatEntryObject(entry.sanitized(), indent = "")
+
+    fun formatWordDetails(details: WordDetails): String {
+        val d = details.trimmed()
+        val sb = StringBuilder()
+        sb.append("{\n")
+        sb.append("  \"word\": ").append(escapeJson(d.word)).append(",\n")
+        sb.append("  \"meaningEnglish\": ").append(escapeJson(d.meaningEnglish)).append(",\n")
+        sb.append("  \"meaningHinglish\": ").append(escapeJson(d.meaningHinglish)).append(",\n")
+        sb.append("  \"exampleSentence\": ").append(escapeJson(d.exampleSentence)).append("\n")
+        sb.append("}")
+        return sb.toString()
+    }
+
+    fun parseWordDetails(jsonText: String): Result<WordDetails> {
+        val trimmed = jsonText.trim()
+        if (trimmed.isEmpty()) {
+            return Result.failure(IllegalArgumentException("JSON input cannot be empty."))
+        }
+        val root = try {
+            JsonTokenizer(trimmed).parseValue()
+        } catch (e: JsonSyntaxException) {
+            return Result.failure(IllegalArgumentException(e.message ?: "Invalid JSON syntax."))
+        }
+        @Suppress("UNCHECKED_CAST")
+        val map = root as? Map<String, Any?>
+            ?: return Result.failure(IllegalArgumentException("Word JSON must be a single JSON object {...}."))
+        val details = extractWordDetails(map)
+        if (details.word.isBlank()) {
+            return Result.failure(IllegalArgumentException("Missing or empty \"word\" field."))
+        }
+        if (details.meaningEnglish.isBlank()) {
+            return Result.failure(
+                IllegalArgumentException("Missing or empty \"meaningEnglish\" for word \"${details.word}\"."),
+            )
+        }
+        return Result.success(details)
+    }
 
     fun formatBulkTemplate(): String = """
 [

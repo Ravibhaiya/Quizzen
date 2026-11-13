@@ -509,6 +509,10 @@ fun VocabularyManagerScreen(
             state = editorState,
             onUpdateJsonText = viewModel::onUpdateJsonText,
             onUpdateConfirmText = viewModel::onUpdateEditConfirmText,
+            onSelectFocusedAction = { action ->
+                haptics.tick()
+                viewModel.onSelectFocusedRelationAction(action)
+            },
             onInsertTemplate = {
                 haptics.tick()
                 viewModel.onInsertSampleTemplate()
@@ -553,6 +557,23 @@ fun VocabularyManagerScreen(
     if (state.isNotificationsOpen) {
         DatabaseNotificationsSheet(
             requests = state.pendingApprovalRequests,
+            hasEntries = state.entries.isNotEmpty(),
+            isDecisionRunning = state.isDecisionRunning,
+            isDecisionPendingRetry = state.isDecisionPendingRetry,
+            decisionRetryRemainingSeconds = state.decisionRetryRemainingSeconds,
+            decisionError = state.decisionError,
+            onRunDecisionCheck = {
+                haptics.click()
+                viewModel.onRunGeminiDecisionCheck()
+            },
+            onDismissDecisionError = {
+                haptics.click()
+                viewModel.onDismissDecisionError()
+            },
+            onDismissDecisionFinding = { dismissKey ->
+                haptics.tick()
+                viewModel.onDismissDecisionFinding(dismissKey)
+            },
             onReviewMerge = { wordKey ->
                 haptics.click()
                 viewModel.onRequestMergeDatabaseDuplicates(wordKey)
@@ -567,7 +588,7 @@ fun VocabularyManagerScreen(
             },
             onEditEntry = { entry ->
                 haptics.click()
-                viewModel.onStartEdit(entry)
+                viewModel.onStartEditIssue(entry)
             },
             onDeleteEntry = { entry ->
                 haptics.click()
@@ -797,3 +818,80 @@ private fun VocabularyEmptyState(
         )
     }
 }
+
+@Composable
+private fun VocabularySkeletonCard(
+    index: Int,
+    modifier: Modifier = Modifier,
+) {
+    val shape = RoundedCornerShape(28.dp)
+    val titleWidthFraction = when (index % 3) {
+        0 -> 0.46f
+        1 -> 0.58f
+        else -> 0.40f
+    }
+    val subWidthFraction = when (index % 3) {
+        0 -> 0.84f
+        1 -> 0.74f
+        else -> 0.88f
+    }
+    Column(
+        modifier = modifier
+            .fillMaxWidth()
+            .testTag("vocabulary_skeleton_card_$index")
+            .cssShadow(NeutralShadowColor.copy(alpha = 0.04f), offsetY = 2.dp, blur = 6.dp, spread = 0.dp, shape = shape)
+            .clip(shape)
+            .background(MaterialTheme.colorScheme.surfaceContainer)
+            .padding(horizontal = 18.dp, vertical = 16.dp),
+        verticalArrangement = Arrangement.spacedBy(12.dp),
+    ) {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(12.dp),
+        ) {
+            Box(
+                modifier = Modifier
+                    .size(42.dp)
+                    .background(MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.55f), RoundedCornerShape(14.dp)),
+            )
+            Column(
+                modifier = Modifier.weight(1f),
+                verticalArrangement = Arrangement.spacedBy(8.dp),
+            ) {
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth(titleWidthFraction)
+                        .height(18.dp)
+                        .background(MaterialTheme.colorScheme.surfaceContainerHigh, CircleShape),
+                )
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth(subWidthFraction)
+                        .height(13.dp)
+                        .background(MaterialTheme.colorScheme.surfaceContainerHigh.copy(alpha = 0.75f), CircleShape),
+                )
+            }
+            Box(
+                modifier = Modifier
+                    .size(34.dp)
+                    .background(MaterialTheme.colorScheme.surfaceContainerHigh.copy(alpha = 0.7f), CircleShape),
+            )
+        }
+        Row(
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+        ) {
+            Box(
+                modifier = Modifier
+                    .size(width = 88.dp, height = 24.dp)
+                    .background(MaterialTheme.colorScheme.surfaceContainerHigh.copy(alpha = 0.65f), CircleShape),
+            )
+            Box(
+                modifier = Modifier
+                    .size(width = 88.dp, height = 24.dp)
+                    .background(MaterialTheme.colorScheme.surfaceContainerHigh.copy(alpha = 0.65f), CircleShape),
+            )
+        }
+    }
+}
+

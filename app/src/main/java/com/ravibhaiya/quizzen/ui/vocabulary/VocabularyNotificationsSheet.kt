@@ -1,9 +1,12 @@
 package com.ravibhaiya.quizzen.ui.vocabulary
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
@@ -26,6 +29,7 @@ import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.testTag
@@ -36,6 +40,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.ravibhaiya.quizzen.R
+import com.ravibhaiya.quizzen.domain.DecisionDuplicateKind
 import com.ravibhaiya.quizzen.domain.VocabularyEntry
 import com.ravibhaiya.quizzen.ui.components.ContentMaxWidth
 import com.ravibhaiya.quizzen.ui.components.PrimaryButton
@@ -49,6 +54,14 @@ import com.ravibhaiya.quizzen.ui.theme.quizzen
 @Composable
 internal fun DatabaseNotificationsSheet(
     requests: List<DatabaseApprovalRequest>,
+    hasEntries: Boolean,
+    isDecisionRunning: Boolean,
+    isDecisionPendingRetry: Boolean = false,
+    decisionRetryRemainingSeconds: Int = 0,
+    decisionError: String?,
+    onRunDecisionCheck: () -> Unit,
+    onDismissDecisionError: () -> Unit,
+    onDismissDecisionFinding: (String) -> Unit,
     onReviewMerge: (wordKey: String) -> Unit,
     onReviewAllMerges: () -> Unit,
     onDeleteDuplicates: (List<VocabularyEntry>) -> Unit,
@@ -108,7 +121,141 @@ internal fun DatabaseNotificationsSheet(
                 )
             }
 
-            if (requests.isEmpty()) {
+            if (hasEntries) {
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .alpha(if (isDecisionRunning) 0.65f else 1f)
+                        .testTag("verify_gemini_decision_button")
+                        .let { mod ->
+                            if (!isDecisionRunning) {
+                                mod.bouncyClickable(CircleShape, role = Role.Button, onClick = onRunDecisionCheck)
+                            } else {
+                                mod
+                            }
+                        }
+                        .background(MaterialTheme.colorScheme.primaryContainer, CircleShape)
+                        .padding(horizontal = 16.dp, vertical = 12.dp),
+                    contentAlignment = Alignment.Center,
+                ) {
+                    Text(
+                        text = when {
+                            isDecisionRunning -> stringResource(R.string.notification_verifying_gemini_decision)
+                            isDecisionPendingRetry -> stringResource(
+                                R.string.notification_pending_retry_button,
+                                decisionRetryRemainingSeconds.coerceAtLeast(1),
+                            )
+                            else -> stringResource(R.string.notification_verify_gemini_decision)
+                        },
+                        style = MaterialTheme.typography.labelLarge.copy(fontWeight = FontWeight.Bold),
+                        color = MaterialTheme.colorScheme.onPrimaryContainer,
+                        textAlign = TextAlign.Center,
+                    )
+                }
+            }
+
+            if (decisionError != null) {
+                val errShape = RoundedCornerShape(18.dp)
+                val toneColor = if (isDecisionPendingRetry) {
+                    MaterialTheme.colorScheme.primary
+                } else {
+                    MaterialTheme.quizzen.error
+                }
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .testTag("decision_error_banner")
+                        .clip(errShape)
+                        .background(toneColor.copy(alpha = 0.12f), errShape)
+                        .border(1.dp, toneColor.copy(alpha = 0.35f), errShape)
+                        .padding(horizontal = 14.dp, vertical = 12.dp),
+                    verticalArrangement = Arrangement.spacedBy(8.dp),
+                ) {
+                    if (isDecisionPendingRetry) {
+                        Box(
+                            modifier = Modifier
+                                .testTag("pending_verification_badge")
+                                .background(toneColor.copy(alpha = 0.18f), CircleShape)
+                                .padding(horizontal = 10.dp, vertical = 4.dp),
+                        ) {
+                            Text(
+                                text = stringResource(
+                                    R.string.notification_pending_retry_badge,
+                                    decisionRetryRemainingSeconds.coerceAtLeast(1),
+                                ),
+                                style = MaterialTheme.typography.labelSmall.copy(
+                                    fontSize = 11.sp,
+                                    fontWeight = FontWeight.Bold,
+                                ),
+                                color = toneColor,
+                            )
+                        }
+                    }
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(10.dp),
+                    ) {
+                        Text(
+                            text = decisionError,
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = if (isDecisionPendingRetry) {
+                                MaterialTheme.colorScheme.onSurface
+                            } else {
+                                MaterialTheme.quizzen.error
+                            },
+                            modifier = Modifier.weight(1f),
+                        )
+                        if (!isDecisionRunning) {
+                            Box(
+                                modifier = Modifier
+                                    .testTag("retry_decision_check_button")
+                                    .bouncyClickable(CircleShape, role = Role.Button, onClick = onRunDecisionCheck)
+                                    .background(toneColor.copy(alpha = 0.18f), CircleShape)
+                                    .padding(horizontal = 12.dp, vertical = 6.dp),
+                                contentAlignment = Alignment.Center,
+                            ) {
+                                Text(
+                                    text = stringResource(
+                                        if (isDecisionPendingRetry) {
+                                            R.string.verify_now_action
+                                        } else {
+                                            R.string.retry_action
+                                        },
+                                    ),
+                                    style = MaterialTheme.typography.labelLarge.copy(
+                                        fontSize = 12.sp,
+                                        fontWeight = FontWeight.Bold,
+                                    ),
+                                    color = toneColor,
+                                )
+                            }
+                        }
+                        Box(
+                            modifier = Modifier
+                                .size(28.dp)
+                                .testTag("dismiss_decision_error_button")
+                                .bouncyClickable(CircleShape, pressedScale = 0.88f, onClick = onDismissDecisionError)
+                                .background(toneColor.copy(alpha = 0.15f), CircleShape),
+                            contentAlignment = Alignment.Center,
+                        ) {
+                            Icon(
+                                imageVector = QuizzenIcons.CloseBold,
+                                contentDescription = stringResource(R.string.cd_dismiss_error),
+                                tint = toneColor,
+                                modifier = Modifier.size(12.dp),
+                            )
+                        }
+                    }
+                }
+            }
+
+            if ((isDecisionRunning || isDecisionPendingRetry) && requests.isEmpty()) {
+                NotificationsSkeletonState(
+                    isPendingRetry = isDecisionPendingRetry && !isDecisionRunning,
+                    retryRemainingSeconds = decisionRetryRemainingSeconds,
+                )
+            } else if (requests.isEmpty()) {
                 NotificationsEmptyState()
             } else {
                 if (mergeRequestsCount > 1) {
@@ -132,6 +279,9 @@ internal fun DatabaseNotificationsSheet(
                                     request = request,
                                     onReview = { onReviewMerge(request.wordKey) },
                                     onDeleteDuplicate = { onDeleteDuplicates(request.redundantEntries) },
+                                    onKeepBoth = request.dismissKey?.let { key ->
+                                        { onDismissDecisionFinding(key) }
+                                    },
                                 )
                             }
                             is DatabaseApprovalRequest.EntryIssue -> {
@@ -139,10 +289,92 @@ internal fun DatabaseNotificationsSheet(
                                     request = request,
                                     onEdit = { onEditEntry(request.entry) },
                                     onDelete = { onDeleteEntry(request.entry) },
+                                    onDismissIssue = request.dismissKey?.let { key ->
+                                        { onDismissDecisionFinding(key) }
+                                    },
                                 )
                             }
                         }
                     }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun NotificationsSkeletonState(
+    isPendingRetry: Boolean = false,
+    retryRemainingSeconds: Int = 0,
+) {
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .testTag("notifications_skeleton_state"),
+        verticalArrangement = Arrangement.spacedBy(12.dp),
+    ) {
+        Text(
+            text = if (isPendingRetry) {
+                stringResource(
+                    R.string.notification_pending_skeleton_subtitle,
+                    retryRemainingSeconds.coerceAtLeast(1),
+                )
+            } else {
+                stringResource(R.string.notification_skeleton_subtitle)
+            },
+            style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+        repeat(2) { index ->
+            val shape = RoundedCornerShape(22.dp)
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clip(shape)
+                    .background(MaterialTheme.colorScheme.surfaceContainer)
+                    .padding(16.dp),
+                verticalArrangement = Arrangement.spacedBy(10.dp),
+            ) {
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Box(
+                        modifier = Modifier
+                            .size(width = 112.dp, height = 22.dp)
+                            .background(MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.65f), CircleShape),
+                    )
+                    Box(
+                        modifier = Modifier
+                            .size(width = 86.dp, height = 22.dp)
+                            .background(MaterialTheme.colorScheme.surfaceContainerHigh, CircleShape),
+                    )
+                }
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth(if (index == 0) 0.56f else 0.44f)
+                        .height(20.dp)
+                        .background(MaterialTheme.colorScheme.surfaceContainerHigh, CircleShape),
+                )
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth(0.84f)
+                        .height(14.dp)
+                        .background(MaterialTheme.colorScheme.surfaceContainerHigh.copy(alpha = 0.75f), CircleShape),
+                )
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(10.dp),
+                ) {
+                    Box(
+                        modifier = Modifier
+                            .weight(1f)
+                            .height(38.dp)
+                            .background(MaterialTheme.colorScheme.surfaceContainerHigh, CircleShape),
+                    )
+                    Box(
+                        modifier = Modifier
+                            .weight(1f)
+                            .height(38.dp)
+                            .background(MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.5f), CircleShape),
+                    )
                 }
             }
         }
@@ -190,14 +422,25 @@ private fun NotificationsEmptyState() {
     }
 }
 
+@OptIn(ExperimentalLayoutApi::class)
 @Composable
 private fun MergeApprovalRequestCard(
     request: DatabaseApprovalRequest.MergeDuplicateWord,
     onReview: () -> Unit,
     onDeleteDuplicate: () -> Unit,
+    onKeepBoth: (() -> Unit)? = null,
 ) {
     val item = request.mergeItem
     val shape = RoundedCornerShape(22.dp)
+    val badgeTextRes = when (request.decisionKind) {
+        DecisionDuplicateKind.ROOT_OR_INFLECTED -> R.string.notification_badge_root_form
+        DecisionDuplicateKind.SPELLING_OR_TYPO -> R.string.notification_badge_spelling_variant
+        DecisionDuplicateKind.EXACT_DUPLICATE, null -> {
+            if (item.hasChanges) R.string.notification_badge_merge else R.string.notification_badge_duplicate
+        }
+    }
+    val usePrimaryBadge = item.hasChanges || request.decisionKind != null
+
     Column(
         modifier = Modifier
             .fillMaxWidth()
@@ -207,14 +450,14 @@ private fun MergeApprovalRequestCard(
             .padding(16.dp),
         verticalArrangement = Arrangement.spacedBy(8.dp),
     ) {
-        Row(
-            verticalAlignment = Alignment.CenterVertically,
+        FlowRow(
             horizontalArrangement = Arrangement.spacedBy(8.dp),
+            verticalArrangement = Arrangement.spacedBy(6.dp),
         ) {
             Box(
                 modifier = Modifier
                     .background(
-                        if (item.hasChanges) {
+                        if (usePrimaryBadge) {
                             MaterialTheme.colorScheme.primaryContainer
                         } else {
                             MaterialTheme.quizzen.error.copy(alpha = 0.14f)
@@ -224,33 +467,52 @@ private fun MergeApprovalRequestCard(
                     .padding(horizontal = 10.dp, vertical = 4.dp),
             ) {
                 Text(
-                    text = stringResource(
-                        if (item.hasChanges) {
-                            R.string.notification_badge_merge
-                        } else {
-                            R.string.notification_badge_duplicate
-                        },
-                    ),
+                    text = stringResource(badgeTextRes),
                     style = MaterialTheme.typography.labelSmall.copy(
                         fontSize = 11.sp,
                         fontWeight = FontWeight.Bold,
                     ),
-                    color = if (item.hasChanges) {
+                    color = if (usePrimaryBadge) {
                         MaterialTheme.colorScheme.onPrimaryContainer
                     } else {
                         MaterialTheme.quizzen.error
                     },
                 )
             }
-            Text(
-                text = request.word,
-                style = MaterialTheme.typography.titleLarge,
-                color = MaterialTheme.colorScheme.onSurface,
-            )
+            if (request.confidencePercent != null) {
+                Box(
+                    modifier = Modifier
+                        .background(MaterialTheme.colorScheme.surfaceContainerHigh, CircleShape)
+                        .padding(horizontal = 10.dp, vertical = 4.dp),
+                ) {
+                    Text(
+                        text = stringResource(R.string.notification_confidence_badge, request.confidencePercent),
+                        style = MaterialTheme.typography.labelSmall.copy(
+                            fontSize = 11.sp,
+                            fontWeight = FontWeight.SemiBold,
+                        ),
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
+            }
         }
 
         Text(
-            text = stringResource(R.string.notification_merge_card_subtitle, request.duplicateCount, request.word),
+            text = if (request.matchedWord != null) {
+                "${request.word} ↔ ${request.matchedWord}"
+            } else {
+                request.word
+            },
+            style = MaterialTheme.typography.titleLarge,
+            color = MaterialTheme.colorScheme.onSurface,
+        )
+
+        Text(
+            text = if (request.matchedWord != null) {
+                stringResource(R.string.notification_variant_card_subtitle, request.matchedWord, request.word)
+            } else {
+                stringResource(R.string.notification_merge_card_subtitle, request.duplicateCount, request.word)
+            },
             style = MaterialTheme.typography.bodyMedium,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
@@ -304,6 +566,24 @@ private fun MergeApprovalRequestCard(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.spacedBy(10.dp),
         ) {
+            if (onKeepBoth != null) {
+                Box(
+                    modifier = Modifier
+                        .weight(1f)
+                        .testTag("keep_both_${request.wordKey}")
+                        .bouncyClickable(CircleShape, role = Role.Button, onClick = onKeepBoth)
+                        .background(MaterialTheme.colorScheme.surfaceContainerHigh, CircleShape)
+                        .padding(vertical = 12.dp),
+                    contentAlignment = Alignment.Center,
+                ) {
+                    Text(
+                        text = stringResource(R.string.keep_both_words),
+                        style = MaterialTheme.typography.labelLarge.copy(fontWeight = FontWeight.Bold),
+                        color = MaterialTheme.colorScheme.onSurface,
+                        textAlign = TextAlign.Center,
+                    )
+                }
+            }
             Box(
                 modifier = Modifier
                     .weight(1f)
@@ -342,11 +622,13 @@ private fun MergeApprovalRequestCard(
     }
 }
 
+@OptIn(ExperimentalLayoutApi::class)
 @Composable
 private fun IssueApprovalRequestCard(
     request: DatabaseApprovalRequest.EntryIssue,
     onEdit: () -> Unit,
     onDelete: () -> Unit,
+    onDismissIssue: (() -> Unit)? = null,
 ) {
     val shape = RoundedCornerShape(22.dp)
     Column(
@@ -358,9 +640,9 @@ private fun IssueApprovalRequestCard(
             .padding(16.dp),
         verticalArrangement = Arrangement.spacedBy(8.dp),
     ) {
-        Row(
-            verticalAlignment = Alignment.CenterVertically,
+        FlowRow(
             horizontalArrangement = Arrangement.spacedBy(8.dp),
+            verticalArrangement = Arrangement.spacedBy(6.dp),
         ) {
             Box(
                 modifier = Modifier
@@ -368,7 +650,13 @@ private fun IssueApprovalRequestCard(
                     .padding(horizontal = 10.dp, vertical = 4.dp),
             ) {
                 Text(
-                    text = stringResource(R.string.notification_badge_issue),
+                    text = stringResource(
+                        if (request.isAiConflict) {
+                            R.string.notification_badge_meaning_conflict
+                        } else {
+                            R.string.notification_badge_issue
+                        },
+                    ),
                     style = MaterialTheme.typography.labelSmall.copy(
                         fontSize = 11.sp,
                         fontWeight = FontWeight.Bold,
@@ -376,11 +664,48 @@ private fun IssueApprovalRequestCard(
                     color = MaterialTheme.quizzen.error,
                 )
             }
-            Text(
-                text = request.word,
-                style = MaterialTheme.typography.titleLarge,
-                color = MaterialTheme.colorScheme.onSurface,
-            )
+            if (request.confidencePercent != null) {
+                Box(
+                    modifier = Modifier
+                        .background(MaterialTheme.colorScheme.surfaceContainerHigh, CircleShape)
+                        .padding(horizontal = 10.dp, vertical = 4.dp),
+                ) {
+                    Text(
+                        text = stringResource(R.string.notification_confidence_badge, request.confidencePercent),
+                        style = MaterialTheme.typography.labelSmall.copy(
+                            fontSize = 11.sp,
+                            fontWeight = FontWeight.SemiBold,
+                        ),
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
+            }
+        }
+
+        Text(
+            text = request.word,
+            style = MaterialTheme.typography.titleLarge,
+            color = MaterialTheme.colorScheme.onSurface,
+        )
+
+        if (!request.conflictingWord.isNullOrBlank()) {
+            Box(
+                modifier = Modifier
+                    .background(
+                        MaterialTheme.quizzen.error.copy(alpha = 0.10f),
+                        RoundedCornerShape(10.dp),
+                    )
+                    .padding(horizontal = 10.dp, vertical = 5.dp),
+            ) {
+                Text(
+                    text = stringResource(R.string.notification_conflict_word_label, request.conflictingWord),
+                    style = MaterialTheme.typography.labelLarge.copy(
+                        fontSize = 12.5.sp,
+                        fontWeight = FontWeight.Bold,
+                    ),
+                    color = MaterialTheme.quizzen.error,
+                )
+            }
         }
 
         Text(
@@ -394,6 +719,24 @@ private fun IssueApprovalRequestCard(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.spacedBy(10.dp),
         ) {
+            if (onDismissIssue != null) {
+                Box(
+                    modifier = Modifier
+                        .weight(1f)
+                        .testTag("dismiss_issue_${request.entry.id}")
+                        .bouncyClickable(CircleShape, role = Role.Button, onClick = onDismissIssue)
+                        .background(MaterialTheme.colorScheme.surfaceContainerHigh, CircleShape)
+                        .padding(vertical = 12.dp),
+                    contentAlignment = Alignment.Center,
+                ) {
+                    Text(
+                        text = stringResource(R.string.dismiss_issue),
+                        style = MaterialTheme.typography.labelLarge.copy(fontWeight = FontWeight.Bold),
+                        color = MaterialTheme.colorScheme.onSurface,
+                        textAlign = TextAlign.Center,
+                    )
+                }
+            }
             Box(
                 modifier = Modifier
                     .weight(1f)

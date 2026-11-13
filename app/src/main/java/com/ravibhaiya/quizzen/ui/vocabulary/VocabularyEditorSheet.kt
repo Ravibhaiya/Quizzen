@@ -62,19 +62,27 @@ import com.ravibhaiya.quizzen.ui.components.bouncyClickable
 import com.ravibhaiya.quizzen.ui.components.cssShadow
 import com.ravibhaiya.quizzen.ui.theme.quizzen
 
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.ui.draw.alpha
+import androidx.compose.ui.semantics.selected
+import androidx.compose.ui.semantics.semantics
 
-@OptIn(ExperimentalMaterial3Api::class)
+@OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
 @Composable
 fun VocabularyEditorSheet(
     state: VocabularyEditorState,
     onUpdateJsonText: (String) -> Unit,
     onUpdateConfirmText: (String) -> Unit = {},
+    onSelectFocusedAction: (FocusedRelationAction) -> Unit = {},
     onInsertTemplate: () -> Unit,
     onSave: () -> Unit,
     onDismiss: () -> Unit,
 ) {
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
+    val focused = state.focusedRelation
+    val isFocusedWordMode = focused != null && focused.action != FocusedRelationAction.FULL_ENTRY_JSON
+
     ModalBottomSheet(
         onDismissRequest = onDismiss,
         sheetState = sheetState,
@@ -108,23 +116,31 @@ fun VocabularyEditorSheet(
             ) {
                 Column(modifier = Modifier.weight(1f)) {
                     Text(
-                        text = if (state.isEditing) {
-                            stringResource(R.string.edit_word_json_title, state.editingWordLabel.orEmpty())
-                        } else {
-                            stringResource(R.string.add_words_json_title)
+                        text = when {
+                            isFocusedWordMode ->
+                                stringResource(
+                                    R.string.edit_focused_word_title,
+                                    focused.target.word,
+                                    state.editingWordLabel.orEmpty(),
+                                )
+                            state.isEditing ->
+                                stringResource(R.string.edit_word_json_title, state.editingWordLabel.orEmpty())
+                            else ->
+                                stringResource(R.string.add_words_json_title)
                         },
                         style = MaterialTheme.typography.headlineMedium,
                         color = MaterialTheme.colorScheme.onSurface,
                     )
                     Spacer(Modifier.height(4.dp))
                     Text(
-                        text = stringResource(
-                            if (state.isEditing) {
-                                R.string.edit_word_json_subtitle
-                            } else {
-                                R.string.add_words_json_subtitle
-                            },
-                        ),
+                        text = when {
+                            isFocusedWordMode ->
+                                stringResource(R.string.edit_focused_word_subtitle, state.editingWordLabel.orEmpty())
+                            state.isEditing ->
+                                stringResource(R.string.edit_word_json_subtitle)
+                            else ->
+                                stringResource(R.string.add_words_json_subtitle)
+                        },
                         style = MaterialTheme.typography.bodyMedium,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
@@ -143,46 +159,103 @@ fun VocabularyEditorSheet(
                     .verticalScroll(rememberScrollState()),
                 verticalArrangement = Arrangement.spacedBy(12.dp),
             ) {
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                ) {
-                    Text(
-                        text = stringResource(R.string.json_payload_label).uppercase(),
-                        style = MaterialTheme.typography.labelSmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        modifier = Modifier.padding(start = 4.dp),
+                if (focused != null) {
+                    FocusedConflictHeader(
+                        focused = focused,
+                        parentWordLabel = state.editingWordLabel.orEmpty(),
+                        onSelectAction = onSelectFocusedAction,
                     )
-                    if (!state.isEditing) {
+                }
+
+                if (focused?.action == FocusedRelationAction.REMOVE_WORD) {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .testTag("focused_remove_word_banner")
+                            .background(MaterialTheme.quizzen.error.copy(alpha = 0.10f), RoundedCornerShape(18.dp))
+                            .border(1.5.dp, MaterialTheme.quizzen.error.copy(alpha = 0.35f), RoundedCornerShape(18.dp))
+                            .padding(horizontal = 16.dp, vertical = 14.dp),
+                    ) {
+                        Text(
+                            text = stringResource(
+                                R.string.focused_remove_word_summary,
+                                focused.target.conflictingWordLabel,
+                                state.editingWordLabel.orEmpty(),
+                            ),
+                            style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.SemiBold),
+                            color = MaterialTheme.quizzen.error,
+                        )
+                    }
+                } else {
+                    if (focused?.action == FocusedRelationAction.MOVE_TO_OPPOSITE_LIST) {
                         Box(
                             modifier = Modifier
-                                .testTag("insert_json_template_button")
-                                .bouncyClickable(CircleShape, role = Role.Button, onClick = onInsertTemplate)
-                                .background(MaterialTheme.colorScheme.primaryContainer, CircleShape)
-                                .padding(horizontal = 14.dp, vertical = 8.dp),
-                            contentAlignment = Alignment.Center,
+                                .fillMaxWidth()
+                                .testTag("focused_move_word_banner")
+                                .background(MaterialTheme.colorScheme.primaryContainer, RoundedCornerShape(18.dp))
+                                .padding(horizontal = 16.dp, vertical = 12.dp),
                         ) {
                             Text(
-                                text = stringResource(R.string.insert_json_template),
-                                style = MaterialTheme.typography.labelLarge.copy(
-                                    fontSize = 13.sp,
-                                    fontWeight = FontWeight.Bold,
+                                text = stringResource(
+                                    if (focused.target.isAntonym) {
+                                        R.string.focused_move_to_synonyms_summary
+                                    } else {
+                                        R.string.focused_move_to_antonyms_summary
+                                    },
+                                    focused.target.word,
+                                    state.editingWordLabel.orEmpty(),
                                 ),
+                                style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.SemiBold),
                                 color = MaterialTheme.colorScheme.onPrimaryContainer,
                             )
                         }
                     }
-                }
 
-                JsonCodeField(
-                    value = state.jsonText,
-                    placeholder = stringResource(
-                        if (state.isEditing) R.string.hint_single_word_json else R.string.hint_bulk_words_json,
-                    ),
-                    onValueChange = onUpdateJsonText,
-                    hasError = state.validationError != null,
-                )
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                    ) {
+                        Text(
+                            text = if (isFocusedWordMode) {
+                                focused.target.conflictingWordLabel.uppercase()
+                            } else {
+                                stringResource(R.string.json_payload_label).uppercase()
+                            },
+                            style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            modifier = Modifier.padding(start = 4.dp),
+                        )
+                        if (!state.isEditing) {
+                            Box(
+                                modifier = Modifier
+                                    .testTag("insert_json_template_button")
+                                    .bouncyClickable(CircleShape, role = Role.Button, onClick = onInsertTemplate)
+                                    .background(MaterialTheme.colorScheme.primaryContainer, CircleShape)
+                                    .padding(horizontal = 14.dp, vertical = 8.dp),
+                                contentAlignment = Alignment.Center,
+                            ) {
+                                Text(
+                                    text = stringResource(R.string.insert_json_template),
+                                    style = MaterialTheme.typography.labelLarge.copy(
+                                        fontSize = 13.sp,
+                                        fontWeight = FontWeight.Bold,
+                                    ),
+                                    color = MaterialTheme.colorScheme.onPrimaryContainer,
+                                )
+                            }
+                        }
+                    }
+
+                    JsonCodeField(
+                        value = state.jsonText,
+                        placeholder = stringResource(
+                            if (state.isEditing) R.string.hint_single_word_json else R.string.hint_bulk_words_json,
+                        ),
+                        onValueChange = onUpdateJsonText,
+                        hasError = state.validationError != null,
+                    )
+                }
 
                 if (state.isEditing) {
                     ConfirmKeywordField(
@@ -231,6 +304,127 @@ fun VocabularyEditorSheet(
                 modifier = Modifier.testTag("save_word_button"),
             )
         }
+    }
+}
+
+@OptIn(ExperimentalLayoutApi::class)
+@Composable
+private fun FocusedConflictHeader(
+    focused: FocusedRelationEditorContext,
+    parentWordLabel: String,
+    onSelectAction: (FocusedRelationAction) -> Unit,
+) {
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .testTag("focused_conflict_header")
+            .background(MaterialTheme.colorScheme.surfaceContainer, RoundedCornerShape(20.dp))
+            .padding(14.dp),
+        verticalArrangement = Arrangement.spacedBy(10.dp),
+    ) {
+        Box(
+            modifier = Modifier
+                .background(MaterialTheme.quizzen.error.copy(alpha = 0.12f), RoundedCornerShape(10.dp))
+                .padding(horizontal = 10.dp, vertical = 5.dp),
+        ) {
+            Text(
+                text = stringResource(
+                    R.string.notification_conflict_word_label,
+                    focused.target.conflictingWordLabel,
+                ),
+                style = MaterialTheme.typography.labelLarge.copy(
+                    fontSize = 12.8.sp,
+                    fontWeight = FontWeight.Bold,
+                ),
+                color = MaterialTheme.quizzen.error,
+            )
+        }
+        Text(
+            text = focused.target.reason,
+            style = MaterialTheme.typography.bodyMedium.copy(fontSize = 13.5.sp),
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+        FlowRow(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp),
+        ) {
+            FocusedActionPill(
+                label = stringResource(R.string.focused_action_edit_word, focused.target.word),
+                selected = focused.action == FocusedRelationAction.EDIT_WORD,
+                onClick = { onSelectAction(FocusedRelationAction.EDIT_WORD) },
+                testTag = "focused_action_edit_word",
+            )
+            FocusedActionPill(
+                label = stringResource(
+                    if (focused.target.isAntonym) {
+                        R.string.focused_action_move_to_synonyms
+                    } else {
+                        R.string.focused_action_move_to_antonyms
+                    },
+                ),
+                selected = focused.action == FocusedRelationAction.MOVE_TO_OPPOSITE_LIST,
+                onClick = { onSelectAction(FocusedRelationAction.MOVE_TO_OPPOSITE_LIST) },
+                testTag = "focused_action_move_word",
+            )
+            FocusedActionPill(
+                label = stringResource(R.string.focused_action_remove_word, focused.target.word),
+                selected = focused.action == FocusedRelationAction.REMOVE_WORD,
+                onClick = { onSelectAction(FocusedRelationAction.REMOVE_WORD) },
+                testTag = "focused_action_remove_word",
+            )
+            FocusedActionPill(
+                label = stringResource(R.string.focused_action_full_json, parentWordLabel),
+                selected = focused.action == FocusedRelationAction.FULL_ENTRY_JSON,
+                onClick = { onSelectAction(FocusedRelationAction.FULL_ENTRY_JSON) },
+                testTag = "focused_action_full_json",
+            )
+        }
+    }
+}
+
+@Composable
+private fun FocusedActionPill(
+    label: String,
+    selected: Boolean,
+    onClick: () -> Unit,
+    testTag: String,
+) {
+    val bg by animateColorAsState(
+        targetValue = if (selected) {
+            MaterialTheme.colorScheme.primary
+        } else {
+            MaterialTheme.colorScheme.surfaceContainerHigh
+        },
+        animationSpec = tween(200),
+        label = "focusedActionPillBg",
+    )
+    val contentColor by animateColorAsState(
+        targetValue = if (selected) {
+            MaterialTheme.colorScheme.onPrimary
+        } else {
+            MaterialTheme.colorScheme.onSurface
+        },
+        animationSpec = tween(200),
+        label = "focusedActionPillFg",
+    )
+    Box(
+        modifier = Modifier
+            .testTag(testTag)
+            .semantics { this.selected = selected }
+            .bouncyClickable(CircleShape, role = Role.RadioButton, onClick = onClick)
+            .background(bg, CircleShape)
+            .padding(horizontal = 13.dp, vertical = 8.dp),
+        contentAlignment = Alignment.Center,
+    ) {
+        Text(
+            text = label,
+            style = MaterialTheme.typography.labelLarge.copy(
+                fontSize = 12.8.sp,
+                fontWeight = FontWeight.Bold,
+            ),
+            color = contentColor,
+        )
     }
 }
 

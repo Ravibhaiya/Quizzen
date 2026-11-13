@@ -44,6 +44,7 @@ class MainActivity : ComponentActivity() {
             QuizzenTheme {
                 val settings: SettingsViewModel = viewModel()
                 val hapticEnabled by settings.hapticEnabled.collectAsStateWithLifecycle()
+                val geminiApiKey by settings.geminiApiKey.collectAsStateWithLifecycle()
 
                 // Survives rotation; a fresh process start shows the logo again.
                 var showSplash by rememberSaveable { mutableStateOf(true) }
@@ -60,6 +61,8 @@ class MainActivity : ComponentActivity() {
                     QuizzenNavHost(
                         hapticEnabled = hapticEnabled,
                         onHapticChange = settings::setHapticEnabled,
+                        geminiApiKey = geminiApiKey,
+                        onGeminiApiKeyChange = settings::setGeminiApiKey,
                     )
                     AnimatedVisibility(
                         visible = showSplash,

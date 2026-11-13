@@ -40,6 +40,8 @@ fun QuizzenNavHost(
     hapticEnabled: Boolean,
     onHapticChange: (Boolean) -> Unit,
     modifier: Modifier = Modifier,
+    geminiApiKey: String = "",
+    onGeminiApiKeyChange: (String) -> Unit = {},
 ) {
     val navController = rememberNavController()
     val slidePx = with(LocalDensity.current) { 16.dp.roundToPx() }
@@ -73,6 +75,8 @@ fun QuizzenNavHost(
                 onOpenAlphabet = { navController.navigate(Routes.ALPHABET) },
                 onOpenVocabulary = { navController.navigate(Routes.VOCABULARY_CONFIG) },
                 onOpenDatabaseManager = { navController.navigate(Routes.DATABASE_MANAGER) },
+                geminiApiKey = geminiApiKey,
+                onGeminiApiKeyChange = onGeminiApiKeyChange,
             )
         }
         composable(Routes.DATABASE_MANAGER) {

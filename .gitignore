@@ -13,3 +13,4 @@
 *.keystore
 app/build/
 .aistudio/
+.env

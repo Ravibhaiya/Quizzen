@@ -57,6 +57,8 @@ fun HomeScreen(
     onOpenAlphabet: () -> Unit,
     onOpenVocabulary: () -> Unit = {},
     onOpenDatabaseManager: () -> Unit = {},
+    geminiApiKey: String = "",
+    onGeminiApiKeyChange: (String) -> Unit = {},
 ) {
     var showSettings by rememberSaveable { mutableStateOf(false) }
     val pagerState = rememberPagerState { 2 }
@@ -149,6 +151,11 @@ fun HomeScreen(
                 haptics.click()
                 showSettings = false
                 onOpenDatabaseManager()
+            },
+            geminiApiKey = geminiApiKey,
+            onGeminiApiKeyChange = { key ->
+                haptics.click()
+                onGeminiApiKeyChange(key)
             },
             onDismiss = { showSettings = false },
         )

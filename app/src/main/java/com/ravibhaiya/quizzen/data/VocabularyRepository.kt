@@ -45,6 +45,8 @@ interface VocabularyRepository {
     val entries: Flow<List<VocabularyEntry>>
     val mistakeWords: Flow<Set<String>>
     val syncError: Flow<String?>
+    val isLoading: Flow<Boolean>
+        get() = kotlinx.coroutines.flow.flowOf(false)
     suspend fun saveEntry(entry: VocabularyEntry): Result<VocabularyEntry>
     suspend fun saveEntries(entries: List<VocabularyEntry>): Result<List<VocabularyEntry>>
     suspend fun mergeIntoExisting(incoming: List<VocabularyEntry>): Result<VocabularyRules.MergeSummary>
@@ -114,6 +116,9 @@ class FirestoreVocabularyRepository(
     private val _syncError = MutableStateFlow<String?>(null)
     override val syncError: StateFlow<String?> = _syncError.asStateFlow()
 
+    private val _isLoading = MutableStateFlow(true)
+    override val isLoading: StateFlow<Boolean> = _isLoading.asStateFlow()
+
     override fun clearSyncError() {
         _syncError.value = null
     }
@@ -124,11 +129,18 @@ class FirestoreVocabularyRepository(
 
     override val entries: StateFlow<List<VocabularyEntry>> = callbackFlow {
         // Show the copy from the last time the app was online right away; the server list replaces it.
-        if (knownEntries.value.isEmpty()) knownEntries.value = readLocalCache()
+        if (knownEntries.value.isEmpty()) {
+            val cached = readLocalCache()
+            if (cached.isNotEmpty()) {
+                knownEntries.value = cached
+                _isLoading.value = false
+            }
+        }
         val localJob = launch { knownEntries.collect { trySend(it) } }
 
         val db = firestore
         if (db == null) {
+            _isLoading.value = false
             awaitClose { localJob.cancel() }
             return@callbackFlow
         }
@@ -137,7 +149,15 @@ class FirestoreVocabularyRepository(
             .addSnapshotListener { snapshot, error ->
                 if (error != null) {
                     Log.w(TAG, "Firestore snapshot listener error: ${error.message}", error)
-                    _syncError.value = error.localizedMessage ?: "Cloud sync error"
+                    _isLoading.value = false
+                    _syncError.value = when (error.code) {
+                        FirebaseFirestoreException.Code.UNAVAILABLE ->
+                            "Could not reach Cloud Firestore. Showing cached words until internet reconnects."
+                        FirebaseFirestoreException.Code.PERMISSION_DENIED ->
+                            "Cloud Firestore permission denied. Check your Firestore security rules."
+                        else ->
+                            "Cloud Firestore sync error: ${error.localizedMessage ?: "Unable to fetch words."}"
+                    }
                     return@addSnapshotListener
                 }
                 if (snapshot == null) return@addSnapshotListener
@@ -155,8 +175,9 @@ class FirestoreVocabularyRepository(
                     Log.w(TAG, "Ignored $malformedRelations malformed synonym/antonym item(s) across snapshot")
                 }
                 // An empty answer from Firestore's own cache means "this device has not heard from the server yet"
-                // (first start without internet), not "the database is empty": keep what is shown.
+                // (first start without internet), not "the database is empty": keep waiting for server response.
                 if (remoteEntries.isEmpty() && snapshot.metadata.isFromCache) return@addSnapshotListener
+                _isLoading.value = false
                 _syncError.value = null
                 applyServerList(remoteEntries)
             }

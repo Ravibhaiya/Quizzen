@@ -21,6 +21,15 @@
     <!-- Settings sheet -->
     <string name="haptic_feedback">Haptic Feedback</string>
     <string name="database_manager">Database Manager</string>
+    <string name="gemini_api_key">Gemini API Key</string>
+    <string name="gemini_api_key_subtitle">Stored locally on this device for testing (never published to GitHub). Used by gemini-decision-1 in Vocabulary Manager.</string>
+    <string name="gemini_api_key_placeholder">Paste Gemini API key…</string>
+    <string name="gemini_api_key_status_saved">Configured</string>
+    <string name="gemini_api_key_status_missing">Add key</string>
+    <string name="gemini_api_key_save">Save Key</string>
+    <string name="gemini_api_key_clear">Remove</string>
+    <string name="gemini_api_key_paste">Paste</string>
+    <string name="cd_clear_api_key_input">Clear API key input</string>
 
     <!-- Config screens -->
     <string name="back">Back</string>
@@ -183,12 +192,40 @@
     <string name="notifications_empty_subtitle">When words are added directly to the database (for example via AI), any merge requests or items needing your approval will appear here.</string>
     <string name="notification_badge_merge">MERGE REQUEST</string>
     <string name="notification_badge_duplicate">DUPLICATE WORD</string>
+    <string name="notification_badge_root_form">ROOT / INFLECTED FORM</string>
+    <string name="notification_badge_spelling_variant">SPELLING / TYPO VARIANT</string>
+    <string name="notification_badge_meaning_conflict">MEANING CONFLICT</string>
     <string name="notification_badge_issue">DATA REVIEW</string>
+    <string name="notification_confidence_badge">%1$d%% confidence</string>
+    <string name="notification_conflict_word_label">Conflict word: %1$s</string>
     <string name="notification_merge_card_subtitle">%1$d database entries found for \"%2$s\".</string>
+    <string name="notification_variant_card_subtitle">\"%1$s\" matches \"%2$s\" according to gemini-decision-1.</string>
+    <string name="notification_verify_gemini_decision">Verify with Gemini Decision 1</string>
+    <string name="notification_verifying_gemini_decision">Checking with gemini-decision-1…</string>
+    <string name="notification_pending_retry_button">Verification pending — retrying in %1$ds…</string>
+    <string name="notification_pending_retry_badge">PENDING VERIFICATION • %1$ds</string>
+    <string name="notification_skeleton_subtitle">Analyzing words with Gemini Decision 1…</string>
+    <string name="notification_pending_skeleton_subtitle">Verification placed in pending status — waiting %1$ds for rate limit reset…</string>
+    <string name="vocabulary_loading_badge">Syncing…</string>
+    <string name="vocabulary_skeleton_status">Fetching vocabulary from Cloud Firestore…</string>
+    <string name="retry_action">Retry</string>
+    <string name="verify_now_action">Verify Now</string>
     <string name="notification_review_all_merges">Review All Merge Requests (%1$d)</string>
     <string name="review_merge">Review &amp; Merge</string>
     <string name="delete_duplicate">Delete Duplicate</string>
+    <string name="keep_both_words">Keep Both</string>
+    <string name="dismiss_issue">Dismiss</string>
     <string name="edit_json">Edit JSON</string>
+    <string name="edit_focused_word_title">Fix \"%1$s\" in \"%2$s\"</string>
+    <string name="edit_focused_word_subtitle">Edit only this conflicting word, move it, or remove it from \"%1$s\"</string>
+    <string name="focused_action_edit_word">Edit \"%1$s\" Only</string>
+    <string name="focused_action_move_to_synonyms">Move to Synonyms</string>
+    <string name="focused_action_move_to_antonyms">Move to Antonyms</string>
+    <string name="focused_action_remove_word">Remove \"%1$s\"</string>
+    <string name="focused_action_full_json">Full \"%1$s\" JSON</string>
+    <string name="focused_remove_word_summary">\"%1$s\" will be removed from \"%2$s\" when you type CONFIRM and save.</string>
+    <string name="focused_move_to_synonyms_summary">\"%1$s\" (and any edits below) will be moved from antonyms to synonyms in \"%2$s\".</string>
+    <string name="focused_move_to_antonyms_summary">\"%1$s\" (and any edits below) will be moved from synonyms to antonyms in \"%2$s\".</string>
     <string name="merge">Approve &amp; Merge</string>
 
     <!-- Vocabulary Quiz -->

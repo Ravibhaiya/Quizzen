@@ -1,17 +1,24 @@
 package com.ravibhaiya.quizzen.ui
 
+import com.ravibhaiya.quizzen.data.DecisionPendingRetryException
+import com.ravibhaiya.quizzen.data.VocabularyDecisionClient
 import com.ravibhaiya.quizzen.data.VocabularyRepository
+import com.ravibhaiya.quizzen.domain.DecisionDuplicateKind
+import com.ravibhaiya.quizzen.domain.VocabularyDecisionFinding
 import com.ravibhaiya.quizzen.domain.VocabularyEntry
 import com.ravibhaiya.quizzen.domain.VocabularyRules
 import com.ravibhaiya.quizzen.domain.WordDetails
+import com.ravibhaiya.quizzen.ui.vocabulary.DatabaseApprovalRequest
 import com.ravibhaiya.quizzen.ui.vocabulary.VocabularyManagerViewModel
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.test.StandardTestDispatcher
+import kotlinx.coroutines.test.advanceTimeBy
 import kotlinx.coroutines.test.advanceUntilIdle
 import kotlinx.coroutines.test.resetMain
+import kotlinx.coroutines.test.runCurrent
 import kotlinx.coroutines.test.runTest
 import kotlinx.coroutines.test.setMain
 import org.junit.After
@@ -543,7 +550,24 @@ class VocabularyManagerViewModelTest {
                     synonyms = listOf(WordDetails(word = "subside", meaningEnglish = "die down")),
                 ),
             ).getOrThrow()
-            val vm = VocabularyManagerViewModel(repo)
+            val fakeDecision = object : VocabularyDecisionClient {
+                override val isConfigured: Boolean = true
+                override suspend fun analyze(
+                    entries: List<VocabularyEntry>,
+                    dismissedKeys: Set<String>,
+                ): Result<List<VocabularyDecisionFinding>> = Result.success(
+                    listOf(
+                        VocabularyDecisionFinding.DuplicateOrVariant(
+                            primaryId = "a1",
+                            duplicateId = "a2",
+                            kind = DecisionDuplicateKind.EXACT_DUPLICATE,
+                            probability = 0.99,
+                            confidence = 0.99,
+                        ),
+                    ),
+                )
+            }
+            val vm = VocabularyManagerViewModel(repo, fakeDecision)
             advanceUntilIdle()
 
             // Both entries stay untouched until the user opens notifications and chooses to review & approve
@@ -583,9 +607,31 @@ class VocabularyManagerViewModelTest {
                     antonyms = listOf(WordDetails(word = "increase", meaningEnglish = "grow")),
                 ),
             ).getOrThrow()
-            val vm = VocabularyManagerViewModel(repo)
+            var analyzeCalls = 0
+            val fakeDecision = object : VocabularyDecisionClient {
+                override val isConfigured: Boolean = true
+                override suspend fun analyze(
+                    entries: List<VocabularyEntry>,
+                    dismissedKeys: Set<String>,
+                ): Result<List<VocabularyDecisionFinding>> {
+                    analyzeCalls++
+                    return Result.success(
+                        listOf(
+                            VocabularyDecisionFinding.DuplicateOrVariant(
+                                primaryId = "a1",
+                                duplicateId = "zz_dup_abate",
+                                kind = DecisionDuplicateKind.EXACT_DUPLICATE,
+                                probability = 0.99,
+                                confidence = 0.99,
+                            ),
+                        ),
+                    )
+                }
+            }
+            val vm = VocabularyManagerViewModel(repo, fakeDecision)
             advanceUntilIdle()
 
+            assertEquals(1, analyzeCalls)
             assertEquals(2, vm.uiState.value.entries.size)
             val request = vm.uiState.value.pendingApprovalRequests
                 .filterIsInstance<com.ravibhaiya.quizzen.ui.vocabulary.DatabaseApprovalRequest.MergeDuplicateWord>()
@@ -597,7 +643,7 @@ class VocabularyManagerViewModelTest {
             vm.onRequestMergeDatabaseDuplicates("abate")
             assertNull(vm.uiState.value.mergePrompt)
 
-            // Deleting the duplicate removes only the redundant entry and keeps the primary entry
+            // Deleting the duplicate removes only the redundant entry and keeps the primary entry without wasting another AI call
             vm.onRequestDeleteDuplicateEntries(request.redundantEntries)
             assertEquals(listOf(duplicate), vm.uiState.value.pendingDelete)
             vm.onUpdateDeleteConfirmText("DELETE")
@@ -607,6 +653,286 @@ class VocabularyManagerViewModelTest {
             assertEquals(1, vm.uiState.value.entries.size)
             assertEquals("a1", vm.uiState.value.entries.single().id)
             assertEquals(0, vm.uiState.value.pendingApprovalCount)
+            assertEquals(1, analyzeCalls)
+        }
+
+    @Test
+    fun `gemini-decision-1 flags root forms, spelling variants, and meaning conflicts in Approval Requests for manual confirmation`() =
+        runTest(dispatcher) {
+            val repo = repoWithAbate()
+            repo.saveEntry(
+                VocabularyEntry(
+                    id = "a_inflected",
+                    wordDetails = WordDetails(word = "abating", meaningEnglish = "becoming less intense"),
+                    synonyms = listOf(WordDetails(word = "waning", meaningEnglish = "decreasing")),
+                ),
+            ).getOrThrow()
+            repo.saveEntry(
+                VocabularyEntry(
+                    id = "c1",
+                    wordDetails = WordDetails(word = "colour", meaningEnglish = "hue"),
+                    antonyms = listOf(WordDetails(word = "shade", meaningEnglish = "hue")),
+                ),
+            ).getOrThrow()
+
+            val fakeDecision = object : VocabularyDecisionClient {
+                override val isConfigured: Boolean = true
+                override suspend fun analyze(
+                    entries: List<VocabularyEntry>,
+                    dismissedKeys: Set<String>,
+                ): Result<List<VocabularyDecisionFinding>> = Result.success(
+                    listOf(
+                        VocabularyDecisionFinding.DuplicateOrVariant(
+                            primaryId = "a1",
+                            duplicateId = "a_inflected",
+                            kind = DecisionDuplicateKind.ROOT_OR_INFLECTED,
+                            probability = 0.96,
+                            confidence = 0.97,
+                        ),
+                        VocabularyDecisionFinding.MeaningConflict(
+                            entryId = "c1",
+                            probability = 0.91,
+                            confidence = 0.93,
+                        ),
+                    ).filterNot { it.key in dismissedKeys },
+                )
+            }
+
+            val vm = VocabularyManagerViewModel(repo, fakeDecision)
+            advanceUntilIdle()
+
+            // Opening notifications triggers gemini-decision-1 check and surfaces both findings
+            vm.onOpenNotifications()
+            advanceUntilIdle()
+
+            assertEquals(2, vm.uiState.value.pendingApprovalCount)
+            val mergeReq = vm.uiState.value.pendingApprovalRequests
+                .filterIsInstance<DatabaseApprovalRequest.MergeDuplicateWord>()
+                .single()
+            assertEquals(DecisionDuplicateKind.ROOT_OR_INFLECTED, mergeReq.decisionKind)
+            assertEquals("abating", mergeReq.matchedWord)
+            assertEquals(97, mergeReq.confidencePercent)
+            assertTrue(mergeReq.mergeItem.hasChanges)
+
+            val issueReq = vm.uiState.value.pendingApprovalRequests
+                .filterIsInstance<DatabaseApprovalRequest.EntryIssue>()
+                .single()
+            assertTrue(issueReq.isAiConflict)
+            assertEquals(93, issueReq.confidencePercent)
+
+            // User can dismiss the meaning conflict suggestion
+            vm.onDismissDecisionFinding(issueReq.dismissKey!!)
+            assertEquals(1, vm.uiState.value.pendingApprovalCount)
+
+            // User can approve merging the root-form variant into "abate" with CONFIRM
+            vm.onRequestMergeDatabaseDuplicates(mergeReq.wordKey)
+            vm.onUpdateMergeConfirmText("CONFIRM")
+            assertTrue(vm.onConfirmMerge())
+            advanceUntilIdle()
+
+            assertEquals(2, vm.uiState.value.entries.size) // "a1" (with merged synonym) and "c1" remain; "a_inflected" deleted
+            val abate = vm.uiState.value.entries.first { it.id == "a1" }
+            assertEquals(listOf("reduce", "waning"), abate.synonyms.map { it.word })
+            assertEquals(0, vm.uiState.value.pendingApprovalCount)
+        }
+
+    @Test
+    fun `saving Gemini API key in Settings automatically triggers gemini-decision-1 check`() =
+        runTest(dispatcher) {
+            val repo = repoWithAbate()
+            repo.saveEntry(
+                VocabularyEntry(
+                    id = "a_inflected",
+                    wordDetails = WordDetails(word = "abating", meaningEnglish = "becoming less intense"),
+                ),
+            ).getOrThrow()
+
+            val apiKeyFlow = MutableStateFlow("")
+            val fakeDecision = object : VocabularyDecisionClient {
+                override val isConfigured: Boolean
+                    get() = apiKeyFlow.value.isNotBlank()
+                override val apiKeyChanges: Flow<String> = apiKeyFlow
+
+                override suspend fun analyze(
+                    entries: List<VocabularyEntry>,
+                    dismissedKeys: Set<String>,
+                ): Result<List<VocabularyDecisionFinding>> {
+                    if (!isConfigured) return Result.failure(IllegalStateException("Missing key"))
+                    return Result.success(
+                        listOf(
+                            VocabularyDecisionFinding.DuplicateOrVariant(
+                                primaryId = "a1",
+                                duplicateId = "a_inflected",
+                                kind = DecisionDuplicateKind.ROOT_OR_INFLECTED,
+                                probability = 0.94,
+                                confidence = 0.92,
+                            ),
+                        ),
+                    )
+                }
+            }
+
+            val vm = VocabularyManagerViewModel(repo, fakeDecision)
+            advanceUntilIdle()
+            assertEquals(0, vm.uiState.value.pendingApprovalCount)
+
+            // User saves API key in Settings
+            apiKeyFlow.value = "test-saved-api-key"
+            advanceUntilIdle()
+
+            assertEquals(1, vm.uiState.value.pendingApprovalCount)
+        }
+
+    @Test
+    fun `editing a meaning conflict from Approval Requests opens focused on the exact conflicting word`() =
+        runTest(dispatcher) {
+            val repo = FakeVocabularyRepository()
+            val frankDetails = WordDetails(
+                word = "Frank",
+                meaningEnglish = "Truthful and straightforward",
+            )
+            val candid = repo.saveEntry(
+                VocabularyEntry(
+                    id = "word_candid",
+                    wordDetails = WordDetails(
+                        word = "Candid",
+                        meaningEnglish = "Truthful and straightforward",
+                        meaningHinglish = "Spasht aur sachcha",
+                        exampleSentence = "She gave a candid interview.",
+                    ),
+                    synonyms = listOf(
+                        WordDetails(
+                            word = "Forthright",
+                            meaningEnglish = "Direct and outspoken",
+                        ),
+                    ),
+                    antonyms = listOf(
+                        frankDetails,
+                        WordDetails(
+                            word = "Deceitful",
+                            meaningEnglish = "Dishonest and misleading",
+                        ),
+                    ),
+                ),
+            ).getOrThrow()
+
+            val fakeDecision = object : VocabularyDecisionClient {
+                override val isConfigured: Boolean = true
+                override suspend fun analyze(
+                    entries: List<VocabularyEntry>,
+                    dismissedKeys: Set<String>,
+                ): Result<List<VocabularyDecisionFinding>> = Result.success(
+                    listOf(
+                        VocabularyDecisionFinding.MeaningConflict(
+                            entryId = "word_candid",
+                            probability = 0.98,
+                            confidence = 0.98,
+                            conflictingTarget = VocabularyRules.ConflictingRelationTarget(
+                                isAntonym = true,
+                                index = 0,
+                                details = frankDetails,
+                                conflictingWordLabel = "Antonym \"Frank\"",
+                                reason = "Conflict in antonym \"Frank\": flagged by gemini-decision-1.",
+                            ),
+                        ),
+                    ),
+                )
+            }
+
+            val vm = VocabularyManagerViewModel(repo, fakeDecision)
+            advanceUntilIdle()
+
+            // Click Edit JSON on the meaning conflict card for "Candid"
+            vm.onStartEditIssue(candid)
+            val editor = vm.uiState.value.editorState
+            assertNotNull(editor)
+            assertTrue(editor!!.isFocusedWordMode)
+            assertNotNull(editor.focusedRelation)
+            assertEquals("Frank", editor.focusedRelation!!.target.word)
+            assertTrue(editor.focusedRelation!!.target.isAntonym)
+            assertEquals(0, editor.focusedRelation!!.target.index)
+            // Editor JSON contains only the 4 fields of "Frank", not the full parent entry
+            assertTrue(editor.jsonText.contains("\"word\": \"Frank\""))
+            assertFalse(editor.jsonText.contains("\"Forthright\""))
+
+            // Move "Frank" from Antonyms to Synonyms with CONFIRM
+            vm.onSelectFocusedRelationAction(com.ravibhaiya.quizzen.ui.vocabulary.FocusedRelationAction.MOVE_TO_OPPOSITE_LIST)
+            vm.onUpdateEditConfirmText("CONFIRM")
+            assertTrue(vm.onSaveEntry())
+            advanceUntilIdle()
+
+            assertNull(vm.uiState.value.editorState)
+            val updated = vm.uiState.value.entries.single()
+            assertEquals(listOf("Forthright", "Frank"), updated.synonyms.map { it.word })
+            assertEquals(listOf("Deceitful"), updated.antonyms.map { it.word })
+        }
+
+    @Test
+    fun `api rate limit places verification in pending status and automatically reverifies after 60 seconds`() =
+        runTest(dispatcher) {
+            val repo = repoWithAbate()
+            repo.saveEntry(
+                VocabularyEntry(
+                    id = "a_inflected",
+                    wordDetails = WordDetails(word = "abating", meaningEnglish = "becoming less intense"),
+                ),
+            ).getOrThrow()
+
+            var attempts = 0
+            val fakeDecision = object : VocabularyDecisionClient {
+                override val isConfigured: Boolean = true
+                override suspend fun analyze(
+                    entries: List<VocabularyEntry>,
+                    dismissedKeys: Set<String>,
+                ): Result<List<VocabularyDecisionFinding>> {
+                    attempts++
+                    if (attempts == 1) {
+                        return Result.failure(
+                            DecisionPendingRetryException(
+                                message = "API rate limit reached (50K TPM). Verification is pending and will automatically retry in 1 minute.",
+                                retrySeconds = 60,
+                            ),
+                        )
+                    }
+                    return Result.success(
+                        listOf(
+                            VocabularyDecisionFinding.DuplicateOrVariant(
+                                primaryId = "a1",
+                                duplicateId = "a_inflected",
+                                kind = DecisionDuplicateKind.ROOT_OR_INFLECTED,
+                                probability = 0.96,
+                                confidence = 0.97,
+                            ),
+                        ),
+                    )
+                }
+            }
+
+            val vm = VocabularyManagerViewModel(repo, fakeDecision)
+            runCurrent()
+
+            // First attempt hit rate limit -> placed in pending status waiting 60 seconds
+            assertEquals(1, attempts)
+            assertTrue(vm.uiState.value.isDecisionPendingRetry)
+            assertEquals(60, vm.uiState.value.decisionRetryRemainingSeconds)
+            assertEquals(0, vm.uiState.value.pendingApprovalCount)
+            assertTrue(vm.uiState.value.decisionError!!.contains("Verification is pending"))
+
+            // Halfway through the 1-minute cooldown
+            advanceTimeBy(30_000L)
+            runCurrent()
+            assertEquals(1, attempts)
+            assertTrue(vm.uiState.value.isDecisionPendingRetry)
+            assertEquals(30, vm.uiState.value.decisionRetryRemainingSeconds)
+
+            // Reach 60 seconds -> automatically re-verifies and populates Approval Requests
+            advanceTimeBy(30_000L)
+            runCurrent()
+            assertEquals(2, attempts)
+            assertFalse(vm.uiState.value.isDecisionPendingRetry)
+            assertEquals(0, vm.uiState.value.decisionRetryRemainingSeconds)
+            assertNull(vm.uiState.value.decisionError)
+            assertEquals(1, vm.uiState.value.pendingApprovalCount)
         }
 
     /** Like the real repository: every write fails as a whole (nothing changes) while [failWrites] is on. */
