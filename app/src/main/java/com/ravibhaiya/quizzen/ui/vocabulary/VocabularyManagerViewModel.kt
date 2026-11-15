@@ -16,7 +16,6 @@ import com.ravibhaiya.quizzen.data.vocabularyRepository
 import com.ravibhaiya.quizzen.data.vocabularySessionStore
 import com.ravibhaiya.quizzen.domain.DecisionDuplicateKind
 import com.ravibhaiya.quizzen.domain.VocabularyDecisionFinding
-import com.ravibhaiya.quizzen.domain.VocabularyDecisionRules
 import com.ravibhaiya.quizzen.domain.VocabularyEntry
 import com.ravibhaiya.quizzen.domain.VocabularyJsonFormat
 import com.ravibhaiya.quizzen.domain.VocabularyRules

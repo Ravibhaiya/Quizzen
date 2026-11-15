@@ -36,8 +36,6 @@ class HapticPattern(val timings: LongArray, val amplitudes: IntArray) {
         require(amplitudes.any { it > 0 }) { "a pattern must vibrate at least once" }
     }
 
-    val totalMillis: Long get() = timings.sum()
-
     fun contentEquals(other: HapticPattern): Boolean =
         timings.contentEquals(other.timings) && amplitudes.contentEquals(other.amplitudes)
 }

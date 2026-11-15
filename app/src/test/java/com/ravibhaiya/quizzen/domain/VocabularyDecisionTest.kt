@@ -7,9 +7,19 @@ import org.junit.Assert.assertTrue
 import org.junit.Test
 
 class VocabularyDecisionTest {
+    /** The first request the app would send (the app itself sends every batch, in order). */
+    private fun firstPlan(
+        entries: List<VocabularyEntry>,
+        dismissedKeys: Set<String> = emptySet(),
+    ): DecisionRequestPlan? = VocabularyDecisionRules.buildRequestBatches(
+        entries = entries,
+        dismissedKeys = dismissedKeys,
+        maxQuestionsPerBatch = VocabularyDecisionRules.MAX_QUESTIONS_PER_CALL,
+    ).firstOrNull()
+
 
     @Test
-    fun `buildRequestPlan creates gemini-decision-1 payload with choice and per-relation noul questions and parseResponse extracts exact conflicting word`() {
+    fun `buildRequestBatches creates gemini-decision-1 payload with choice and per-relation noul questions and parseResponse extracts exact conflicting word`() {
         val entries = listOf(
             VocabularyEntry(
                 id = "word_abate_1",
@@ -32,7 +42,7 @@ class VocabularyDecisionTest {
             ),
         )
 
-        val plan = VocabularyDecisionRules.buildRequestPlan(entries)
+        val plan = firstPlan(entries)
         assertNotNull(plan)
         assertTrue(plan!!.requestJson.contains("\"model\": \"gemini-decision-1\""))
         assertEquals(3, plan.pairQuestions.size)
@@ -107,11 +117,11 @@ class VocabularyDecisionTest {
         }.toSet() + plan.conflictQuestions.map {
             VocabularyDecisionFinding.conflictDismissKey(it.entryId)
         }.toSet()
-        assertNull(VocabularyDecisionRules.buildRequestPlan(entries, allDismissed))
+        assertNull(firstPlan(entries, allDismissed))
     }
 
     @Test
-    fun `buildRequestPlan distinguishes synonym vs antonym noul instructions and pre-filters candidate pairs on 25-word sets`() {
+    fun `buildRequestBatches distinguishes synonym vs antonym noul instructions and pre-filters candidate pairs on 25-word sets`() {
         val unrelatedWords = listOf(
             "Abacus", "Bramble", "Citadel", "Drought", "Eclipse", "Fjord",
             "Gazebo", "Harbor", "Igloo", "Jasmine", "Keystone", "Lantern",
@@ -143,7 +153,7 @@ class VocabularyDecisionTest {
             ),
         )
 
-        val plan = VocabularyDecisionRules.buildRequestPlan(entries)!!
+        val plan = firstPlan(entries)!!
         assertTrue(plan.totalQuestions <= VocabularyDecisionRules.MAX_QUESTIONS_PER_CALL)
         // Candidate-pair filtering avoids sending all 300 pairs while keeping plausible typo pairs.
         assertTrue(plan.pairQuestions.size <= 5)

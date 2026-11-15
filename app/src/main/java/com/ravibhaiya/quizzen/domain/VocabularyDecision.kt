@@ -163,24 +163,6 @@ object VocabularyDecisionRules {
         )
 
     /**
-     * Builds a single `gemini-decision-1` request plan for [entries] (up to [maxQuestions]), skipping any
-     * pairs/conflicts in [dismissedKeys] and skipping already-verified words in [verifiedEntryIds].
-     * Returns `null` when there are no questions to ask.
-     */
-    fun buildRequestPlan(
-        entries: List<VocabularyEntry>,
-        dismissedKeys: Set<String> = emptySet(),
-        verifiedEntryIds: Set<String> = emptySet(),
-        maxQuestions: Int = MAX_QUESTIONS_PER_CALL,
-    ): DecisionRequestPlan? =
-        buildRequestBatches(
-            entries = entries,
-            dismissedKeys = dismissedKeys,
-            verifiedEntryIds = verifiedEntryIds,
-            maxQuestionsPerBatch = maxQuestions,
-        ).firstOrNull()
-
-    /**
      * Splits all needed `gemini-decision-1` verification questions for [entries] into batches of at most
      * [maxQuestionsPerBatch] (default [BATCH_MAX_QUESTIONS] = `100`):
      * - **Conflict questions (`noul`)** are generated **only** for unverified entries (`id !in verifiedEntryIds`),
