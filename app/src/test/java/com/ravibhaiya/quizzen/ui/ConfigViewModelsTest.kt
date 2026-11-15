@@ -344,7 +344,7 @@ class ConfigViewModelsTest {
     }
 
     @Test
-    fun vocabulary_modesAreMultiSelect_andWordCountIsClampedTo5To25() = runTest(dispatcher) {
+    fun vocabulary_modesAreMultiSelect_andWordCountIsClampedTo1To25() = runTest(dispatcher) {
         val vm = VocabularyConfigViewModel(FakeRepository())
         runCurrent()
         assertEquals(setOf(VocabularyQuizMode.Synonyms, VocabularyQuizMode.Antonyms), vm.state.value.modes)
@@ -355,8 +355,10 @@ class ConfigViewModelsTest {
         vm.toggleMode(VocabularyQuizMode.Synonyms) // last one stays selected
         assertEquals(setOf(VocabularyQuizMode.Synonyms), vm.state.value.modes)
 
-        vm.onWordCountChanged(2)
-        assertEquals(5, vm.state.value.wordCount)
+        vm.onWordCountChanged(0)
+        assertEquals(1, vm.state.value.wordCount)
+        vm.onWordCountChanged(1)
+        assertEquals(1, vm.state.value.wordCount)
         vm.onWordCountChanged(40)
         assertEquals(25, vm.state.value.wordCount)
     }

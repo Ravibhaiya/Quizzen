@@ -63,7 +63,7 @@ private val StopDotRadius = 2.dp
 private const val MIN_SPAN = 0.0001f
 
 /**
- * Single-value slider card matching [PillRangeCard], used for selecting the number of words to attempt (5..25).
+ * Single-value slider card matching [PillRangeCard], used for selecting the number of words to attempt (1..25).
  */
 @Composable
 fun PillSliderCard(

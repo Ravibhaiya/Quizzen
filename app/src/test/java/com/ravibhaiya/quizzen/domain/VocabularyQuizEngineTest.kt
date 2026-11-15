@@ -35,8 +35,9 @@ class VocabularyQuizEngineTest {
     )
 
     @Test
-    fun `word count is clamped between 5 and 25`() {
-        assertEquals(5, VocabularyQuizRules.coerceWordCount(1))
+    fun `word count is clamped between 1 and 25`() {
+        assertEquals(1, VocabularyQuizRules.coerceWordCount(0))
+        assertEquals(1, VocabularyQuizRules.coerceWordCount(1))
         assertEquals(5, VocabularyQuizRules.coerceWordCount(5))
         assertEquals(15, VocabularyQuizRules.coerceWordCount(15))
         assertEquals(25, VocabularyQuizRules.coerceWordCount(25))
@@ -157,7 +158,7 @@ class VocabularyQuizEngineTest {
     }
 
     @Test
-    fun `starter entries provide 25 valid vocabulary clusters for full 5 to 25 word quizzes`() {
+    fun `starter entries provide 25 valid vocabulary clusters for full 1 to 25 word quizzes`() {
         val entries = VocabularyQuizRules.FALLBACK_ENTRIES
         assertEquals(25, entries.size)
         for (entry in entries) {
@@ -165,6 +166,13 @@ class VocabularyQuizEngineTest {
             assertEquals(2, entry.synonyms.size)
             assertEquals(2, entry.antonyms.size)
         }
+        val selected1 = VocabularyQuizRules.selectStudyWords(
+            entries = entries,
+            modes = VocabularyQuizMode.DEFAULT,
+            wordCount = 1,
+            random = Random(1),
+        )
+        assertEquals(1, selected1.size)
         val selected25 = VocabularyQuizRules.selectStudyWords(
             entries = entries,
             modes = VocabularyQuizMode.DEFAULT,

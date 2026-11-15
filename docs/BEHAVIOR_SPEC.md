@@ -59,13 +59,13 @@ Normative description of the app. "Web" = the prototype in `docs/reference/quizz
 ## Vocabulary configuration, study & finite quiz
 - **Configuration screen**:
   - Title "Vocabulary", subtitle "Configure your challenge".
-  - **Words to Attempt**: single-thumb slider from **5** to **25** (default **10**), showing the selected count in a pill badge.
+  - **Words to Attempt**: single-thumb slider from **1** to **25** (default **10**), showing the selected count in a pill badge.
   - **Quiz Mode** (multi-select, default both **Synonyms** and **Antonyms**; at least one always remains selected):
     - **Synonyms**: tests synonym relationships within the studied word clusters.
     - **Antonyms**: tests antonym relationships within the studied word clusters.
   - Timer field default **10** s. Start -> opens the **Study Words** screen.
 - **Study Words screen**:
-  - Selects the configured number of eligible vocabulary entries (`5..25`) strictly from the user's database (`VocabularyQuizRules.selectStudyWords`), prioritizing any **locally saved mistake words first** and filling the remaining slots with randomly selected eligible words.
+  - Selects the configured number of eligible vocabulary entries (`1..25`) strictly from the user's database (`VocabularyQuizRules.selectStudyWords`), prioritizing any **locally saved mistake words first** and filling the remaining slots with randomly selected eligible words.
   - When the database has no eligible words for the selected modes, `selectStudyWords` returns an empty list, `VocabularyStudyView` shows an empty-state card (`StudyEmptyStateCard`, `vocabulary_study_empty_state`) instructing the user to add or import words in **Database Manager > Vocabulary**, hides the **Shuffle** button, and disables **Start Quiz**.
   - Displays all selected words with full **Word**, **Meaning in English**, **Meaning in Hinglish**, **Example sentence**, **Synonyms**, and **Antonyms** so the user can read before starting.
   - Header includes a **Shuffle** icon button (when words exist) to pick a fresh set of words (keeping saved mistake words prioritized first).

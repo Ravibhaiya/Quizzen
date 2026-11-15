@@ -60,7 +60,7 @@ data class VocabularyQuizItem(
  * Pure-Kotlin rules and study-word selector for the Vocabulary quiz.
  */
 object VocabularyQuizRules {
-    const val MIN_WORDS = 5
+    const val MIN_WORDS = 1
     const val MAX_WORDS = 25
     const val DEFAULT_WORDS = 10
     const val DEFAULT_TIMER_SECONDS = 15

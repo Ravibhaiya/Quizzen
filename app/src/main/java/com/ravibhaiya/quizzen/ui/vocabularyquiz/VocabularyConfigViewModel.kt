@@ -22,7 +22,7 @@ import kotlinx.coroutines.launch
 data class VocabularyConfigUiState(
     /** Selected quiz modes (Synonyms, Antonyms, or both). Never empty. */
     val modes: Set<VocabularyQuizMode> = VocabularyQuizMode.DEFAULT,
-    /** Number of words to study and attempt (5..25). */
+    /** Number of words to study and attempt (1..25). */
     val wordCount: Int = VocabularyQuizRules.DEFAULT_WORDS,
     /** An unfinished quiz kept on the device (the app was closed or left mid-quiz), or null when there is none. */
     val resume: VocabularyResumeInfo? = null,
@@ -94,7 +94,7 @@ class VocabularyConfigViewModel(
         }
     }
 
-    /** Updates the number of words to attempt, clamped to `5..25`. */
+    /** Updates the number of words to attempt, clamped to `1..25`. */
     fun onWordCountChanged(count: Int) {
         edited = true
         _state.update { it.copy(wordCount = VocabularyQuizRules.coerceWordCount(count)) }
