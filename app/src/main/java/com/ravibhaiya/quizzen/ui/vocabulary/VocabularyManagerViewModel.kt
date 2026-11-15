@@ -7,10 +7,13 @@ import androidx.lifecycle.viewmodel.initializer
 import androidx.lifecycle.viewmodel.viewModelFactory
 import com.ravibhaiya.quizzen.data.DecisionPendingRetryException
 import com.ravibhaiya.quizzen.data.GeminiDecisionClient
+import com.ravibhaiya.quizzen.data.NoVocabularySessionStore
 import com.ravibhaiya.quizzen.data.VocabularyDecisionClient
 import com.ravibhaiya.quizzen.data.VocabularyRepository
+import com.ravibhaiya.quizzen.data.VocabularySessionStore
 import com.ravibhaiya.quizzen.data.geminiDecisionClient
 import com.ravibhaiya.quizzen.data.vocabularyRepository
+import com.ravibhaiya.quizzen.data.vocabularySessionStore
 import com.ravibhaiya.quizzen.domain.DecisionDuplicateKind
 import com.ravibhaiya.quizzen.domain.VocabularyDecisionFinding
 import com.ravibhaiya.quizzen.domain.VocabularyDecisionRules
@@ -293,6 +296,7 @@ internal fun defaultEntryConflictTarget(
 class VocabularyManagerViewModel(
     private val repository: VocabularyRepository,
     private val decisionClient: VocabularyDecisionClient = GeminiDecisionClient(),
+    private val sessionStore: VocabularySessionStore = NoVocabularySessionStore,
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(VocabularyUiState())
@@ -743,6 +747,44 @@ class VocabularyManagerViewModel(
                 editorState = editor.copy(
                     jsonText = VocabularyJsonFormat.formatBulkTemplate(),
                     validationError = null,
+                ),
+            )
+        }
+    }
+
+    /**
+     * Loads the text of a user-selected `.json` file into the Add/Edit JSON sheet, stripping any UTF-8 BOM and
+     * immediately validating its structure so any syntax error in the file is shown inline.
+     */
+    fun onImportJsonFile(rawContent: String) {
+        val cleaned = rawContent.removePrefix("\uFEFF").trim()
+        _uiState.update { state ->
+            val editor = state.editorState ?: VocabularyEditorState()
+            if (cleaned.isEmpty()) {
+                return@update state.copy(
+                    editorState = editor.copy(
+                        jsonText = "",
+                        validationError = EMPTY_IMPORT_FILE_MESSAGE,
+                    ),
+                )
+            }
+            val parseError = (VocabularyJsonFormat.parse(cleaned, singleMode = editor.isEditing)
+                as? VocabularyJsonFormat.ParseResult.Error)?.message
+            state.copy(
+                editorState = editor.copy(
+                    jsonText = cleaned,
+                    validationError = parseError,
+                ),
+            )
+        }
+    }
+
+    fun onImportJsonFileError(message: String = UNREADABLE_IMPORT_FILE_MESSAGE) {
+        _uiState.update { state ->
+            val editor = state.editorState ?: VocabularyEditorState()
+            state.copy(
+                editorState = editor.copy(
+                    validationError = message,
                 ),
             )
         }
@@ -1272,6 +1314,9 @@ class VocabularyManagerViewModel(
             // The words leave the list only after the server confirmed the delete (it needs internet).
             repository.deleteEntries(targetIds)
                 .onSuccess {
+                    if (_uiState.value.entries.all { it.id in targetIds }) {
+                        sessionStore.clear()
+                    }
                     _uiState.update { it.copy(noticeMessage = "Deleted ${targetIds.size} word(s) from the database.") }
                 }
                 .onFailure { err ->
@@ -1286,9 +1331,17 @@ class VocabularyManagerViewModel(
     companion object {
         const val REQUIRED_DELETE_CONFIRM = "DELETE"
         const val REQUIRED_EDIT_CONFIRM = "CONFIRM"
+        const val EMPTY_IMPORT_FILE_MESSAGE = "The selected JSON file is empty."
+        const val UNREADABLE_IMPORT_FILE_MESSAGE = "Could not read the selected JSON file."
 
         val Factory: ViewModelProvider.Factory = viewModelFactory {
-            initializer { VocabularyManagerViewModel(vocabularyRepository(), geminiDecisionClient()) }
+            initializer {
+                VocabularyManagerViewModel(
+                    repository = vocabularyRepository(),
+                    decisionClient = geminiDecisionClient(),
+                    sessionStore = vocabularySessionStore(),
+                )
+            }
         }
     }
 }

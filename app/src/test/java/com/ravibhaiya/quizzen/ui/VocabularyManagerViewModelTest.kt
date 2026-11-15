@@ -1034,6 +1034,46 @@ class VocabularyManagerViewModelTest {
             assertEquals("${original.id}_2", newlyAdded.id)
         }
 
+    @Test
+    fun `importing a JSON file populates editor, strips UTF-8 BOM, validates syntax, and deleting all words clears saved session`() =
+        runTest(dispatcher) {
+            val repo = FakeVocabularyRepository()
+            val sessionStore = FakeVocabularySessionStore(text = "saved_unfinished_quiz")
+            val vm = VocabularyManagerViewModel(repo, sessionStore = sessionStore)
+            advanceUntilIdle()
+
+            vm.onStartAdd()
+
+            // Empty file shows validation error
+            vm.onImportJsonFile("   ")
+            assertNotNull(vm.uiState.value.editorState!!.validationError)
+
+            // Invalid JSON file loads text and shows syntax validation error
+            vm.onImportJsonFile("{invalid json")
+            assertEquals("{invalid json", vm.uiState.value.editorState!!.jsonText)
+            assertNotNull(vm.uiState.value.editorState!!.validationError)
+
+            // Valid JSON file with UTF-8 BOM strips BOM, clears validation error, and saves cleanly
+            val validFileJson = "\uFEFF" + """[{"word": "Lucid", "meaningEnglish": "Clear and easy to understand"}]"""
+            vm.onImportJsonFile(validFileJson)
+            assertFalse(vm.uiState.value.editorState!!.jsonText.startsWith("\uFEFF"))
+            assertNull(vm.uiState.value.editorState!!.validationError)
+            assertTrue(vm.onSaveEntry())
+            advanceUntilIdle()
+
+            assertEquals(1, vm.uiState.value.entries.size)
+            assertEquals("saved_unfinished_quiz", sessionStore.text)
+
+            // Deleting all words from the database also clears the saved unfinished quiz session
+            vm.onRequestDelete(vm.uiState.value.entries.single())
+            vm.onUpdateDeleteConfirmText("DELETE")
+            assertTrue(vm.onConfirmDelete())
+            advanceUntilIdle()
+
+            assertTrue(vm.uiState.value.entries.isEmpty())
+            assertNull(sessionStore.text)
+        }
+
     /** Like the real repository: every write fails as a whole (nothing changes) while [failWrites] is on. */
     private class FakeVocabularyRepository(
         var failWrites: Boolean = false,

@@ -1,6 +1,8 @@
 package com.ravibhaiya.quizzen.ui.vocabulary
 
 import androidx.activity.compose.BackHandler
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.tween
@@ -39,6 +41,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -50,6 +53,7 @@ import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.RectangleShape
 import androidx.compose.ui.graphics.SolidColor
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.LiveRegionMode
@@ -76,6 +80,11 @@ import com.ravibhaiya.quizzen.ui.components.cssShadow
 import com.ravibhaiya.quizzen.ui.components.rememberHaptics
 import com.ravibhaiya.quizzen.ui.theme.QuizzenShapes
 import com.ravibhaiya.quizzen.ui.theme.quizzen
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
+
+private const val MAX_JSON_IMPORT_BYTES = 2 * 1024 * 1024
 
 @Composable
 fun VocabularyManagerScreen(
@@ -86,6 +95,46 @@ fun VocabularyManagerScreen(
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
     val haptics = rememberHaptics(hapticEnabled)
+    val context = LocalContext.current
+    val ioScope = rememberCoroutineScope()
+
+    val jsonFilePicker = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.OpenDocument(),
+    ) { uri ->
+        if (uri == null) return@rememberLauncherForActivityResult
+        ioScope.launch {
+            val readOutcome = withContext(Dispatchers.IO) {
+                runCatching {
+                    val stream = context.contentResolver.openInputStream(uri)
+                        ?: throw IllegalStateException(VocabularyManagerViewModel.UNREADABLE_IMPORT_FILE_MESSAGE)
+                    stream.use { input ->
+                        val buffer = ByteArray(MAX_JSON_IMPORT_BYTES + 1)
+                        var offset = 0
+                        while (offset < buffer.size) {
+                            val read = input.read(buffer, offset, buffer.size - offset)
+                            if (read <= 0) break
+                            offset += read
+                        }
+                        if (offset > MAX_JSON_IMPORT_BYTES) {
+                            throw IllegalArgumentException("The selected JSON file is too large (maximum 2 MB).")
+                        }
+                        String(buffer, 0, offset, Charsets.UTF_8)
+                    }
+                }
+            }
+            readOutcome
+                .onSuccess { text ->
+                    haptics.tick()
+                    viewModel.onImportJsonFile(text)
+                }
+                .onFailure { err ->
+                    haptics.error()
+                    viewModel.onImportJsonFileError(
+                        err.message ?: VocabularyManagerViewModel.UNREADABLE_IMPORT_FILE_MESSAGE,
+                    )
+                }
+        }
+    }
 
     BackHandler(enabled = state.isSelectionMode) {
         haptics.click()
@@ -512,6 +561,14 @@ fun VocabularyManagerScreen(
             onSelectFocusedAction = { action ->
                 haptics.tick()
                 viewModel.onSelectFocusedRelationAction(action)
+            },
+            onImportJsonFile = {
+                haptics.click()
+                runCatching {
+                    jsonFilePicker.launch(arrayOf("application/json", "text/*", "*/*"))
+                }.onFailure {
+                    viewModel.onImportJsonFileError()
+                }
             },
             onInsertTemplate = {
                 haptics.tick()

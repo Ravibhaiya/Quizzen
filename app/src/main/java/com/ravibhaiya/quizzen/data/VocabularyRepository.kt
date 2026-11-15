@@ -82,8 +82,7 @@ class NoInternetException(
  * - **Writes**: online only, each one a Firestore transaction that is awaited (see [inCloud]). A merge reads the
  *   current server copy of the word inside the transaction, so two devices merging into the same word cannot erase
  *   each other's synonyms. Nothing is ever queued for later.
- * - Nothing is seeded: no starter words and no test data are written to the database. The built-in starter words only
- *   exist as a read-only fallback inside the quiz (`VocabularyQuizRules`).
+ * - Nothing is seeded: no starter words and no test data are written to the database.
  *
  * Also persists locally saved mistake words (`vocabulary_mistakes_v1.txt`) so the Vocabulary quiz algorithm can
  * prioritize words the user answered wrong or timed out on until they answer all questions for that word right.
@@ -309,6 +308,9 @@ class FirestoreVocabularyRepository(
             cleanIds.forEach { add(VocabularyQuizRules.mistakeKey(it)) }
         }
         removeMistakeWords(mistakeKeysToRemove)
+        if (remaining.isEmpty()) {
+            FileVocabularySessionStore(appContext).clear()
+        }
         Result.success(Unit)
     }
 
@@ -473,7 +475,13 @@ class FirestoreVocabularyRepository(
     private fun applyServerList(remote: List<VocabularyEntry>) {
         val sorted = remote.sortedByDescending { it.updatedAt }
         knownEntries.value = sorted
-        scope.launch { writeLocalCache(sorted) }
+        scope.launch {
+            writeLocalCache(sorted)
+            if (sorted.isEmpty()) {
+                removeMistakeWords(_mistakeWords.value)
+                FileVocabularySessionStore(appContext).clear()
+            }
+        }
     }
 
     /** Puts words the server just confirmed into the list at once (the snapshot listener repeats the same data). */

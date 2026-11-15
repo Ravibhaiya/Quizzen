@@ -85,7 +85,7 @@ class VocabularyQuizViewModel(
     private var allEntries: List<VocabularyEntry> = emptyList()
     private var savedMistakeWords: Set<String> = emptySet()
     private val restoredSnapshot = VocabularyQuizSavedState.restore(savedStateHandle, config)
-    private var usedFallbackForStudy: Boolean = restoredSnapshot == null
+    private var hasLoadedInitialStudy: Boolean = restoredSnapshot != null
     private var mistakeTracker: VocabularyMistakeTracker? = restoredSnapshot?.let { snapshot ->
         if (snapshot.uiState.questions.isNotEmpty()) {
             VocabularyMistakeTracker(
@@ -101,12 +101,7 @@ class VocabularyQuizViewModel(
     private val _state = MutableStateFlow(
         restoredSnapshot?.uiState ?: VocabularyQuizUiState(
             config = config,
-            studyEntries = VocabularyQuizRules.selectStudyWords(
-                entries = emptyList(),
-                modes = config.modes,
-                wordCount = config.wordCount,
-                random = random,
-            ),
+            studyEntries = emptyList(),
             remainingSeconds = config.timerSeconds,
             isRestoring = resumeSavedQuiz && restoredSnapshot == null,
         ),
@@ -122,7 +117,7 @@ class VocabularyQuizViewModel(
             combine(repository.entries, repository.mistakeWords) { repoEntries, repoMistakes ->
                 repoEntries to repoMistakes
             }.collect { (repoEntries, repoMistakes) ->
-                val hadUserEligible = allEntries.any { VocabularyQuizRules.isEligible(it, config.modes) }
+                val previousEntries = allEntries
                 val previousMistakes = savedMistakeWords
                 allEntries = repoEntries
                 savedMistakeWords = repoMistakes
@@ -130,16 +125,24 @@ class VocabularyQuizViewModel(
                     .filter { it.isNotEmpty() }
                     .toSet()
                 val nowHasUserEligible = repoEntries.any { VocabularyQuizRules.isEligible(it, config.modes) }
+                val currentStudy = _state.value.studyEntries
+                val repoEntryKeys = repoEntries.map { it.wordDetails.word.lowercase() }.toSet()
+                val studyHasDeletedWords = currentStudy.any { it.wordDetails.word.lowercase() !in repoEntryKeys }
                 val mistakesChangedBeforeQuiz =
-                    previousMistakes != savedMistakeWords && _state.value.questions.isEmpty()
+                    previousMistakes != savedMistakeWords && _state.value.questions.isEmpty() && restoredSnapshot == null
 
-                // If the study screen initially loaded before repository emissions arrived, refresh with real user words
-                // and locally saved mistake words (unless restored from process death).
+                // Keep the Study screen synced with user words from the repository (unless restored from process death).
                 if (_state.value.phase == VocabularyQuizPhase.Study &&
-                    (((usedFallbackForStudy || !hadUserEligible) && nowHasUserEligible) ||
-                        (mistakesChangedBeforeQuiz && usedFallbackForStudy))
+                    !_state.value.isRestoring &&
+                    (
+                        !hasLoadedInitialStudy ||
+                            (currentStudy.isEmpty() && nowHasUserEligible) ||
+                            studyHasDeletedWords ||
+                            (!nowHasUserEligible && currentStudy.isNotEmpty()) ||
+                            (mistakesChangedBeforeQuiz && previousEntries == repoEntries)
+                        )
                 ) {
-                    if (nowHasUserEligible) usedFallbackForStudy = false
+                    hasLoadedInitialStudy = true
                     updateAndPersistState {
                         it.copy(
                             studyEntries = VocabularyQuizRules.selectStudyWords(
@@ -174,7 +177,7 @@ class VocabularyQuizViewModel(
                 studyEntries = snapshot.uiState.studyEntries,
                 initialOutcomes = snapshot.outcomes,
             )
-            usedFallbackForStudy = false
+            hasLoadedInitialStudy = true
             _state.value = snapshot.uiState.copy(config = config)
             persistSnapshot()
             if (inForeground && !snapshot.uiState.isLocked) startTicking()
@@ -185,8 +188,7 @@ class VocabularyQuizViewModel(
     fun shuffleStudyWords() {
         tickJob?.cancel()
         mistakeTracker = null
-        val hasUserEligible = allEntries.any { VocabularyQuizRules.isEligible(it, config.modes) }
-        usedFallbackForStudy = !hasUserEligible
+        hasLoadedInitialStudy = true
         val nextStudy = VocabularyQuizRules.selectStudyWords(
             entries = allEntries,
             modes = config.modes,

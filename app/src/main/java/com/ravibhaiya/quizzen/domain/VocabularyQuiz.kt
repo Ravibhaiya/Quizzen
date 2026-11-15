@@ -90,11 +90,12 @@ object VocabularyQuizRules {
     }
 
     /**
-     * Picks up to [wordCount] distinct vocabulary entries to study and be quizzed on:
+     * Picks up to [wordCount] distinct vocabulary entries from [entries] to study and be quizzed on:
      * 1. First prioritizes eligible entries whose word/ID is in [mistakeWords] (saved from previous wrong answers or
      *    timeouts), shuffled so repeated practice stays fresh.
-     * 2. Fills the remaining slots with random non-mistake eligible entries from [entries] (or [FALLBACK_ENTRIES] if
-     *    fewer than [wordCount] user entries exist).
+     * 2. Fills the remaining slots with random non-mistake eligible entries from [entries].
+     *
+     * Returns [emptyList] when [entries] has no eligible words for the selected [modes].
      */
     fun selectStudyWords(
         entries: List<VocabularyEntry>,
@@ -111,14 +112,12 @@ object VocabularyQuizRules {
             .filter { isEligible(it, modes) }
             .distinctBy { it.wordDetails.word.lowercase() }
 
-        val sourcePool = eligibleUser.ifEmpty {
-            FALLBACK_ENTRIES.filter { isEligible(it, modes) }
-        }
+        if (eligibleUser.isEmpty()) return emptyList()
         if (normalizedMistakes.isEmpty()) {
-            return sourcePool.shuffled(random).take(targetCount)
+            return eligibleUser.shuffled(random).take(targetCount)
         }
 
-        val (savedPool, remainingPool) = sourcePool.partition { entry ->
+        val (savedPool, remainingPool) = eligibleUser.partition { entry ->
             entryMistakeKeys(entry).any { it in normalizedMistakes }
         }
 
@@ -131,9 +130,9 @@ object VocabularyQuizRules {
     }
 
     /**
-     * Built-in starter vocabulary entries (25 rich words with multiple synonyms, antonyms, English & Hinglish meanings,
-     * and example sentences) so the Vocabulary quiz works out of the box even before the user's own words exist.
-     * Read-only: these are never written to the database.
+     * Built-in read-only vocabulary entries used as a last-resort distractor pool in [VocabularyQuizEngine] when a
+     * small user database has fewer than 4 distinct words to build 4-option multiple-choice choices.
+     * Never written to the database and never used to populate study words when the database is empty.
      */
     val FALLBACK_ENTRIES: List<VocabularyEntry>
         get() = VocabularyFallbackData.ENTRIES

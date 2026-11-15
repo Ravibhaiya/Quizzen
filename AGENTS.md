@@ -142,7 +142,7 @@ nothing. The rules, so this stays consistent:
   in `VocabularyQuizUiState` that must survive a resume needs `encodeSession`, `decodeSession`, `buildSnapshot` **and** the
   `SavedStateHandle` keys updated together, plus a case in `VocabularyQuizSavedStateTest`.
 - Only a running **Quiz** is written: when the quiz starts, when a question is answered, when the next one opens and on pause (never
-  per timer tick). Study and Finished write nothing; finishing the quiz clears the file; an unreadable file is cleared.
+  per timer tick). Study and Finished write nothing; finishing the quiz or deleting all words from the database clears the file; an unreadable file is cleared.
 - Resuming = Vocabulary setup screen -> `VocabularyResumeCard` (`VocabularyConfigViewModel.resume`, refreshed on every screen resume,
   **Discard** clears) -> route `vocabulary_quiz?...&resume=1` (`Routes.vocabularyQuiz(config, resume = true)`, `Routes.ARG_RESUME`).
   `VocabularyQuizViewModel(resumeSavedQuiz = true)` shows nothing (`isRestoring`) until the file is read. A `SavedStateHandle`
@@ -167,8 +167,9 @@ so this stays consistent (details in `docs/BEHAVIOR_SPEC.md` "Vocabulary Manager
   other. New words are written create-only; edits replace. Merge rules live only in `VocabularyRules` (`domain/Vocabulary.kt`).
 - **ViewModel**: the editor and the approval sheet stay open while saving (`isSaving`) and a failure is shown inline; typed JSON
   must never be lost. Notices ("Added N new word(s) to the database.") are shown only after the server confirmed.
-- **Never seed the database**: no starter words, no test or demo data in production code. `VocabularyQuizRules.FALLBACK_ENTRIES`
-  is a read-only fallback for the quiz only.
+- **Never seed the database**: no starter words, no test or demo data in production code. `VocabularyQuizRules.selectStudyWords`
+  picks only from the user's database entries (returning `emptyList()` when none exist); `VocabularyQuizRules.FALLBACK_ENTRIES`
+  is only a read-only distractor pool when a user has fewer than 4 words in the database.
 - `firestore.rules` and `VocabularyRules.MAX_RELATIONS` must agree (`tools/check_docs.py` checks it). The rules are open on
   purpose (single owner, no login); do not add `request.auth` checks unless the owner asks, and keep `google-services.json` and
   the APK private.

@@ -75,6 +75,7 @@ fun VocabularyEditorSheet(
     onUpdateJsonText: (String) -> Unit,
     onUpdateConfirmText: (String) -> Unit = {},
     onSelectFocusedAction: (FocusedRelationAction) -> Unit = {},
+    onImportJsonFile: () -> Unit = {},
     onInsertTemplate: () -> Unit,
     onSave: () -> Unit,
     onDismiss: () -> Unit,
@@ -211,10 +212,10 @@ fun VocabularyEditorSheet(
                         }
                     }
 
-                    Row(
+                    FlowRow(
                         modifier = Modifier.fillMaxWidth(),
-                        verticalAlignment = Alignment.CenterVertically,
                         horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalArrangement = Arrangement.spacedBy(8.dp),
                     ) {
                         Text(
                             text = if (isFocusedWordMode) {
@@ -224,25 +225,56 @@ fun VocabularyEditorSheet(
                             },
                             style = MaterialTheme.typography.labelSmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            modifier = Modifier.padding(start = 4.dp),
+                            modifier = Modifier
+                                .align(Alignment.CenterVertically)
+                                .padding(start = 4.dp),
                         )
                         if (!state.isEditing) {
-                            Box(
-                                modifier = Modifier
-                                    .testTag("insert_json_template_button")
-                                    .bouncyClickable(CircleShape, role = Role.Button, onClick = onInsertTemplate)
-                                    .background(MaterialTheme.colorScheme.primaryContainer, CircleShape)
-                                    .padding(horizontal = 14.dp, vertical = 8.dp),
-                                contentAlignment = Alignment.Center,
+                            FlowRow(
+                                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                                verticalArrangement = Arrangement.spacedBy(8.dp),
                             ) {
-                                Text(
-                                    text = stringResource(R.string.insert_json_template),
-                                    style = MaterialTheme.typography.labelLarge.copy(
-                                        fontSize = 13.sp,
-                                        fontWeight = FontWeight.Bold,
-                                    ),
-                                    color = MaterialTheme.colorScheme.onPrimaryContainer,
-                                )
+                                Row(
+                                    modifier = Modifier
+                                        .testTag("import_json_file_button")
+                                        .bouncyClickable(CircleShape, role = Role.Button, onClick = onImportJsonFile)
+                                        .background(MaterialTheme.colorScheme.primaryContainer, CircleShape)
+                                        .padding(horizontal = 14.dp, vertical = 8.dp),
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    horizontalArrangement = Arrangement.spacedBy(6.dp),
+                                ) {
+                                    Icon(
+                                        imageVector = QuizzenIcons.Upload,
+                                        contentDescription = null,
+                                        tint = MaterialTheme.colorScheme.onPrimaryContainer,
+                                        modifier = Modifier.size(14.dp),
+                                    )
+                                    Text(
+                                        text = stringResource(R.string.import_json_file),
+                                        style = MaterialTheme.typography.labelLarge.copy(
+                                            fontSize = 13.sp,
+                                            fontWeight = FontWeight.Bold,
+                                        ),
+                                        color = MaterialTheme.colorScheme.onPrimaryContainer,
+                                    )
+                                }
+                                Box(
+                                    modifier = Modifier
+                                        .testTag("insert_json_template_button")
+                                        .bouncyClickable(CircleShape, role = Role.Button, onClick = onInsertTemplate)
+                                        .background(MaterialTheme.colorScheme.surfaceContainerHigh, CircleShape)
+                                        .padding(horizontal = 14.dp, vertical = 8.dp),
+                                    contentAlignment = Alignment.Center,
+                                ) {
+                                    Text(
+                                        text = stringResource(R.string.insert_json_template),
+                                        style = MaterialTheme.typography.labelLarge.copy(
+                                            fontSize = 13.sp,
+                                            fontWeight = FontWeight.Bold,
+                                        ),
+                                        color = MaterialTheme.colorScheme.onSurface,
+                                    )
+                                }
                             }
                         }
                     }

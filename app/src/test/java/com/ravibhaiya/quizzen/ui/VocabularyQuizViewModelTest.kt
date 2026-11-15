@@ -44,7 +44,8 @@ class VocabularyQuizViewModelTest {
         initial: List<VocabularyEntry>,
         initialMistakes: Set<String> = emptySet(),
     ) : VocabularyRepository {
-        override val entries: Flow<List<VocabularyEntry>> = MutableStateFlow(initial)
+        private val _entries = MutableStateFlow(initial)
+        override val entries: Flow<List<VocabularyEntry>> = _entries
         private val _mistakes = MutableStateFlow(initialMistakes)
         override val mistakeWords: Flow<Set<String>> = _mistakes
         override val syncError: Flow<String?> = MutableStateFlow(null)
@@ -60,6 +61,10 @@ class VocabularyQuizViewModelTest {
             _mistakes.value = _mistakes.value - wordKeys
         }
         override fun clearSyncError() = Unit
+
+        fun setEntries(next: List<VocabularyEntry>) {
+            _entries.value = next
+        }
 
         val currentMistakes: Set<String>
             get() = _mistakes.value
@@ -446,5 +451,33 @@ class VocabularyQuizViewModelTest {
         assertEquals(VocabularyQuizPhase.Study, vm.state.value.phase)
         assertEquals(2, vm.state.value.studyEntries.size) // the user's words, not the starter set
         assertNull(store.text)
+    }
+
+    @Test
+    fun `empty database shows empty study list and deleting all words clears study words`() = runTest(dispatcher) {
+        val repo = FakeVocabularyRepo(emptyList())
+        val vm = VocabularyQuizViewModel(
+            config = resumeConfig,
+            repository = repo,
+            random = Random(11),
+        )
+        runCurrent()
+
+        assertEquals(VocabularyQuizPhase.Study, vm.state.value.phase)
+        assertTrue(vm.state.value.studyEntries.isEmpty())
+
+        // Starting quiz with an empty database is a no-op
+        vm.startQuiz()
+        assertEquals(VocabularyQuizPhase.Study, vm.state.value.phase)
+        assertTrue(vm.state.value.questions.isEmpty())
+
+        // Adding words populates study entries; deleting all words clears study entries back to empty
+        repo.setEntries(sampleEntries)
+        runCurrent()
+        assertEquals(2, vm.state.value.studyEntries.size)
+
+        repo.setEntries(emptyList())
+        runCurrent()
+        assertTrue(vm.state.value.studyEntries.isEmpty())
     }
 }

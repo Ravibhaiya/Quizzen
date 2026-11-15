@@ -157,7 +157,7 @@ class VocabularyQuizEngineTest {
     }
 
     @Test
-    fun `starter entries provide 25 valid vocabulary clusters for Firebase seeding and full 5 to 25 word quizzes`() {
+    fun `starter entries provide 25 valid vocabulary clusters for full 5 to 25 word quizzes`() {
         val entries = VocabularyQuizRules.FALLBACK_ENTRIES
         assertEquals(25, entries.size)
         for (entry in entries) {
@@ -172,6 +172,17 @@ class VocabularyQuizEngineTest {
             random = Random(1),
         )
         assertEquals(25, selected25.size)
+    }
+
+    @Test
+    fun `selectStudyWords returns empty list when user database entries are empty`() {
+        val selected = VocabularyQuizRules.selectStudyWords(
+            entries = emptyList(),
+            modes = VocabularyQuizMode.DEFAULT,
+            wordCount = 10,
+            random = Random(1),
+        )
+        assertTrue(selected.isEmpty())
     }
 
     @Test

@@ -67,24 +67,26 @@ internal fun VocabularyStudyView(
                 title = stringResource(R.string.vocabulary_study_title),
                 onBack = onBack,
                 trailing = {
-                    Box(
-                        modifier = Modifier
-                            .size(48.dp)
-                            .bouncyClickable(
-                                shape = CircleShape,
-                                pressedScale = 0.88f,
-                                onClick = onShuffleWords,
+                    if (entries.isNotEmpty()) {
+                        Box(
+                            modifier = Modifier
+                                .size(48.dp)
+                                .bouncyClickable(
+                                    shape = CircleShape,
+                                    pressedScale = 0.88f,
+                                    onClick = onShuffleWords,
+                                )
+                                .background(colors.primaryContainer, CircleShape)
+                                .testTag("vocabulary_shuffle_study_button"),
+                            contentAlignment = Alignment.Center,
+                        ) {
+                            Icon(
+                                imageVector = QuizzenIcons.Shuffle,
+                                contentDescription = stringResource(R.string.cd_shuffle_study_words),
+                                tint = colors.onPrimaryContainer,
+                                modifier = Modifier.size(20.dp),
                             )
-                            .background(colors.primaryContainer, CircleShape)
-                            .testTag("vocabulary_shuffle_study_button"),
-                        contentAlignment = Alignment.Center,
-                    ) {
-                        Icon(
-                            imageVector = QuizzenIcons.Shuffle,
-                            contentDescription = stringResource(R.string.cd_shuffle_study_words),
-                            tint = colors.onPrimaryContainer,
-                            modifier = Modifier.size(20.dp),
-                        )
+                        }
                     }
                 },
             )
@@ -125,14 +127,20 @@ internal fun VocabularyStudyView(
             contentPadding = PaddingValues(start = 18.dp, end = 18.dp, top = 4.dp, bottom = 24.dp),
             verticalArrangement = Arrangement.spacedBy(14.dp),
         ) {
-            itemsIndexed(
-                items = entries,
-                key = { index, item -> item.id.ifBlank { "${item.wordDetails.word}_$index" } },
-            ) { index, entry ->
-                StudyWordCard(
-                    index = index + 1,
-                    entry = entry,
-                )
+            if (entries.isEmpty()) {
+                item(key = "study_empty_state") {
+                    StudyEmptyStateCard()
+                }
+            } else {
+                itemsIndexed(
+                    items = entries,
+                    key = { index, item -> item.id.ifBlank { "${item.wordDetails.word}_$index" } },
+                ) { index, entry ->
+                    StudyWordCard(
+                        index = index + 1,
+                        entry = entry,
+                    )
+                }
             }
         }
 
@@ -161,6 +169,52 @@ internal fun VocabularyStudyView(
                 )
             }
         }
+    }
+}
+
+@Composable
+private fun StudyEmptyStateCard() {
+    val colors = MaterialTheme.colorScheme
+    val shape = RoundedCornerShape(24.dp)
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .cssShadow(
+                NeutralShadowColor.copy(alpha = 0.05f),
+                offsetY = 2.dp,
+                blur = 8.dp,
+                spread = 0.dp,
+                shape = shape,
+            )
+            .background(colors.surfaceContainer, shape)
+            .padding(24.dp)
+            .testTag("vocabulary_study_empty_state"),
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.spacedBy(10.dp),
+    ) {
+        Box(
+            modifier = Modifier
+                .size(56.dp)
+                .background(colors.primaryContainer, QuizzenShapes.BlobA),
+            contentAlignment = Alignment.Center,
+        ) {
+            Icon(
+                imageVector = QuizzenIcons.BookOpen,
+                contentDescription = null,
+                tint = colors.onPrimaryContainer,
+                modifier = Modifier.size(26.dp),
+            )
+        }
+        Text(
+            text = stringResource(R.string.vocabulary_study_empty_title),
+            style = MaterialTheme.typography.titleMedium,
+            color = colors.onSurface,
+        )
+        Text(
+            text = stringResource(R.string.vocabulary_study_empty_subtitle),
+            style = MaterialTheme.typography.bodyMedium,
+            color = colors.onSurfaceVariant,
+        )
     }
 }
 
