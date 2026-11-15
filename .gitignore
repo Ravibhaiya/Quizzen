@@ -14,3 +14,8 @@
 app/build/
 .aistudio/
 .env
+.kotlin/
+# Google AI Studio drops screenshots here; they are never part of the app.
+/public/
+# The Firebase config is private: CI writes it from a secret (see README), local builds keep their own copy.
+app/google-services.json

@@ -76,7 +76,7 @@ import com.ravibhaiya.quizzen.ui.components.QuizzenScreen
 import com.ravibhaiya.quizzen.ui.components.ScreenHeader
 import com.ravibhaiya.quizzen.ui.components.SelectAllButton
 import com.ravibhaiya.quizzen.ui.components.bouncyClickable
-import com.ravibhaiya.quizzen.ui.components.cssShadow
+import com.ravibhaiya.quizzen.ui.components.softShadow
 import com.ravibhaiya.quizzen.ui.components.rememberHaptics
 import com.ravibhaiya.quizzen.ui.theme.QuizzenShapes
 import com.ravibhaiya.quizzen.ui.theme.quizzen
@@ -211,7 +211,7 @@ fun VocabularyManagerScreen(
                                     .size(48.dp)
                                     .testTag("toggle_search_button")
                                     .semantics { selected = state.isSearchActive }
-                                    .cssShadow(
+                                    .softShadow(
                                         NeutralShadowColor.copy(alpha = 0.05f),
                                         offsetY = 2.dp,
                                         blur = 6.dp,
@@ -245,7 +245,7 @@ fun VocabularyManagerScreen(
                                     modifier = Modifier
                                         .size(48.dp)
                                         .testTag("header_notifications_button")
-                                        .cssShadow(
+                                        .softShadow(
                                             NeutralShadowColor.copy(alpha = 0.05f),
                                             offsetY = 2.dp,
                                             blur = 6.dp,
@@ -462,7 +462,7 @@ fun VocabularyManagerScreen(
             Surface(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .cssShadow(
+                    .softShadow(
                         NeutralShadowColor.copy(alpha = 0.25f),
                         offsetY = (-6).dp,
                         blur = 20.dp,
@@ -768,7 +768,7 @@ private fun VocabularySearchBar(
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .cssShadow(NeutralShadowColor.copy(alpha = 0.05f), offsetY = 2.dp, blur = 8.dp, spread = 0.dp, shape = shape)
+            .softShadow(NeutralShadowColor.copy(alpha = 0.05f), offsetY = 2.dp, blur = 8.dp, spread = 0.dp, shape = shape)
             .clip(shape)
             .background(bgColor, shape)
             .border(3.dp, borderColor, shape)
@@ -841,7 +841,7 @@ private fun VocabularyEmptyState(
     Column(
         modifier = modifier
             .fillMaxWidth()
-            .cssShadow(NeutralShadowColor.copy(alpha = 0.05f), offsetY = 2.dp, blur = 6.dp, spread = 0.dp, shape = shape)
+            .softShadow(NeutralShadowColor.copy(alpha = 0.05f), offsetY = 2.dp, blur = 6.dp, spread = 0.dp, shape = shape)
             .clip(shape)
             .background(MaterialTheme.colorScheme.surfaceContainer)
             .padding(28.dp),
@@ -875,80 +875,3 @@ private fun VocabularyEmptyState(
         )
     }
 }
-
-@Composable
-private fun VocabularySkeletonCard(
-    index: Int,
-    modifier: Modifier = Modifier,
-) {
-    val shape = RoundedCornerShape(28.dp)
-    val titleWidthFraction = when (index % 3) {
-        0 -> 0.46f
-        1 -> 0.58f
-        else -> 0.40f
-    }
-    val subWidthFraction = when (index % 3) {
-        0 -> 0.84f
-        1 -> 0.74f
-        else -> 0.88f
-    }
-    Column(
-        modifier = modifier
-            .fillMaxWidth()
-            .testTag("vocabulary_skeleton_card_$index")
-            .cssShadow(NeutralShadowColor.copy(alpha = 0.04f), offsetY = 2.dp, blur = 6.dp, spread = 0.dp, shape = shape)
-            .clip(shape)
-            .background(MaterialTheme.colorScheme.surfaceContainer)
-            .padding(horizontal = 18.dp, vertical = 16.dp),
-        verticalArrangement = Arrangement.spacedBy(12.dp),
-    ) {
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(12.dp),
-        ) {
-            Box(
-                modifier = Modifier
-                    .size(42.dp)
-                    .background(MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.55f), RoundedCornerShape(14.dp)),
-            )
-            Column(
-                modifier = Modifier.weight(1f),
-                verticalArrangement = Arrangement.spacedBy(8.dp),
-            ) {
-                Box(
-                    modifier = Modifier
-                        .fillMaxWidth(titleWidthFraction)
-                        .height(18.dp)
-                        .background(MaterialTheme.colorScheme.surfaceContainerHigh, CircleShape),
-                )
-                Box(
-                    modifier = Modifier
-                        .fillMaxWidth(subWidthFraction)
-                        .height(13.dp)
-                        .background(MaterialTheme.colorScheme.surfaceContainerHigh.copy(alpha = 0.75f), CircleShape),
-                )
-            }
-            Box(
-                modifier = Modifier
-                    .size(34.dp)
-                    .background(MaterialTheme.colorScheme.surfaceContainerHigh.copy(alpha = 0.7f), CircleShape),
-            )
-        }
-        Row(
-            horizontalArrangement = Arrangement.spacedBy(8.dp),
-        ) {
-            Box(
-                modifier = Modifier
-                    .size(width = 88.dp, height = 24.dp)
-                    .background(MaterialTheme.colorScheme.surfaceContainerHigh.copy(alpha = 0.65f), CircleShape),
-            )
-            Box(
-                modifier = Modifier
-                    .size(width = 88.dp, height = 24.dp)
-                    .background(MaterialTheme.colorScheme.surfaceContainerHigh.copy(alpha = 0.65f), CircleShape),
-            )
-        }
-    }
-}
-

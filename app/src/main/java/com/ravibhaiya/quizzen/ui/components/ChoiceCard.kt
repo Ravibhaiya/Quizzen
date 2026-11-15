@@ -82,7 +82,7 @@ fun ChoiceCard(
         modifier = modifier
             .fillMaxWidth()
             .pressScale(source)
-            .cssShadow(glow, offsetY = 8.dp, blur = 16.dp, spread = (-6).dp, shape = shape)
+            .softShadow(glow, offsetY = 8.dp, blur = 16.dp, spread = (-6).dp, shape = shape)
             .clip(shape)
             .background(container)
             .clickable(

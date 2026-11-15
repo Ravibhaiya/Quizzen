@@ -19,11 +19,11 @@ import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.semantics.Role
 
-/** The web original's signature ease: cubic-bezier(.22, 1, .36, 1). */
+/** The app's signature ease: cubic-bezier(.22, 1, .36, 1). */
 val EmphasizedEasing = CubicBezierEasing(0.22f, 1f, 0.36f, 1f)
 
 /**
- * Scales the element down while [interactionSource] is pressed (web: `:active { transform: scale(.96) }`).
+ * Scales the element down while [interactionSource] is pressed.
  * Apply BEFORE shadow/clip/background so the whole visual scales together.
  */
 @Composable

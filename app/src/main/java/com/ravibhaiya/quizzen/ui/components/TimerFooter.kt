@@ -66,7 +66,7 @@ fun TimerFooter(
     Surface(
         modifier = modifier
             .fillMaxWidth()
-            .cssShadow(
+            .softShadow(
                 NeutralShadowColor.copy(alpha = 0.18f),
                 offsetY = (-6).dp,
                 blur = 18.dp,

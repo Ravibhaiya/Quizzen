@@ -1,10 +1,7 @@
 package com.ravibhaiya.quizzen.ui.practice
 
 import androidx.compose.animation.core.Animatable
-import androidx.compose.animation.core.LinearEasing
-import androidx.compose.animation.core.RepeatMode
 import androidx.compose.animation.core.animateFloatAsState
-import androidx.compose.animation.core.infiniteRepeatable
 import androidx.compose.animation.core.keyframes
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.animateColorAsState
@@ -78,7 +75,7 @@ import com.ravibhaiya.quizzen.ui.components.QuizzenScreen
 import com.ravibhaiya.quizzen.ui.components.ScreenHeader
 import com.ravibhaiya.quizzen.ui.components.TimerChip
 import com.ravibhaiya.quizzen.ui.components.bouncyClickable
-import com.ravibhaiya.quizzen.ui.components.cssShadow
+import com.ravibhaiya.quizzen.ui.components.softShadow
 import com.ravibhaiya.quizzen.ui.components.rememberHaptics
 
 @Composable
@@ -105,7 +102,7 @@ fun PracticeScreen(
         }
     }
 
-    // Shake on every incorrect answer (400ms, same keyframes as the CSS).
+    // Shake on every incorrect answer (400 ms).
     LaunchedEffect(state.shakeCount) {
         if (state.shakeCount > 0) {
             shake.snapTo(0f)
@@ -299,8 +296,8 @@ private fun AnswerField(
                     )
                 }
             }
-            .cssShadow(NeutralShadowColor.copy(alpha = 0.05f), offsetY = 2.dp, blur = 8.dp, spread = 0.dp, shape = shape)
-            .cssShadow(primary.copy(alpha = 0.4f * ringAlpha), offsetY = 10.dp, blur = 20.dp, spread = (-10).dp, shape = shape)
+            .softShadow(NeutralShadowColor.copy(alpha = 0.05f), offsetY = 2.dp, blur = 8.dp, spread = 0.dp, shape = shape)
+            .softShadow(primary.copy(alpha = 0.4f * ringAlpha), offsetY = 10.dp, blur = 20.dp, spread = (-10).dp, shape = shape)
             .background(container, shape),
         decorationBox = { inner ->
             Box(Modifier.fillMaxWidth(), contentAlignment = Alignment.CenterEnd) {

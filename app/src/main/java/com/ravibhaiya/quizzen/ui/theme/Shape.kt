@@ -9,8 +9,9 @@ import androidx.compose.ui.unit.Density
 import androidx.compose.ui.unit.LayoutDirection
 
 /**
- * Organic "blob" made of four elliptical corners, equivalent to CSS
- * `border-radius: tlH trH brH blH / tlV trV brV blV` with percentages (0..1).
+ * Organic "blob" made of four elliptical corners. Each corner has a horizontal radius (`tlH`, `trH`, `brH`, `blH`)
+ * and a vertical radius (`tlV`, `trV`, `brV`, `blV`), as fractions (0..1) of the width and height, listed from the
+ * top-left corner clockwise.
  * Horizontal radii on one edge and vertical radii on one side must each sum to <= 1.
  */
 class BlobShape(

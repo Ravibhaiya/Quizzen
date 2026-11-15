@@ -59,7 +59,7 @@ import com.ravibhaiya.quizzen.ui.components.PrimaryButton
 import com.ravibhaiya.quizzen.ui.components.QuizzenIcons
 import com.ravibhaiya.quizzen.ui.components.ScreenHeader
 import com.ravibhaiya.quizzen.ui.components.TimerChip
-import com.ravibhaiya.quizzen.ui.components.cssShadow
+import com.ravibhaiya.quizzen.ui.components.softShadow
 import com.ravibhaiya.quizzen.ui.components.pressScale
 import com.ravibhaiya.quizzen.ui.theme.QuizzenShapes
 import com.ravibhaiya.quizzen.ui.theme.quizzen
@@ -136,7 +136,7 @@ internal fun VocabularyActiveQuizView(
         Surface(
             modifier = Modifier
                 .fillMaxWidth()
-                .cssShadow(
+                .softShadow(
                     NeutralShadowColor.copy(alpha = 0.18f),
                     offsetY = (-6).dp,
                     blur = 18.dp,
@@ -243,7 +243,7 @@ private fun QuestionPromptCard(
         modifier = modifier
             .fillMaxWidth()
             .graphicsLayer { translationX = shakeOffsetDp().dp.toPx() }
-            .cssShadow(
+            .softShadow(
                 NeutralShadowColor.copy(alpha = 0.05f),
                 offsetY = 2.dp,
                 blur = 8.dp,
@@ -434,7 +434,7 @@ private fun VocabularyOptionCard(
         modifier = modifier
             .fillMaxWidth()
             .pressScale(interactionSource)
-            .cssShadow(
+            .softShadow(
                 NeutralShadowColor.copy(alpha = 0.05f),
                 offsetY = 2.dp,
                 blur = 6.dp,

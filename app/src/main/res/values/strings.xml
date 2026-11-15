@@ -207,8 +207,6 @@
     <string name="notification_pending_retry_badge">PENDING VERIFICATION • %1$ds</string>
     <string name="notification_skeleton_subtitle">Analyzing words with Gemini Decision 1…</string>
     <string name="notification_pending_skeleton_subtitle">Verification placed in pending status — waiting %1$ds for rate limit reset…</string>
-    <string name="vocabulary_loading_badge">Syncing…</string>
-    <string name="vocabulary_skeleton_status">Fetching vocabulary from Cloud Firestore…</string>
     <string name="retry_action">Retry</string>
     <string name="verify_now_action">Verify Now</string>
     <string name="notification_review_all_merges">Review All Merge Requests (%1$d)</string>

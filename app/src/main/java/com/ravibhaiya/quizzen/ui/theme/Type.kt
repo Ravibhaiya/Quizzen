@@ -26,7 +26,7 @@ val PlusJakartaSans = FontFamily(
 )
 
 /**
- * Type scale. Sizes are the web original's rem values x 16 (see docs/DESIGN_SYSTEM.md).
+ * Type scale (see docs/DESIGN_SYSTEM.md).
  *
  * Role -> usage:
  *  displayLarge   49.6sp  practice question

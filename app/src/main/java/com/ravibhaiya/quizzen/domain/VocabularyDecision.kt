@@ -163,24 +163,6 @@ object VocabularyDecisionRules {
         )
 
     /**
-     * Builds a single `gemini-decision-1` request plan for [entries] (up to [maxQuestions]), skipping any
-     * pairs/conflicts in [dismissedKeys] and skipping already-verified words in [verifiedEntryIds].
-     * Returns `null` when there are no questions to ask.
-     */
-    fun buildRequestPlan(
-        entries: List<VocabularyEntry>,
-        dismissedKeys: Set<String> = emptySet(),
-        verifiedEntryIds: Set<String> = emptySet(),
-        maxQuestions: Int = MAX_QUESTIONS_PER_CALL,
-    ): DecisionRequestPlan? =
-        buildRequestBatches(
-            entries = entries,
-            dismissedKeys = dismissedKeys,
-            verifiedEntryIds = verifiedEntryIds,
-            maxQuestionsPerBatch = maxQuestions,
-        ).firstOrNull()
-
-    /**
      * Splits all needed `gemini-decision-1` verification questions for [entries] into batches of at most
      * [maxQuestionsPerBatch] (default [BATCH_MAX_QUESTIONS] = `100`):
      * - **Conflict questions (`noul`)** are generated **only** for unverified entries (`id !in verifiedEntryIds`),
@@ -369,20 +351,23 @@ object VocabularyDecisionRules {
             val latestActivity: Long,
         )
 
+        // Everything that depends on one word only is worked out once here, not again for every pair the word is in.
+        val features = sortedEntries.map(::pairFeatures)
         val allPairs = mutableListOf<ScoredPair>()
-        for (i in 0 until sortedEntries.size) {
+        for (i in sortedEntries.indices) {
             val primary = sortedEntries[i]
-            val pKey = VocabularyRules.wordKey(primary.wordDetails.word)
-            if (pKey.isEmpty()) continue
+            val primaryFeatures = features[i]
+            if (primaryFeatures.key.isEmpty()) continue
             val primaryUnverified = primary.id !in verifiedEntryIds
             for (j in i + 1 until sortedEntries.size) {
                 val dup = sortedEntries[j]
                 if (!primaryUnverified && dup.id in verifiedEntryIds) continue
-                val dKey = VocabularyRules.wordKey(dup.wordDetails.word)
-                if (dKey.isEmpty()) continue
-                val dismissKey = VocabularyDecisionFinding.pairDismissKey(primary.id, dup.id)
-                if (dismissKey in dismissedKeys) continue
-                val score = similarityPriority(primary, pKey, dup, dKey)
+                val duplicateFeatures = features[j]
+                if (duplicateFeatures.key.isEmpty()) continue
+                if (dismissedKeys.isNotEmpty() &&
+                    VocabularyDecisionFinding.pairDismissKey(primary.id, dup.id) in dismissedKeys
+                ) continue
+                val score = similarityPriority(primaryFeatures, duplicateFeatures)
                 val activity = maxOf(primary.updatedAt, dup.updatedAt, primary.createdAt, dup.createdAt)
                 allPairs += ScoredPair(
                     primary = primary,
@@ -425,12 +410,25 @@ object VocabularyDecisionRules {
         }
     }
 
-    private fun similarityPriority(
-        a: VocabularyEntry,
-        aKey: String,
-        b: VocabularyEntry,
-        bKey: String,
-    ): Int {
+    /** What [similarityPriority] needs to know about one word, worked out once per word instead of once per pair. */
+    private class PairFeatures(
+        val key: String,
+        val relationKeys: Set<String>,
+        val meaningWords: Set<String>,
+    )
+
+    private fun pairFeatures(entry: VocabularyEntry): PairFeatures = PairFeatures(
+        key = VocabularyRules.wordKey(entry.wordDetails.word),
+        relationKeys = (entry.synonyms + entry.antonyms).map { VocabularyRules.wordKey(it.word) }.toSet(),
+        meaningWords = VocabularyRules.wordKey(entry.wordDetails.meaningEnglish)
+            .split(" ")
+            .filter { it.length >= 5 && it !in COMMON_MEANING_STOPWORDS }
+            .toSet(),
+    )
+
+    private fun similarityPriority(a: PairFeatures, b: PairFeatures): Int {
+        val aKey = a.key
+        val bKey = b.key
         if (aKey == bKey) return 100
         var score = 0
         val commonPrefix = aKey.commonPrefixWith(bKey).length
@@ -440,19 +438,9 @@ object VocabularyDecisionRules {
         if (dist <= 2) score += 50 - dist * 10
         else if (dist == 3) score += 20
         if (aKey.startsWith(bKey) || bKey.startsWith(aKey)) score += 35
-        val aSynAnt = (a.synonyms + a.antonyms).map { VocabularyRules.wordKey(it.word) }.toSet()
-        val bSynAnt = (b.synonyms + b.antonyms).map { VocabularyRules.wordKey(it.word) }.toSet()
-        if (bKey in aSynAnt || aKey in bSynAnt) score += 25
-        if (aSynAnt.intersect(bSynAnt).isNotEmpty()) score += 15
-        val aMeaningWords = VocabularyRules.wordKey(a.wordDetails.meaningEnglish)
-            .split(" ")
-            .filter { it.length >= 5 && it !in COMMON_MEANING_STOPWORDS }
-            .toSet()
-        val bMeaningWords = VocabularyRules.wordKey(b.wordDetails.meaningEnglish)
-            .split(" ")
-            .filter { it.length >= 5 && it !in COMMON_MEANING_STOPWORDS }
-            .toSet()
-        if (aMeaningWords.intersect(bMeaningWords).isNotEmpty()) score += 20
+        if (bKey in a.relationKeys || aKey in b.relationKeys) score += 25
+        if (a.relationKeys.any { it in b.relationKeys }) score += 15
+        if (a.meaningWords.any { it in b.meaningWords }) score += 20
         return score
     }
 

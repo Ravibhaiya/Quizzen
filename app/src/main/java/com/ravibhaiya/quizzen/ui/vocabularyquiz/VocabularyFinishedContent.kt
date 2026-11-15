@@ -33,7 +33,7 @@ import com.ravibhaiya.quizzen.ui.components.NeutralShadowColor
 import com.ravibhaiya.quizzen.ui.components.PrimaryButton
 import com.ravibhaiya.quizzen.ui.components.ScreenHeader
 import com.ravibhaiya.quizzen.ui.components.bouncyClickable
-import com.ravibhaiya.quizzen.ui.components.cssShadow
+import com.ravibhaiya.quizzen.ui.components.softShadow
 
 @Composable
 internal fun VocabularyFinishedView(
@@ -62,7 +62,7 @@ internal fun VocabularyFinishedView(
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(top = 8.dp, bottom = 22.dp)
-                .cssShadow(
+                .softShadow(
                     NeutralShadowColor.copy(alpha = 0.06f),
                     offsetY = 4.dp,
                     blur = 12.dp,

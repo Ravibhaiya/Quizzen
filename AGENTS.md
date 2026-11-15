@@ -2,8 +2,8 @@
 
 Quizzen is a single-module Android app (Kotlin, Jetpack Compose, Material 3). Read this file first, then the
 doc that matches your task: `docs/ARCHITECTURE.md` (structure), `docs/DESIGN_SYSTEM.md` (visuals),
-`docs/BEHAVIOR_SPEC.md` (what each screen must do). The original web prototype is the visual/behavioral source of
-truth: `docs/reference/quizzen-web-reference.html`.
+`docs/BEHAVIOR_SPEC.md` (what each screen must do). These three docs are the source of truth for how the app looks and
+behaves; there is no other reference design.
 
 ## Commands
 
@@ -46,7 +46,7 @@ long retention; keep new jobs path-filtered. See the README table.
 3. **Haptics** go through `Haptics` (`rememberHaptics(enabled)`) with a semantic `HapticEffect`; never call
    `View.performHapticFeedback` or `Vibrator` directly. Give each new kind of action its own effect and update the table in
    `docs/BEHAVIOR_SPEC.md`. Backgrounds/decoration must look the same on every API level (no `Modifier.blur`).
-4. **Shadows** use `Modifier.cssShadow(...)` with the values in `docs/DESIGN_SYSTEM.md`; never `Modifier.shadow`.
+4. **Shadows** use `Modifier.softShadow(...)` with the values in `docs/DESIGN_SYSTEM.md`; never `Modifier.shadow`.
    All Material color roles are set in `ui/theme/Color.kt`; never introduce a default/baseline role or a literal color.
 5. **User-visible strings** go in `res/values/strings.xml`. Never inline literals in composables (the single-letter
    badges "M", "T", "P", "F", "A", "V" are decoration, not copy).
@@ -68,7 +68,7 @@ long retention; keep new jobs path-filtered. See the README table.
 
 Full rules in `docs/PERFORMANCE.md`. The short version: nothing may animate or redraw while idle (no endless transitions), animated
 values are read inside `graphicsLayer`/`offset`/`drawBehind` lambdas, text is never fitted by relayout loops (`FitText`), no
-`Modifier.blur`, and speed is judged on the release APK (`quizzen-release-apk` from CI), never on a debug build.
+`Modifier.blur`, and speed is judged on the release APK (`quizzen-release-apk` from the manual Build APK workflow), never on a debug build.
 
 ## Fonts
 
@@ -91,7 +91,7 @@ values are read inside `graphicsLayer`/`offset`/`drawBehind` lambdas, text is ne
 ## Behavior rules
 
 - `docs/BEHAVIOR_SPEC.md` is normative. If you change behavior, update the spec in the same change.
-- Deliberate deviations from the web prototype are listed at the bottom of the spec; keep that list current.
+- Deliberate design decisions (and why they were made) are listed at the bottom of the spec; keep that list current.
 - Timer rules live in `domain/TimerInput.kt` (clamp to 180, blank -> default on focus loss, 0/blank -> default when starting).
 - Question rules live in `domain/QuestionGenerator.kt`; answers are `Long` (5x5-digit products overflow `Int`).
 
@@ -187,7 +187,7 @@ AI assistants edit this repo over many sessions, so docs drift unless every chan
    text everywhere (docs, README, tests, the `strings.xml` entries) instead of leaving "legacy" notes.
 4. Constants live in one place and are only referred to by name in docs and comments, with the numbers written once in
    `docs/BEHAVIOR_SPEC.md` (see the Powers & Roots limits, `MAX_RELATIONS`, `WRONG_REPEATS`).
-5. Do not commit tool scratch files (plans, metadata, screenshots, `.aistudio/`); the repo only holds what the app, the build or the docs need.
+5. Do not commit tool scratch files (plans, metadata, screenshots, compiler logs; `.aistudio/`, `public/` and `.kotlin/` are git-ignored); the repo only holds what the app, the build or the docs need.
 6. Say in the final message which docs you changed, and what you could not verify (for example "Gradle not run").
 
 ## Mistake repeats

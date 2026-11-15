@@ -416,13 +416,6 @@ object VocabularyRules {
     }
 
     /**
-     * Returns a short label naming the specific synonym or antonym word where a relation conflict
-     * occurs in [entry], or `null` if no relation word is in conflict.
-     */
-    fun findEntryRelationConflictWord(entry: VocabularyEntry): String? =
-        findEntryRelationConflictTarget(entry)?.conflictingWordLabel
-
-    /**
      * Result of [checkMainWords]: [toSave] are new words (or unchanged/edited ones), [clashing] are incoming entries
      * whose main word already belongs to another saved entry, [mergedRepeats] counts repeats collapsed inside the batch.
      */

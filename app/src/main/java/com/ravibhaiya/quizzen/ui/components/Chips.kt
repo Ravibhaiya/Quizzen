@@ -60,7 +60,7 @@ fun OptionChip(
     Box(
         modifier = modifier
             .pressScale(source)
-            .cssShadow(chipShadow, offsetY = 8.dp, blur = 16.dp, spread = (-6).dp, shape = shape)
+            .softShadow(chipShadow, offsetY = 8.dp, blur = 16.dp, spread = (-6).dp, shape = shape)
             .clip(shape)
             .background(container)
             .clickable(
@@ -112,7 +112,7 @@ fun NumberCell(
             .fillMaxWidth()
             .aspectRatio(1f / 0.95f)
             .pressScale(source)
-            .cssShadow(cellShadow, offsetY = 8.dp, blur = 16.dp, spread = (-8).dp, shape = shape)
+            .softShadow(cellShadow, offsetY = 8.dp, blur = 16.dp, spread = (-8).dp, shape = shape)
             .clip(shape)
             .background(container)
             .clickable(

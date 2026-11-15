@@ -13,10 +13,10 @@ import kotlin.math.cos
 import kotlin.math.sin
 
 /**
- * Linear gradient using CSS angle semantics (0deg = to top, 90deg = to right, 140deg = toward bottom-right),
- * so the gradient line spans the box exactly like `linear-gradient(140deg, ...)` in the web original.
+ * Linear gradient defined by an angle (0 degrees = to top, 90 = to right, 140 = toward bottom-right). The gradient
+ * line is sized so the first and last color reach the corners of the box exactly, whatever its aspect ratio.
  */
-fun cssLinearGradient(angleDegrees: Float, colors: List<Color>): Brush = object : ShaderBrush() {
+fun angledGradient(angleDegrees: Float, colors: List<Color>): Brush = object : ShaderBrush() {
     override fun createShader(size: Size): Shader {
         val radians = Math.toRadians(angleDegrees.toDouble())
         val dx = sin(radians).toFloat()
@@ -34,7 +34,7 @@ fun cssLinearGradient(angleDegrees: Float, colors: List<Color>): Brush = object 
 }
 
 /** The signature primary -> tone30 gradient (140deg) used on the logo, hero, tile and timer icons. */
-fun primaryGradient(primary: Color, tone30: Color): Brush = cssLinearGradient(140f, listOf(primary, tone30))
+fun primaryGradient(primary: Color, tone30: Color): Brush = angledGradient(140f, listOf(primary, tone30))
 
 /** Hero card uses 135deg. */
-fun heroGradient(primary: Color, tone30: Color): Brush = cssLinearGradient(135f, listOf(primary, tone30))
+fun heroGradient(primary: Color, tone30: Color): Brush = angledGradient(135f, listOf(primary, tone30))

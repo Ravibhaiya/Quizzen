@@ -19,7 +19,7 @@ class RandomQuestionGenerator(private val random: Random = Random.Default) : Que
             requireNotNull(QuestionPool.of(config)) { "nothing to ask: $config" }.random(random)
     }
 
-    /** 1 digit -> 1..9, n digits -> 10^(n-1)..10^n - 1 (matches the web original). */
+    /** 1 digit -> 1..9, n digits -> 10^(n-1)..10^n - 1. */
     internal fun randomWithDigits(digits: Int): Long {
         if (digits <= 1) return random.nextLong(1, 10)
         var min = 1L

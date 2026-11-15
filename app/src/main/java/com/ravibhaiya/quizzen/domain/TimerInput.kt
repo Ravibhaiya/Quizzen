@@ -3,7 +3,7 @@ package com.ravibhaiya.quizzen.domain
 /**
  * State of the "Timer" numeric field on the configuration screens.
  *
- * Rules (from the web original): value is clamped to [MAX_SECONDS]; exceeding it flags [exceededMax]
+ * Rules: value is clamped to [MAX_SECONDS]; exceeding it flags [exceededMax]
  * so the UI can flash an error; a value of 0 or blank means "use the default".
  */
 data class TimerInput(
