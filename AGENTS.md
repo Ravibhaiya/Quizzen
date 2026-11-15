@@ -68,7 +68,7 @@ long retention; keep new jobs path-filtered. See the README table.
 
 Full rules in `docs/PERFORMANCE.md`. The short version: nothing may animate or redraw while idle (no endless transitions), animated
 values are read inside `graphicsLayer`/`offset`/`drawBehind` lambdas, text is never fitted by relayout loops (`FitText`), no
-`Modifier.blur`, and speed is judged on the release APK (`quizzen-release-apk` from CI), never on a debug build.
+`Modifier.blur`, and speed is judged on the release APK (`quizzen-release-apk` from the manual Build APK workflow), never on a debug build.
 
 ## Fonts
 

@@ -59,7 +59,7 @@ showFeedback: lock input, cancel ticking, feedback visible for 1700 ms,
 `database_manager`, `vocabulary_manager`, `vocabulary_quiz`, and `practice/{mode}`. `Routes.practice(config)` and
 `Routes.vocabularyQuiz(config, resume)` (adds `&resume=1` only when resuming a saved quiz) encode; `PracticeArgs` and `VocabularyQuizArgs` decode (defensively: missing/invalid values fall
 back to defaults). Back from a quiz returns to whichever config screen started it.
-Transitions: incoming = fade + 16 px rise (380 ms, emphasized easing); outgoing = 150 ms fade.
+Transitions: forward = the new screen fades in and rises 16 dp (380 ms, emphasized easing) over the unchanged previous screen; back = the leaving screen fades out in 200 ms over the screen underneath.
 
 ## Theming
 
