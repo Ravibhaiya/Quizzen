@@ -1,12 +1,11 @@
 # Design system
 
-Ported 1:1 from the CSS custom properties of the web prototype. `rem` values assume 16 px = 16 dp/sp.
+Design tokens of the app, with the exact values used in `ui/theme/` and the shared components.
 
 ## Color
 
 The app is **light-only by design**: it ignores the system dark-mode setting, forces dark status/navigation bar icons and
-opts out of OEM "force dark". There is no dark palette, no `values-night` resources and no theme switch. (The web reference
-has a dark palette; it was intentionally not ported.)
+opts out of OEM "force dark". There is no dark palette, no `values-night` resources and no theme switch.
 
 | Token (Material role) | Value |
 |---|---|
@@ -22,22 +21,18 @@ has a dark palette; it was intentionally not ported.)
 | quizzen.tone30 (gradient end) | `#B85E1E` |
 | quizzen.success / error / timeout | `#1FAE6A / #E14C4C / #2E9FE0` (timeout = the sky-blue "Time's Up" sheet) |
 
-The web CSS also defines tone40-70 and dark-on-light, but no rule uses them, so they are intentionally not ported.
-All tokens above were verified against the CSS of `docs/reference/quizzen-web-reference.html`, and the rendered light-theme
-web screenshots match them pixel for pixel.
-
-Material roles the web design never defines (secondary, tertiary, inverse*, outline*, extra surface containers) reuse these
+Material roles without a dedicated token (secondary, tertiary, inverse*, outline*, extra surface containers) reuse these
 same tokens (see `ui/theme/Color.kt`) so no component can fall back to the baseline purple palette.
 `QuizzenScreen` sets `LocalContentColor` to `onSurface`.
 
-Signature gradient: `linear-gradient(140deg, primary, tone30)` = `primaryGradient()`; hero card uses 135deg = `heroGradient()`.
-`cssLinearGradient()` reproduces CSS angle semantics exactly.
+Signature gradient: 140 degrees from `primary` to `tone30` = `primaryGradient()`; the hero card uses 135 degrees = `heroGradient()`.
+`angledGradient()` builds a linear gradient from an angle (0 = to top, 90 = to right) whose line spans the whole box.
 
 ## Typography (Plus Jakarta Sans, static weights 400/500/600/700/800)
 
 | Role | Size | Weight | Tracking | Used for |
 |---|---|---|---|---|
-| displayLarge | 49.6 sp (3.1rem) | 800 | -0.02em | Practice question (auto-shrinks to 24 sp in 1.6 sp steps) |
+| displayLarge | 49.6 sp | 800 | -0.02em | Practice question (auto-shrinks to 24 sp in 1.6 sp steps) |
 | headlineLarge | 24.8 sp | 800 | -0.02em | App name (-0.03em), hero title, screen titles (24 sp) |
 | headlineMedium | 20.8 sp | 800 | -0.02em | Settings title |
 | titleLarge | 19.2 sp | 800 | -0.01em | Section titles, tile letters (700), table cells (21.6 sp) |
@@ -61,34 +56,35 @@ Signature gradient: `linear-gradient(140deg, primary, tone30)` = `primaryGradien
 | Sheets | 32 dp top corners |
 | Segmented control, primary button, timer chip | pill |
 
-Organic blobs (`QuizzenShapes`, four elliptical corners = CSS `border-radius` with `/`):
+Organic blobs (`QuizzenShapes`, four elliptical corners; the numbers are the horizontal radii, then `/`, then the vertical radii,
+each listed from the top-left corner clockwise, as percentages of the width and height):
 Hero `32% 68% 62% 38% / 46% 38% 62% 54%`,
 BlobA `38% 62% 55% 45% / 48% 40% 60% 52%`, BlobB `62% 38% 45% 55% / 40% 55% 45% 60%`.
 
 ## Elevation / shadow
 
-Shadows are CSS-accurate: `Modifier.cssShadow(color, offsetY, blur, spread, shape)` blurs the element outline with a Gaussian
+Shadows use `Modifier.softShadow(color, offsetY, blur, spread, shape)`, which blurs the element outline with a Gaussian
 mask (needs API 28+; below that it degrades to a plain elevation shadow, or nothing for upward shadows). Never use
-`Modifier.shadow`, it cannot offset, spread, soften or tint a shadow the way the web design does.
+`Modifier.shadow`, it cannot offset, spread, soften or tint a shadow the way the design needs. "Neutral" below is
+`NeutralShadowColor` (`#141220`) at the given alpha.
 
-| Element | CSS `box-shadow` (offsetY blur spread color) |
+| Element | Shadow (offsetY blur spread color) |
 |---|---|
 | Hero card | `18 32 -14` tone30 @ 65% |
-| Header logo | `8 16 -5` tone30 @ 55% (rounded 23%) |
 | Segmented indicator | `8 16 -5` primary @ 60% |
 | Primary button | `14 26 -12` primary @ 60% |
 | Selected chip | `8 16 -6` primary @ 55% (animated 150 ms) |
 | Selected number cell | `8 16 -8` primary @ 55% (animated 150 ms) |
-| Feature tile | `2 6 0` `rgba(20,18,32,.05)` |
-| Answer field | `2 8 0` `rgba(20,18,32,.05)`; focused adds `10 20 -10` primary @ 40% + 4 dp ring primary @ 20% |
-| Footer bar | `-6 18 -14` `rgba(20,18,32,.18)` |
+| Feature tile | `2 6 0` neutral @ 5% |
+| Answer field | `2 8 0` neutral @ 5%; focused adds `10 20 -10` primary @ 40% + 4 dp ring primary @ 20% |
+| Footer bar | `-6 18 -14` neutral @ 18% |
 | Feedback sheet | `-14 32 -12` black @ 28% |
 | Switch thumb | `2 5 0` black @ 20% |
 
 ## Layout
 
 Screen padding 18 dp horizontal, 24 dp top; bento gap 14 dp; page spacing 18 dp; content max width 440 dp; two decorative
-glow circles (280 dp top-right, 220 dp bottom-left, primaryContainer @ 35%, edge softened like CSS `blur(10px)` with a radial gradient, identical on every API level).
+glow circles (280 dp top-right, 220 dp bottom-left, primaryContainer @ 35%, edge softened with a Gaussian profile (sigma 10 dp) drawn as a radial gradient, identical on every API level).
 
 ## Motion
 
@@ -160,5 +156,5 @@ blur filter, so it is omitted.
 
 ## Icons
 
-Feather-style 24 dp stroke icons ported to `QuizzenIcons` (path data from the prototype's inline SVGs). Stroke 2 dp
+Feather-style 24 dp stroke icons in `QuizzenIcons`. Stroke 2 dp
 (2.4 for chevrons/check-all, 3 for feedback icons), round caps/joins, tinted through `Icon(tint=...)`.

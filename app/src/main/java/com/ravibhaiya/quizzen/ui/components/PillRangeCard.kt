@@ -50,7 +50,7 @@ fun PillRangeCard(
     Column(
         modifier = modifier
             .fillMaxWidth()
-            .cssShadow(
+            .softShadow(
                 NeutralShadowColor.copy(alpha = 0.05f),
                 offsetY = 2.dp, blur = 6.dp, spread = 0.dp, shape = shape,
             )

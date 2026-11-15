@@ -9,7 +9,7 @@ import androidx.compose.ui.graphics.vector.PathParser
 import androidx.compose.ui.unit.dp
 
 /**
- * Stroke icons ported from the web original's 24x24 inline SVGs (Feather-style).
+ * Feather-style stroke icons on a 24x24 grid.
  * They are stroked black and tinted by `Icon(tint = ...)`.
  */
 object QuizzenIcons {

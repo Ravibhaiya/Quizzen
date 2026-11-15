@@ -39,7 +39,7 @@ fun QuizzenSwitch(checked: Boolean, modifier: Modifier = Modifier) {
             modifier = Modifier
                 .offset(x = thumbOffset)
                 .size(24.dp)
-                .cssShadow(Color.Black.copy(alpha = 0.2f), offsetY = 2.dp, blur = 5.dp, spread = 0.dp, shape = CircleShape)
+                .softShadow(Color.Black.copy(alpha = 0.2f), offsetY = 2.dp, blur = 5.dp, spread = 0.dp, shape = CircleShape)
                 .background(Color.White, CircleShape),
         )
     }

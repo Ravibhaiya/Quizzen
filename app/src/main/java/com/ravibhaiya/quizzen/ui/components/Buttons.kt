@@ -46,7 +46,7 @@ fun PrimaryButton(
             .fillMaxWidth()
             .alpha(if (enabled) 1f else 0.45f)
             .pressScale(source)
-            .cssShadow(primary.copy(alpha = 0.6f), offsetY = 14.dp, blur = 26.dp, spread = (-12).dp, shape = CircleShape)
+            .softShadow(primary.copy(alpha = 0.6f), offsetY = 14.dp, blur = 26.dp, spread = (-12).dp, shape = CircleShape)
             .clip(CircleShape)
             .background(primary)
             .clickable(

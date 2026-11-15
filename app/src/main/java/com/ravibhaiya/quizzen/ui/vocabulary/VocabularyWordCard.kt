@@ -44,7 +44,7 @@ import com.ravibhaiya.quizzen.ui.components.EmphasizedEasing
 import com.ravibhaiya.quizzen.ui.components.NeutralShadowColor
 import com.ravibhaiya.quizzen.ui.components.QuizzenIcons
 import com.ravibhaiya.quizzen.ui.components.bouncyClickable
-import com.ravibhaiya.quizzen.ui.components.cssShadow
+import com.ravibhaiya.quizzen.ui.components.softShadow
 import com.ravibhaiya.quizzen.ui.theme.QuizzenShapes
 import com.ravibhaiya.quizzen.ui.theme.quizzen
 
@@ -96,7 +96,7 @@ internal fun VocabularyWordCard(
             .fillMaxWidth()
             .testTag("word_card_${entry.id}")
             .pressScale(cardInteractionSource, pressedScale = 0.98f)
-            .cssShadow(NeutralShadowColor.copy(alpha = 0.05f), offsetY = 2.dp, blur = 6.dp, spread = 0.dp, shape = shape)
+            .softShadow(NeutralShadowColor.copy(alpha = 0.05f), offsetY = 2.dp, blur = 6.dp, spread = 0.dp, shape = shape)
             .clip(shape)
             .background(MaterialTheme.colorScheme.surfaceContainer)
             .border(2.dp, borderColor, shape)

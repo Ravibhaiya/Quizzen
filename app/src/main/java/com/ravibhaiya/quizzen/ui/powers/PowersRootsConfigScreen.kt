@@ -42,7 +42,7 @@ import com.ravibhaiya.quizzen.ui.components.QuizzenRangeSlider
 import com.ravibhaiya.quizzen.ui.components.QuizzenScreen
 import com.ravibhaiya.quizzen.ui.components.ScreenHeader
 import com.ravibhaiya.quizzen.ui.components.TimerFooter
-import com.ravibhaiya.quizzen.ui.components.cssShadow
+import com.ravibhaiya.quizzen.ui.components.softShadow
 import com.ravibhaiya.quizzen.ui.components.rememberHaptics
 import com.ravibhaiya.quizzen.ui.theme.quizzen
 
@@ -180,7 +180,7 @@ private fun RangeCard(
         modifier = Modifier
             .fillMaxWidth()
             .graphicsLayer { alpha = fade }
-            .cssShadow(
+            .softShadow(
                 NeutralShadowColor.copy(alpha = 0.05f),
                 offsetY = 2.dp, blur = 6.dp, spread = 0.dp, shape = shape,
             )

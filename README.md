@@ -1,9 +1,8 @@
 # Quizzen
 
-A native Android (Kotlin + Jetpack Compose) practice app for competitive-exam style mental math, built in a
+A native Android (Kotlin + Jetpack Compose) practice app for competitive-exam style mental math and vocabulary, built in a
 Material 3 "Expressive" visual language: organic blob shapes, a warm orange palette, big rounded surfaces and
-springy press animations. It is a native re-implementation of the original single-file web prototype
-(kept for reference in [`docs/reference/quizzen-web-reference.html`](docs/reference/quizzen-web-reference.html)).
+springy press animations.
 
 ## Features
 
@@ -29,7 +28,7 @@ springy press animations. It is a native re-implementation of the original singl
 - Light theme only (by design, regardless of the system dark-mode setting), edge-to-edge, IME-aware layouts, 440 dp max content width on large screens.
 - **Vocabulary (Language)**: choose **Synonyms**, **Antonyms**, or both simultaneously, select **1 to 25 words** to attempt, review all selected words on a pre-quiz **Study** page, and take a finite **4-option MCQ quiz** with inline feedback, post-answer meaning reveals, manual **Next** button progression, and local mistake tracking (saving wrong/timed-out words locally, prioritizing them in future quizzes, and automatically deleting a word once all questions for that word are answered right in a session). If the app is closed (or the quiz left) mid-quiz, the Vocabulary setup screen offers **Resume** from the question you stopped at (or **Discard**); only Vocabulary can be resumed.
 - **Database Manager -> Vocabulary**: add/edit vocabulary words via single/bulk JSON format or by importing a `.json` file from device storage, saved to Cloud Firestore (internet is required to add, merge or delete, and a word counts as added only after the server confirmed it; the words can still be read offline), collapsible cards, horizontal synonym/antonym count badges, and header search.
-- Other tiles (Fixed Preposition, Phrasal Verb) are placeholders, exactly as in the prototype (they show "Coming soon").
+- Other tiles (Fixed Preposition, Phrasal Verb) are placeholders (they show "Coming soon").
 
 ## Tech stack
 
@@ -76,13 +75,13 @@ app/src/main/java/com/ravibhaiya/quizzen/
   MainActivity.kt          single-activity entry, edge-to-edge, theme, nav host
   data/                    SettingsRepository (DataStore)
   domain/                  pure Kotlin: Question, PracticeConfig, QuestionGenerator, TimerInput
-  ui/theme/                colors, typography, blob shapes, CSS-style gradients
+  ui/theme/                colors, typography, blob shapes, angled gradients
   ui/components/           reusable Compose building blocks (buttons, chips, segmented control, timer footer, ...)
   ui/home | multiply | tables | practice | settings     one package per feature (Screen + ViewModel)
   ui/navigation/           routes, argument codec, NavHost + transitions
 design/                    quizzen-logo.svg (logo source of truth)
 tools/                     generate_logo_drawables.py (SVG -> Android vector drawables)
-docs/                      ARCHITECTURE, DESIGN_SYSTEM, BEHAVIOR_SPEC, reference web prototype
+docs/                      ARCHITECTURE, DESIGN_SYSTEM, BEHAVIOR_SPEC, PERFORMANCE, THIRD_PARTY_NOTICES
 AGENTS.md                  rules for AI coding assistants (start here when changing code)
 ```
 
@@ -91,8 +90,8 @@ AGENTS.md                  rules for AI coding assistants (start here when chang
 - [AGENTS.md](AGENTS.md) - conventions and checklists for AI assistants and contributors
 - [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) - layers, data flow, state, navigation
 - [docs/PERFORMANCE.md](docs/PERFORMANCE.md) - low-end phone / Android 11 measures, rules and measuring tips
-- [docs/DESIGN_SYSTEM.md](docs/DESIGN_SYSTEM.md) - tokens (color, type, shape, motion) mapped from the web original
-- [docs/BEHAVIOR_SPEC.md](docs/BEHAVIOR_SPEC.md) - screen-by-screen behavior, plus every deliberate deviation from the prototype
+- [docs/DESIGN_SYSTEM.md](docs/DESIGN_SYSTEM.md) - tokens (color, type, shape, shadow, motion) and component styles
+- [docs/BEHAVIOR_SPEC.md](docs/BEHAVIOR_SPEC.md) - screen-by-screen behavior, plus the deliberate design decisions and why they were made
 - [docs/THIRD_PARTY_NOTICES.md](docs/THIRD_PARTY_NOTICES.md)
 
 ## License

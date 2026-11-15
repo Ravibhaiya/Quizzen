@@ -76,7 +76,7 @@ import com.ravibhaiya.quizzen.ui.components.QuizzenScreen
 import com.ravibhaiya.quizzen.ui.components.ScreenHeader
 import com.ravibhaiya.quizzen.ui.components.SelectAllButton
 import com.ravibhaiya.quizzen.ui.components.bouncyClickable
-import com.ravibhaiya.quizzen.ui.components.cssShadow
+import com.ravibhaiya.quizzen.ui.components.softShadow
 import com.ravibhaiya.quizzen.ui.components.rememberHaptics
 import com.ravibhaiya.quizzen.ui.theme.QuizzenShapes
 import com.ravibhaiya.quizzen.ui.theme.quizzen
@@ -211,7 +211,7 @@ fun VocabularyManagerScreen(
                                     .size(48.dp)
                                     .testTag("toggle_search_button")
                                     .semantics { selected = state.isSearchActive }
-                                    .cssShadow(
+                                    .softShadow(
                                         NeutralShadowColor.copy(alpha = 0.05f),
                                         offsetY = 2.dp,
                                         blur = 6.dp,
@@ -245,7 +245,7 @@ fun VocabularyManagerScreen(
                                     modifier = Modifier
                                         .size(48.dp)
                                         .testTag("header_notifications_button")
-                                        .cssShadow(
+                                        .softShadow(
                                             NeutralShadowColor.copy(alpha = 0.05f),
                                             offsetY = 2.dp,
                                             blur = 6.dp,
@@ -462,7 +462,7 @@ fun VocabularyManagerScreen(
             Surface(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .cssShadow(
+                    .softShadow(
                         NeutralShadowColor.copy(alpha = 0.25f),
                         offsetY = (-6).dp,
                         blur = 20.dp,
@@ -768,7 +768,7 @@ private fun VocabularySearchBar(
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .cssShadow(NeutralShadowColor.copy(alpha = 0.05f), offsetY = 2.dp, blur = 8.dp, spread = 0.dp, shape = shape)
+            .softShadow(NeutralShadowColor.copy(alpha = 0.05f), offsetY = 2.dp, blur = 8.dp, spread = 0.dp, shape = shape)
             .clip(shape)
             .background(bgColor, shape)
             .border(3.dp, borderColor, shape)
@@ -841,7 +841,7 @@ private fun VocabularyEmptyState(
     Column(
         modifier = modifier
             .fillMaxWidth()
-            .cssShadow(NeutralShadowColor.copy(alpha = 0.05f), offsetY = 2.dp, blur = 6.dp, spread = 0.dp, shape = shape)
+            .softShadow(NeutralShadowColor.copy(alpha = 0.05f), offsetY = 2.dp, blur = 6.dp, spread = 0.dp, shape = shape)
             .clip(shape)
             .background(MaterialTheme.colorScheme.surfaceContainer)
             .padding(28.dp),
@@ -896,7 +896,7 @@ private fun VocabularySkeletonCard(
         modifier = modifier
             .fillMaxWidth()
             .testTag("vocabulary_skeleton_card_$index")
-            .cssShadow(NeutralShadowColor.copy(alpha = 0.04f), offsetY = 2.dp, blur = 6.dp, spread = 0.dp, shape = shape)
+            .softShadow(NeutralShadowColor.copy(alpha = 0.04f), offsetY = 2.dp, blur = 6.dp, spread = 0.dp, shape = shape)
             .clip(shape)
             .background(MaterialTheme.colorScheme.surfaceContainer)
             .padding(horizontal = 18.dp, vertical = 16.dp),

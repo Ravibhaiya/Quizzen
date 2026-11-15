@@ -59,7 +59,7 @@ import com.ravibhaiya.quizzen.ui.components.PrimaryButton
 import com.ravibhaiya.quizzen.ui.components.QuizzenIconButton
 import com.ravibhaiya.quizzen.ui.components.QuizzenIcons
 import com.ravibhaiya.quizzen.ui.components.bouncyClickable
-import com.ravibhaiya.quizzen.ui.components.cssShadow
+import com.ravibhaiya.quizzen.ui.components.softShadow
 import com.ravibhaiya.quizzen.ui.theme.quizzen
 
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
@@ -583,7 +583,7 @@ private fun JsonCodeField(
             .heightIn(min = 240.dp)
             .testTag("vocabulary_json_input")
             .onFocusChanged { focused = it.isFocused }
-            .cssShadow(NeutralShadowColor.copy(alpha = 0.05f), offsetY = 2.dp, blur = 6.dp, spread = 0.dp, shape = shape)
+            .softShadow(NeutralShadowColor.copy(alpha = 0.05f), offsetY = 2.dp, blur = 6.dp, spread = 0.dp, shape = shape)
             .clip(shape)
             .background(bgColor, shape)
             .border(2.dp, borderColor, shape)

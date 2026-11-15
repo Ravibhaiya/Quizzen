@@ -19,7 +19,7 @@ the real upload key instead (the flag is off by default, so a plain `assembleRel
 | Relayout | `FitText` picks its font size in one pass with a text measurer and a binary search (`fitFontSize`, about 5 measurements) instead of re-laying-out the screen up to ~20 times. |
 | Recomposition | Animated values (press scale, segmented indicator, pulse, glow) are read inside `graphicsLayer` / `offset {}` / `drawBehind` lambdas, so they animate without recomposing. |
 | Transitions | One animated layer at a time: forward = the new screen fades/rises in over the old one; back = the leaving screen fades out. No full-screen cross-fade. |
-| Shadows | `cssShadow` draws one cached Gaussian-blurred outline; Skia renders blurred rounded rects/rects with a cheap analytic shader on the GPU. Alpha-0 shadows are skipped. API 26-27 fall back to a plain elevation shadow. |
+| Shadows | `softShadow` draws one cached Gaussian-blurred outline; Skia renders blurred rounded rects/rects with a cheap analytic shader on the GPU. Alpha-0 shadows are skipped. API 26-27 fall back to a plain elevation shadow. |
 | Glow | A radial-gradient disc (no `Modifier.blur`, which only exists on API 31+ and is expensive). |
 | Haptics | Vibrator waveforms from precomputed patterns; no allocation per tap beyond the effect. |
 | Size / memory | R8 + resource shrinking, English-only resources (`resourceConfigurations`), five static font files loaded lazily, vector art instead of bitmaps. |
@@ -29,7 +29,7 @@ the real upload key instead (the flag is off by default, so a plain `assembleRel
 
 1. No `rememberInfiniteTransition` / endless animation unless it is visible and needed; stop it when it is not.
 2. Read animated `State` inside draw/layout/graphicsLayer lambdas (`graphicsLayer { scaleX = value }`), not in the composable body.
-3. Do not add `Modifier.blur`, `RenderEffect` or `BlurMaskFilter` per frame outside `cssShadow`; do not add full-screen offscreen layers.
+3. Do not add `Modifier.blur`, `RenderEffect` or `BlurMaskFilter` per frame outside `softShadow`; do not add full-screen offscreen layers.
 4. Never repeat a relayout loop to fit text; use `FitText` / `fitFontSize`.
 5. Keep first-frame work small: no disk or network on the main thread, no heavy work in `onCreate`.
 6. Test performance on the **release** APK on a real low-end phone.

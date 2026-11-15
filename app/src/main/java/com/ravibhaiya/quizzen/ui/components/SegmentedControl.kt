@@ -71,7 +71,7 @@ fun SegmentedControl(
                         val step = with(density) { (segmentWidth + gap).toPx() }
                         IntOffset((position() * step).roundToInt(), 0)
                     }
-                    .cssShadow(primary.copy(alpha = 0.6f), offsetY = 8.dp, blur = 16.dp, spread = (-5).dp, shape = CircleShape)
+                    .softShadow(primary.copy(alpha = 0.6f), offsetY = 8.dp, blur = 16.dp, spread = (-5).dp, shape = CircleShape)
                     .background(primary, CircleShape),
             )
         }

@@ -17,7 +17,7 @@ import androidx.compose.ui.unit.sp
 
 /**
  * Single-line text that shrinks from [maxFontSize] toward [minFontSize] (in [step] increments) until it fits the available
- * width (port of `fitQuestionText()` in the web original). The size is worked out in one pass with a text measurer
+ * width. The size is worked out in one pass with a text measurer
  * ([fitFontSize]) before the text is drawn, so there is no flicker and no repeated relayout.
  * Used for the practice question (centered) and the hero-card titles (start aligned), so long words such as
  * "Vocabulary" never wrap.

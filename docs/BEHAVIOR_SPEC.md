@@ -1,6 +1,6 @@
 # Behavior specification
 
-Normative description of the app. "Web" = the prototype in `docs/reference/quizzen-web-reference.html`.
+Normative description of the app: what every screen shows and does.
 
 ## Screen transitions
 - Forward: the new screen fades in and rises 16 dp (380 ms). Back: the leaving screen fades out (200 ms) over the screen underneath.
@@ -263,26 +263,27 @@ Normative description of the app. "Web" = the prototype in `docs/reference/quizz
 - Timer pauses while the app is in the background and resumes without resetting.
 - Back returns to the configuration screen.
 
-## Deliberate deviations from the web prototype
+## Design decisions
 
-| Web | Native | Why |
-|---|---|---|
-| Tables "Start" opened a Multiply-style practice using Multiply's chips | Real tables practice (`n x 1..10`) | The web wiring was unfinished. The `1..10` multiplier range is an assumption; change `PracticeConfig.Tables.MULTIPLIER_MAX`. |
-| Tables Start always enabled | Disabled until a number is chosen | Cannot generate a question from an empty selection. |
-| Back from Practice always went to Multiply | Back goes to the originating screen | Correct with two entry points. |
-| Timer field snapped to `0` when cleared; `0` fell back to 20 s | Blank restored to the screen default on blur; 0/blank -> screen default (20 or 10) | Cleared-field editing works; behavior on Start is equivalent. |
-| Whole home page scrolled including header | Header and tab control fixed; each tab page scrolls | Native pager pattern; identical on normal screen sizes. |
-| Placeholder tiles did nothing | Snackbar "Coming soon" | Feedback for taps. |
-| Feedback could be re-triggered while visible | Input locked while visible | Avoids stacked timeouts (web bug). |
-| Timer kept running in a hidden tab | Pauses in background | Native lifecycle. |
-| No auto-focus | Answer field auto-focused | Faster practice with the number pad. |
-| Header showed a gradient blob logo with a "Q" | No logo in the header | Owner request. |
-| No splash / launcher icon design | Launcher icon and full-screen splash use the owner's `quizzen-logo.svg` | Owner request. |
-| Hero titles could wrap ("Vocabula/ry" on narrow phones) | Title shrinks to stay on one line | Owner request; same idea as the practice question auto-fit. |
-| "Time's Up" sheet was orange | Sky blue (`#2E9FE0`) | Owner request; orange was too close to the app's primary colour. |
-| Powers & Roots was a placeholder | Implemented (types, two range sliders, timer) in the Quizzen style, from a reference screenshot of another app | Owner request. The reference's "0 disables the timer" is **not** adopted: 0 or blank uses the default like every other screen. |
-| Alphabet Reasoning was a placeholder | Implemented (letter range, three challenge types, timer) in the Quizzen style, from a reference screenshot of another app | Owner request. The reference's two letter pickers became two pills (the picked letters) above one range slider (like the Powers & Roots ranges), the challenge cards use the app's primary selection style and show only the name, and the reference's "0 disables the timer" is **not** adopted. |
-| Fraction & Percentage was a placeholder | Implemented (answer in Fraction or Percentage, timer) in the Quizzen style, asking only the 24 unit fractions of the owner's chart | Owner request. Fraction answers get an on-screen "/" key because the number keyboard has none; percentage answers get an automatic `%` sign and may be typed with a decimal point. |
-| Followed `prefers-color-scheme` (light + dark) | Light only | Product decision: the app is light-only. |
-| Haptics toggle was not persisted or connected | Persisted (DataStore) and applied everywhere, with a distinct effect per action | Real feature. |
-| Option chips had 22 px side padding | 18 dp side padding | On 360 dp phones three chips need 326 dp but only 324 dp are available, so "4 Digits" wrapped and left a gap on the right. With 18 dp, three chips fit per row (2, 3, 4 Digits, then 5 Digits). |
+Choices that are deliberate, most of them at the owner's request. Keep this list current when one of them changes.
+
+| Decision | Why |
+|---|---|
+| Tables Practice asks `n x 1..10` for the chosen tables | The `1..10` multiplier range is an assumption; change `PracticeConfig.Tables.MULTIPLIER_MAX`. |
+| Tables Start is disabled until a number is chosen | Cannot generate a question from an empty selection. |
+| A blank timer field is restored to the screen default on blur; 0 or blank starts with the screen default (20 or 10) | Cleared-field editing works. |
+| Header and tab control stay fixed; each tab page scrolls | Native pager pattern. |
+| Placeholder tiles show a snackbar "Coming soon" | Feedback for taps. |
+| Input is locked while the feedback sheet is visible | Avoids stacked timeouts. |
+| The timer pauses while the app is in the background | Native lifecycle. |
+| The answer field is auto-focused | Faster practice with the number pad. |
+| No logo in the Home header | Owner request. |
+| The launcher icon and the full-screen splash use the owner's `quizzen-logo.svg` | Owner request. |
+| Hero titles shrink to stay on one line ("Vocabulary" never wraps on narrow phones) | Owner request; same idea as the practice question auto-fit. |
+| The "Time's Up" sheet is sky blue (`#2E9FE0`) | Owner request; orange was too close to the app's primary colour. |
+| Powers & Roots: types, two range sliders and a timer, in the Quizzen style (modelled on a screenshot of another app) | Owner request. That app's "0 disables the timer" is **not** adopted: 0 or blank uses the default like every other screen. |
+| Alphabet Reasoning: letter range, three challenge types and a timer, in the Quizzen style (modelled on a screenshot of another app) | Owner request. That app's two letter pickers became two pills (the picked letters) above one range slider (like the Powers & Roots ranges), the challenge cards use the app's primary selection style and show only the name, and "0 disables the timer" is **not** adopted. |
+| Fraction & Percentage: answer in Fraction or Percentage and a timer, asking only the 24 unit fractions of the owner's chart | Owner request. Fraction answers get an on-screen "/" key because the number keyboard has none; percentage answers get an automatic `%` sign and may be typed with a decimal point. |
+| Light theme only | Product decision: the app is light-only. |
+| The haptics toggle is persisted (DataStore) and applied everywhere, with a distinct effect per action | Real feature. |
+| Option chips have 18 dp side padding | With 22 dp, three chips need 326 dp but only 324 dp are available on 360 dp phones, so "4 Digits" wrapped and left a gap on the right. With 18 dp, three chips fit per row (2, 3, 4 Digits, then 5 Digits). |

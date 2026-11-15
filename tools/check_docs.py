@@ -41,7 +41,7 @@ for doc in DOCS:
     for token in sorted(set(re.findall(r"`([^`\n]{3,80})`", text))):
         if token in ALLOWED:
             continue
-        if re.fullmatch(r"[\w./-]+\.(kt|md|py|xml|json|yml|kts|ttf|svg|txt|html)", token):
+        if re.fullmatch(r"[\w./-]+\.(kt|md|py|xml|json|yml|kts|ttf|svg|txt)", token):
             if token not in tracked and token.split("/")[-1] not in stems and token not in corpus:
                 problems.append(f"{doc}: file `{token}` does not exist")
             continue

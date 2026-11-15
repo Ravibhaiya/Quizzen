@@ -14,20 +14,21 @@ import androidx.compose.ui.graphics.drawscope.drawIntoCanvas
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 
-/** Shadow tint used by the design for neutral (non-colored) shadows: CSS `rgba(20, 18, 32, a)`. */
+/** Shadow tint for neutral (non-colored) shadows: `#141220`, used with the alpha each element needs. */
 val NeutralShadowColor = Color(0xFF141220)
 
 /**
- * Draws the equivalent of the CSS `box-shadow: 0 <offsetY> <blur> <spread> <color>`.
+ * Draws a soft shadow of the element outline: moved down by [offsetY], grown by [spread] on every side and blurred by
+ * [blur] (the Gaussian sigma is blur / 2), tinted with [color].
  *
  * Android's built-in [shadow] cannot offset, spread or softly blur a shadow and ignores custom colors below API 28, so
- * the web design's soft colored glows come out too dark and hard-edged with it. This blurs the element outline with a
- * Gaussian mask (CSS blur radius B == Gaussian sigma B / 2) and needs API 28+ (hardware-accelerated blur mask).
+ * the app's soft colored glows come out too dark and hard-edged with it. This blurs the element outline with a
+ * Gaussian mask and needs API 28+ (hardware-accelerated blur mask).
  * Below API 28 it degrades to a plain elevation shadow for downward shadows and nothing for upward ones.
  *
  * Place it before `clip`/`background` so the shadow sits behind the element and scales with `pressScale`.
  */
-fun Modifier.cssShadow(
+fun Modifier.softShadow(
     color: Color,
     offsetY: Dp,
     blur: Dp,

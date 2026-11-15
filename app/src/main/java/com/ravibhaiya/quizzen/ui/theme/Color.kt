@@ -16,7 +16,7 @@ data class QuizzenColors(
     val timeout: Color,
 )
 
-// Palette = CSS `:root` of the web reference. The app is light-only by design (no dark palette).
+// Palette of the app. It is light-only by design (no dark palette).
 private val Primary = Color(0xFFEA7A31)
 private val OnPrimary = Color(0xFFFFFFFF)
 private val PrimaryContainer = Color(0xFFFCE1CB)
@@ -34,14 +34,14 @@ private val Error = Color(0xFFE14C4C)
 // Sky blue: sits with the green/red sheets at a similar brightness (white text contrast ~2.9:1, like the green one).
 private val Timeout = Color(0xFF2E9FE0)
 
-// Only Material's `inversePrimary` slot needs this; the web design has no equivalent.
+// Only Material's `inversePrimary` slot needs this extra color.
 private val InversePrimary = Color(0xFFF4B178)
 
 internal val QuizzenExtraColors = QuizzenColors(Tone30, Success, Error, Timeout)
 
 /**
  * Every Material role is set explicitly so no component (Snackbar, dividers, sheets...) can fall back to the
- * baseline purple palette. Roles the web design never defines reuse the design's own tokens.
+ * baseline purple palette. Roles without a dedicated token reuse the design's own tokens.
  */
 internal val QuizzenColorScheme: ColorScheme = lightColorScheme(
     primary = Primary,

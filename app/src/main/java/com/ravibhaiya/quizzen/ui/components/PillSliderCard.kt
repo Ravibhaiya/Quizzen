@@ -85,7 +85,7 @@ fun PillSliderCard(
     Column(
         modifier = modifier
             .fillMaxWidth()
-            .cssShadow(
+            .softShadow(
                 NeutralShadowColor.copy(alpha = 0.05f),
                 offsetY = 2.dp,
                 blur = 6.dp,

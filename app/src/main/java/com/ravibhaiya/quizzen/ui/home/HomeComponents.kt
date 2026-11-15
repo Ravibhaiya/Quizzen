@@ -39,7 +39,7 @@ import com.ravibhaiya.quizzen.ui.components.BlobLetter
 import com.ravibhaiya.quizzen.ui.components.FitText
 import com.ravibhaiya.quizzen.ui.components.NeutralShadowColor
 import com.ravibhaiya.quizzen.ui.components.QuizzenIcons
-import com.ravibhaiya.quizzen.ui.components.cssShadow
+import com.ravibhaiya.quizzen.ui.components.softShadow
 import com.ravibhaiya.quizzen.ui.components.pressScale
 import com.ravibhaiya.quizzen.ui.theme.BlobShape
 import com.ravibhaiya.quizzen.ui.theme.QuizzenShapes
@@ -61,7 +61,7 @@ fun HeroCard(
         modifier = modifier
             .fillMaxWidth()
             .pressScale(source)
-            .cssShadow(tone30.copy(alpha = 0.65f), offsetY = 18.dp, blur = 32.dp, spread = (-14).dp, shape = shape)
+            .softShadow(tone30.copy(alpha = 0.65f), offsetY = 18.dp, blur = 32.dp, spread = (-14).dp, shape = shape)
             .clip(shape)
             .background(heroGradient(MaterialTheme.colorScheme.primary, tone30))
             .drawBehind {
@@ -131,7 +131,7 @@ fun FeatureTile(
         modifier = modifier
             .aspectRatio(1f / 0.98f)
             .pressScale(source)
-            .cssShadow(NeutralShadowColor.copy(alpha = 0.05f), offsetY = 2.dp, blur = 6.dp, spread = 0.dp, shape = shape)
+            .softShadow(NeutralShadowColor.copy(alpha = 0.05f), offsetY = 2.dp, blur = 6.dp, spread = 0.dp, shape = shape)
             .clip(shape)
             .background(MaterialTheme.colorScheme.surfaceContainer)
             .clickable(

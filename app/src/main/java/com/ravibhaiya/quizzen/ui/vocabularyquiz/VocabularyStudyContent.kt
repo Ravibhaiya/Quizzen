@@ -41,7 +41,7 @@ import com.ravibhaiya.quizzen.ui.components.PrimaryButton
 import com.ravibhaiya.quizzen.ui.components.QuizzenIcons
 import com.ravibhaiya.quizzen.ui.components.ScreenHeader
 import com.ravibhaiya.quizzen.ui.components.bouncyClickable
-import com.ravibhaiya.quizzen.ui.components.cssShadow
+import com.ravibhaiya.quizzen.ui.components.softShadow
 import com.ravibhaiya.quizzen.ui.theme.QuizzenShapes
 
 @Composable
@@ -147,7 +147,7 @@ internal fun VocabularyStudyView(
         Surface(
             modifier = Modifier
                 .fillMaxWidth()
-                .cssShadow(
+                .softShadow(
                     NeutralShadowColor.copy(alpha = 0.2f),
                     offsetY = (-6).dp,
                     blur = 18.dp,
@@ -179,7 +179,7 @@ private fun StudyEmptyStateCard() {
     Column(
         modifier = Modifier
             .fillMaxWidth()
-            .cssShadow(
+            .softShadow(
                 NeutralShadowColor.copy(alpha = 0.05f),
                 offsetY = 2.dp,
                 blur = 8.dp,
@@ -230,7 +230,7 @@ private fun StudyWordCard(
     Column(
         modifier = Modifier
             .fillMaxWidth()
-            .cssShadow(
+            .softShadow(
                 NeutralShadowColor.copy(alpha = 0.05f),
                 offsetY = 2.dp,
                 blur = 8.dp,

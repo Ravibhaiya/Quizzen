@@ -37,7 +37,7 @@ import com.ravibhaiya.quizzen.domain.Feedback
 import com.ravibhaiya.quizzen.domain.FeedbackType
 import com.ravibhaiya.quizzen.ui.components.EmphasizedEasing
 import com.ravibhaiya.quizzen.ui.components.QuizzenIcons
-import com.ravibhaiya.quizzen.ui.components.cssShadow
+import com.ravibhaiya.quizzen.ui.components.softShadow
 import com.ravibhaiya.quizzen.ui.theme.quizzen
 
 /** Colored bottom sheet announcing Correct / Incorrect / Time's Up. Slides in over the practice screen. */
@@ -88,7 +88,7 @@ private fun FeedbackContent(feedback: Feedback) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .cssShadow(Color.Black.copy(alpha = 0.28f), offsetY = (-14).dp, blur = 32.dp, spread = (-12).dp, shape = shape)
+            .softShadow(Color.Black.copy(alpha = 0.28f), offsetY = (-14).dp, blur = 32.dp, spread = (-12).dp, shape = shape)
             .background(background, shape)
             .windowInsetsPadding(WindowInsets.navigationBars)
             .padding(22.dp)
