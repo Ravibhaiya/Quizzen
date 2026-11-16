@@ -261,6 +261,7 @@ internal object VocabularyQuizSavedState {
                 encodeDetails(q.promptDetails),
                 q.optionDetails.joinToString(";") { encodeDetails(it) },
                 b64(q.clusterWord),
+                b64(q.clusterPartOfSpeech),
             ).joinToString("|")
         }
 
@@ -284,6 +285,7 @@ internal object VocabularyQuizSavedState {
         val promptDetails = decodeDetails(parts[5]) ?: WordDetails(word = promptWord)
         val optionDetails = parts[6].split(';').filter { it.isNotBlank() }.mapNotNull(::decodeDetails)
         val clusterWord = unb64(parts[7])
+        val clusterPartOfSpeech = if (parts.size >= 9) unb64(parts[8]) else ""
         return VocabularyQuizItem(
             clusterId = clusterId,
             mode = mode,
@@ -293,6 +295,7 @@ internal object VocabularyQuizSavedState {
             promptDetails = promptDetails,
             optionDetails = optionDetails.ifEmpty { options.map { WordDetails(word = it) } },
             clusterWord = clusterWord,
+            clusterPartOfSpeech = clusterPartOfSpeech,
         )
     }
 
@@ -302,6 +305,7 @@ internal object VocabularyQuizSavedState {
             b64(details.meaningEnglish),
             b64(details.meaningHinglish),
             b64(details.exampleSentence),
+            b64(details.partOfSpeech),
         ).joinToString(":")
 
     private fun decodeDetails(raw: String): WordDetails? {
@@ -309,6 +313,7 @@ internal object VocabularyQuizSavedState {
         if (parts.size < 4) return null
         return WordDetails(
             word = unb64(parts[0]),
+            partOfSpeech = if (parts.size >= 5) unb64(parts[4]) else "",
             meaningEnglish = unb64(parts[1]),
             meaningHinglish = unb64(parts[2]),
             exampleSentence = unb64(parts[3]),

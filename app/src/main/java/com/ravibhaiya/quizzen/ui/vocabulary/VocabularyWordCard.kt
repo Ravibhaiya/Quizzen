@@ -235,12 +235,15 @@ internal fun VocabularyWordCard(
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.spacedBy(8.dp),
                 ) {
+                    val extra = MaterialTheme.quizzen
                     RelationCountPill(
                         text = resources.getQuantityString(
                             R.plurals.synonym_count,
                             entry.synonyms.size,
                             entry.synonyms.size,
                         ),
+                        containerColor = extra.synonymContainer,
+                        contentColor = extra.onSynonymContainer,
                         modifier = Modifier.testTag("synonym_count_${entry.id}"),
                     )
                     RelationCountPill(
@@ -249,6 +252,8 @@ internal fun VocabularyWordCard(
                             entry.antonyms.size,
                             entry.antonyms.size,
                         ),
+                        containerColor = extra.antonymContainer,
+                        contentColor = extra.onAntonymContainer,
                         modifier = Modifier.testTag("antonym_count_${entry.id}"),
                     )
                 }
@@ -260,6 +265,7 @@ internal fun VocabularyWordCard(
             enter = fadeIn(tween(220)) + expandVertically(tween(260, easing = EmphasizedEasing)),
             exit = fadeOut(tween(150)) + shrinkVertically(tween(200)),
         ) {
+            val extra = MaterialTheme.quizzen
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -280,12 +286,18 @@ internal fun VocabularyWordCard(
                     title = stringResource(R.string.section_synonyms),
                     emptyText = stringResource(R.string.no_synonyms_added),
                     items = entry.synonyms,
+                    badgeContainer = extra.synonymContainer,
+                    badgeContent = extra.onSynonymContainer,
+                    accentColor = extra.synonym,
                 )
 
                 RelationDisplaySection(
                     title = stringResource(R.string.section_antonyms),
                     emptyText = stringResource(R.string.no_antonyms_added),
                     items = entry.antonyms,
+                    badgeContainer = extra.antonymContainer,
+                    badgeContent = extra.onAntonymContainer,
+                    accentColor = extra.antonym,
                 )
             }
         }
@@ -295,17 +307,19 @@ internal fun VocabularyWordCard(
 @Composable
 private fun RelationCountPill(
     text: String,
+    containerColor: Color,
+    contentColor: Color,
     modifier: Modifier = Modifier,
 ) {
     Box(
         modifier = modifier
-            .background(MaterialTheme.colorScheme.surfaceContainerHigh, CircleShape)
+            .background(containerColor, CircleShape)
             .padding(horizontal = 10.dp, vertical = 4.dp),
     ) {
         Text(
             text = text,
             style = MaterialTheme.typography.labelSmall,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            color = contentColor,
             maxLines = 1,
             softWrap = false,
         )
@@ -341,6 +355,9 @@ private fun RelationDisplaySection(
     title: String,
     emptyText: String,
     items: List<WordDetails>,
+    badgeContainer: Color,
+    badgeContent: Color,
+    accentColor: Color,
 ) {
     Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
         Row(
@@ -350,17 +367,17 @@ private fun RelationDisplaySection(
             Text(
                 text = title,
                 style = MaterialTheme.typography.titleMedium,
-                color = MaterialTheme.colorScheme.onSurface,
+                color = accentColor,
             )
             Box(
                 modifier = Modifier
-                    .background(MaterialTheme.colorScheme.primaryContainer, CircleShape)
+                    .background(badgeContainer, CircleShape)
                     .padding(horizontal = 10.dp, vertical = 3.dp),
             ) {
                 Text(
                     text = stringResource(R.string.word_count_badge, items.size),
                     style = MaterialTheme.typography.labelSmall.copy(fontSize = 11.5.sp),
-                    color = MaterialTheme.colorScheme.onPrimaryContainer,
+                    color = badgeContent,
                 )
             }
         }
@@ -380,27 +397,74 @@ private fun RelationDisplaySection(
             }
         } else {
             items.forEach { details ->
-                WordDetailsDisplayBox(details = details)
+                WordDetailsDisplayBox(
+                    details = details,
+                    borderColor = accentColor.copy(alpha = 0.25f),
+                )
             }
         }
     }
 }
 
 @Composable
-private fun WordDetailsDisplayBox(details: WordDetails) {
+private fun WordDetailsDisplayBox(
+    details: WordDetails,
+    borderColor: Color = Color.Transparent,
+) {
     val dash = stringResource(R.string.value_not_provided)
+    val shape = RoundedCornerShape(20.dp)
+    val pos = details.partOfSpeech.trim()
     Column(
         modifier = Modifier
             .fillMaxWidth()
-            .background(MaterialTheme.colorScheme.surface, RoundedCornerShape(20.dp))
+            .background(MaterialTheme.colorScheme.surface, shape)
+            .then(
+                if (borderColor != Color.Transparent) {
+                    Modifier.border(1.dp, borderColor, shape)
+                } else {
+                    Modifier
+                },
+            )
             .padding(14.dp),
         verticalArrangement = Arrangement.spacedBy(10.dp),
     ) {
-        DetailFieldRow(
-            label = stringResource(R.string.field_word),
-            value = details.word.ifBlank { dash },
-            emphasize = true,
-        )
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.SpaceBetween,
+        ) {
+            Column(
+                modifier = Modifier.weight(1f),
+                verticalArrangement = Arrangement.spacedBy(2.dp),
+            ) {
+                Text(
+                    text = stringResource(R.string.field_word).uppercase(),
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+                Text(
+                    text = details.word.ifBlank { dash },
+                    style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.Bold),
+                    color = MaterialTheme.colorScheme.onSurface,
+                )
+            }
+            if (pos.isNotEmpty()) {
+                Box(
+                    modifier = Modifier
+                        .padding(start = 8.dp)
+                        .background(MaterialTheme.colorScheme.primaryContainer, CircleShape)
+                        .padding(horizontal = 10.dp, vertical = 4.dp),
+                ) {
+                    Text(
+                        text = pos,
+                        style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.SemiBold),
+                        color = MaterialTheme.colorScheme.onPrimaryContainer,
+                        maxLines = 1,
+                        softWrap = false,
+                    )
+                }
+            }
+        }
         DetailFieldRow(
             label = stringResource(R.string.field_meaning_english),
             value = details.meaningEnglish.ifBlank { dash },

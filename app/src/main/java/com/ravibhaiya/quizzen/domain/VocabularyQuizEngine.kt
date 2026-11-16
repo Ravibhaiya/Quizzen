@@ -19,9 +19,10 @@ import kotlin.random.Random
  *      the main word is neither the question nor the correct option.
  *    - For Antonym questions, words in `S-` are paired across a shuffled `S+` (and vice-versa in Antonym-only mode),
  *      so antonyms pair directly with synonyms as well as with the main word.
- * 3. **Stratified Cluster-Distance Interleaving**:
- *    - Questions are grouped by cluster and interleaved greedily by picking from the largest remaining cluster that
- *      differs from the previously asked cluster, preventing back-to-back questions from the same word family.
+ * 3. **Main-Word Contiguous Grouping**:
+ *    - All Synonym and Antonym questions belonging to a main word (`cluster`) stay grouped together in a contiguous
+ *      block so the main word remains displayed until all of its synonym and antonym questions are finished before
+ *      moving on to the next main word.
  * 4. **Conflict-Free Smart Distractors**:
  *    - Excludes all words in the cluster (and across all entries) that also satisfy the asked relation with the prompt,
  *      guaranteeing a single unambiguous correct option among the 4 choices.
@@ -32,8 +33,11 @@ object VocabularyQuizEngine {
 
     private data class SemanticCluster(
         val id: String,
+        val mainWord: String,
+        val partOfSpeech: String,
         val sameMeaning: List<String>,
         val oppositeMeaning: List<String>,
+        val detailsByWordLower: Map<String, WordDetails> = emptyMap(),
     )
 
     private data class RawQuestion(
@@ -61,20 +65,22 @@ object VocabularyQuizEngine {
             .mapIndexedNotNull { index, entry -> toCluster(entry, fallbackId = "all_$index") }
         val detailsByWord = buildWordDetailsLookup(allSourceEntries)
 
-        val rawByCluster: MutableMap<String, MutableList<RawQuestion>> = LinkedHashMap()
+        val orderedRaw = mutableListOf<RawQuestion>()
         for (cluster in clusters) {
             val questions = buildQuestionsForCluster(cluster, modes, random)
             if (questions.isNotEmpty()) {
-                rawByCluster[cluster.id] = questions.shuffled(random).toMutableList()
+                val synQuestions = questions.filter { it.mode == VocabularyQuizMode.Synonyms }.shuffled(random)
+                val antQuestions = questions.filter { it.mode == VocabularyQuizMode.Antonyms }.shuffled(random)
+                orderedRaw += synQuestions
+                orderedRaw += antQuestions
             }
         }
-        if (rawByCluster.isEmpty()) return emptyList()
+        if (orderedRaw.isEmpty()) return emptyList()
 
-        val interleaved = interleaveClusters(rawByCluster, random)
         val studiedWordPool = clusters.flatMap { it.sameMeaning + it.oppositeMeaning }.distinctBy { it.lowercase() }
         val globalWordPool = allClusters.flatMap { it.sameMeaning + it.oppositeMeaning }.distinctBy { it.lowercase() }
 
-        return interleaved.map { raw ->
+        return orderedRaw.map { raw ->
             val options = buildOptions(
                 raw = raw,
                 allClusters = allClusters,
@@ -82,10 +88,18 @@ object VocabularyQuizEngine {
                 globalWordPool = globalWordPool,
                 random = random,
             )
-            val promptDetails = detailsByWord[raw.promptWord.lowercase()]
+            val promptLower = raw.promptWord.lowercase()
+            val promptDetails = raw.cluster.detailsByWordLower[promptLower]
+                ?: detailsByWord[promptLower]
                 ?: WordDetails(word = raw.promptWord)
             val optionDetails = options.map { option ->
-                detailsByWord[option.lowercase()] ?: WordDetails(word = option)
+                val optLower = option.lowercase()
+                raw.cluster.detailsByWordLower[optLower]
+                    ?: detailsByWord[optLower]
+                    ?: WordDetails(word = option)
+            }
+            val clusterPos = raw.cluster.partOfSpeech.ifBlank {
+                detailsByWord[raw.cluster.mainWord.lowercase()]?.partOfSpeech.orEmpty()
             }
             VocabularyQuizItem(
                 clusterId = raw.cluster.id,
@@ -95,7 +109,8 @@ object VocabularyQuizEngine {
                 options = options,
                 promptDetails = promptDetails,
                 optionDetails = optionDetails,
-                clusterWord = raw.cluster.sameMeaning.firstOrNull().orEmpty(),
+                clusterWord = raw.cluster.mainWord,
+                clusterPartOfSpeech = clusterPos,
             )
         }
     }
@@ -112,6 +127,7 @@ object VocabularyQuizEngine {
             } else {
                 map[key] = WordDetails(
                     word = existing.word.ifBlank { clean.word },
+                    partOfSpeech = existing.partOfSpeech.ifBlank { clean.partOfSpeech },
                     meaningEnglish = existing.meaningEnglish.ifBlank { clean.meaningEnglish },
                     meaningHinglish = existing.meaningHinglish.ifBlank { clean.meaningHinglish },
                     exampleSentence = existing.exampleSentence.ifBlank { clean.exampleSentence },
@@ -145,8 +161,11 @@ object VocabularyQuizEngine {
 
         return SemanticCluster(
             id = clean.id.ifBlank { "${fallbackId}_${main.lowercase()}" },
+            mainWord = main,
+            partOfSpeech = clean.wordDetails.partOfSpeech.trim(),
             sameMeaning = same,
             oppositeMeaning = opposite,
+            detailsByWordLower = buildWordDetailsLookup(listOf(clean)),
         )
     }
 
@@ -223,48 +242,6 @@ object VocabularyQuizEngine {
         }
 
         return questions
-    }
-
-    /**
-     * Stratified Cluster-Distance Interleaving:
-     * Greedily selects the next question from a cluster with the highest remaining count that is not equal to the
-     * previous question's cluster (whenever another cluster is available).
-     */
-    private fun interleaveClusters(
-        byCluster: Map<String, MutableList<RawQuestion>>,
-        random: Random,
-    ): List<RawQuestion> {
-        val queues = byCluster.entries
-            .shuffled(random)
-            .associate { it.key to it.value.toMutableList() }
-            .toMutableMap()
-
-        val result = mutableListOf<RawQuestion>()
-        var lastClusterId: String? = null
-
-        while (queues.isNotEmpty()) {
-            val candidates = queues.entries.filter { it.value.isNotEmpty() }
-            if (candidates.isEmpty()) break
-
-            val nonRepeating = if (candidates.size > 1 && lastClusterId != null) {
-                candidates.filter { it.key != lastClusterId }
-            } else {
-                candidates
-            }
-
-            val maxRemaining = nonRepeating.maxOf { it.value.size }
-            val topBuckets = nonRepeating.filter { it.value.size == maxRemaining }
-            val chosenBucket = topBuckets[random.nextInt(topBuckets.size)]
-
-            val nextQuestion = chosenBucket.value.removeAt(0)
-            result += nextQuestion
-            lastClusterId = chosenBucket.key
-
-            if (chosenBucket.value.isEmpty()) {
-                queues.remove(chosenBucket.key)
-            }
-        }
-        return result
     }
 
     private fun buildOptions(

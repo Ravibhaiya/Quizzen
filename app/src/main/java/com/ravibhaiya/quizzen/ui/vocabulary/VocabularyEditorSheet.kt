@@ -288,18 +288,19 @@ fun VocabularyEditorSheet(
                         hasError = state.validationError != null,
                     )
                 }
+            }
 
-                if (state.isEditing) {
-                    ConfirmKeywordField(
-                        label = stringResource(R.string.type_confirm_to_edit),
-                        value = state.confirmText,
-                        placeholder = stringResource(R.string.hint_type_confirm),
-                        isMatched = state.canSave,
-                        accentColor = MaterialTheme.colorScheme.primary,
-                        onValueChange = onUpdateConfirmText,
-                        testTag = "edit_confirm_input",
-                    )
-                }
+            if (state.isEditing) {
+                Spacer(Modifier.height(12.dp))
+                ConfirmKeywordField(
+                    label = stringResource(R.string.type_confirm_to_edit),
+                    value = state.confirmText,
+                    placeholder = stringResource(R.string.hint_type_confirm),
+                    isMatched = state.canSave,
+                    accentColor = MaterialTheme.colorScheme.primary,
+                    onValueChange = onUpdateConfirmText,
+                    testTag = "edit_confirm_input",
+                )
             }
 
             if (state.validationError != null) {
@@ -469,6 +470,7 @@ private fun ConfirmKeywordField(
     accentColor: Color,
     onValueChange: (String) -> Unit,
     testTag: String,
+    inputModifier: Modifier = Modifier,
 ) {
     var focused by remember { mutableStateOf(false) }
     val shape = RoundedCornerShape(18.dp)
@@ -512,12 +514,13 @@ private fun ConfirmKeywordField(
             ),
             modifier = Modifier
                 .fillMaxWidth()
+                .then(inputModifier)
                 .testTag(testTag)
                 .onFocusChanged { focused = it.isFocused }
                 .clip(shape)
                 .background(bgColor, shape)
                 .border(2.dp, borderColor, shape)
-                .padding(horizontal = 16.dp, vertical = 14.dp),
+                .padding(horizontal = 16.dp, vertical = 12.dp),
             decorationBox = { innerTextField ->
                 Box(contentAlignment = Alignment.CenterStart) {
                     if (value.isEmpty()) {

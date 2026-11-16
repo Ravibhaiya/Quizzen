@@ -137,14 +137,15 @@
     <string name="json_payload_label">JSON Data</string>
     <string name="import_json_file">Import JSON</string>
     <string name="insert_json_template">Insert Template</string>
-    <string name="hint_bulk_words_json">[\n  {\n    \"word\": \"Diligent\",\n    \"meaningEnglish\": \"Hard-working\",\n    \"meaningHinglish\": \"Mehanti\",\n    \"exampleSentence\": \"She is a diligent student.\",\n    \"synonyms\": [\n      {\n        \"word\": \"Industrious\",\n        \"meaningEnglish\": \"Assiduous\",\n        \"meaningHinglish\": \"Parishrami\",\n        \"exampleSentence\": \"An industrious team.\"\n      }\n    ],\n    \"antonyms\": [\n      {\n        \"word\": \"Lazy\",\n        \"meaningEnglish\": \"Idle\",\n        \"meaningHinglish\": \"Aalsi\",\n        \"exampleSentence\": \"Do not be lazy.\"\n      }\n    ]\n  }\n]</string>
-    <string name="hint_single_word_json">{\n  \"word\": \"\",\n  \"meaningEnglish\": \"\",\n  \"meaningHinglish\": \"\",\n  \"exampleSentence\": \"\",\n  \"synonyms\": [],\n  \"antonyms\": []\n}</string>
+    <string name="hint_bulk_words_json">[\n  {\n    \"word\": \"Diligent\",\n    \"partOfSpeech\": \"Adjective\",\n    \"meaningEnglish\": \"Hard-working\",\n    \"meaningHinglish\": \"Mehanti\",\n    \"exampleSentence\": \"She is a diligent student.\",\n    \"synonyms\": [\n      {\n        \"word\": \"Industrious\",\n        \"partOfSpeech\": \"Adjective\",\n        \"meaningEnglish\": \"Assiduous\",\n        \"meaningHinglish\": \"Parishrami\",\n        \"exampleSentence\": \"An industrious team.\"\n      }\n    ],\n    \"antonyms\": [\n      {\n        \"word\": \"Lazy\",\n        \"partOfSpeech\": \"Adjective\",\n        \"meaningEnglish\": \"Idle\",\n        \"meaningHinglish\": \"Aalsi\",\n        \"exampleSentence\": \"Do not be lazy.\"\n      }\n    ]\n  }\n]</string>
+    <string name="hint_single_word_json">{\n  \"word\": \"\",\n  \"partOfSpeech\": \"\",\n  \"meaningEnglish\": \"\",\n  \"meaningHinglish\": \"\",\n  \"exampleSentence\": \"\",\n  \"synonyms\": [],\n  \"antonyms\": []\n}</string>
     <string name="word_count_badge">%1$d</string>
     <string name="vocabulary_empty_title">No words yet</string>
     <string name="vocabulary_empty_subtitle">Add your vocabulary words in JSON format with English and Hinglish meanings, example sentence, synonyms, and antonyms.</string>
     <string name="vocabulary_no_matches_title">No matching words</string>
     <string name="vocabulary_no_matches_subtitle">Try searching with a different word or meaning.</string>
     <string name="field_word">Word</string>
+    <string name="field_part_of_speech">Part of speech</string>
     <string name="field_meaning_english">Meaning in English</string>
     <string name="field_meaning_hinglish">Meaning in Hinglish</string>
     <string name="field_example_sentence">Example sentence</string>
@@ -235,7 +236,6 @@
     <string name="vocabulary_mode_synonyms">Synonyms</string>
     <string name="vocabulary_mode_antonyms">Antonyms</string>
     <string name="vocabulary_study_title">Study Words</string>
-    <string name="vocabulary_study_subtitle">Read the selected words and their related details before attempting the quiz.</string>
     <string name="vocabulary_study_empty_title">No words available</string>
     <string name="vocabulary_study_empty_subtitle">Add vocabulary words with synonyms or antonyms in Database Manager to start a quiz.</string>
     <string name="cd_shuffle_study_words">Pick different random words</string>
@@ -247,8 +247,11 @@
     <string name="vocabulary_field_example">Example sentence</string>
     <string name="vocabulary_quiz_total_label">Total</string>
     <string name="vocabulary_quiz_attempted_label">Attempted</string>
+    <string name="vocabulary_main_word_label">Main Word</string>
     <string name="vocabulary_find_synonym">Synonym</string>
     <string name="vocabulary_find_antonym">Antonym</string>
+    <string name="vocabulary_mode_synonym_badge">≈ SYNONYM • SAME MEANING</string>
+    <string name="vocabulary_mode_antonym_badge">⇄ ANTONYM • OPPOSITE MEANING</string>
     <string name="vocabulary_quiz_complete_title">Quiz Complete</string>
     <string name="vocabulary_quiz_accuracy_badge">SCORE</string>
     <string name="vocabulary_next_question">Next</string>

@@ -8,6 +8,7 @@ service cloud.firestore {
         && details.word is string
         && details.word.size() > 0
         && details.word.size() <= 120
+        && (!('partOfSpeech' in details) || (details.partOfSpeech is string && details.partOfSpeech.size() <= 60))
         && (!('meaningEnglish' in details) || (details.meaningEnglish is string && details.meaningEnglish.size() <= 500))
         && (!('meaningHinglish' in details) || (details.meaningHinglish is string && details.meaningHinglish.size() <= 500))
         && (!('exampleSentence' in details) || (details.exampleSentence is string && details.exampleSentence.size() <= 600));

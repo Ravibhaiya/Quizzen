@@ -243,6 +243,9 @@ class FirestoreVocabularyRepository(
         withContext(Dispatchers.IO) {
             val current = knownEntries.value
             val byId = current.filter { it.id.isNotBlank() }.associateBy { it.id }
+            val byIdentityKey = LinkedHashMap<String, VocabularyEntry>().apply {
+                current.forEach { putIfAbsent(VocabularyRules.wordIdentityKey(it.wordDetails), it) }
+            }
             val byKey = LinkedHashMap<String, VocabularyEntry>().apply {
                 current.forEach { putIfAbsent(VocabularyRules.wordKey(it.wordDetails.word), it) }
             }
@@ -250,6 +253,7 @@ class FirestoreVocabularyRepository(
             val perWord = LinkedHashMap<String, MutableList<VocabularyEntry>>()
             for (entry in incoming) {
                 val target = (if (entry.id.isNotBlank()) byId[entry.id] else null)
+                    ?: byIdentityKey[VocabularyRules.wordIdentityKey(entry.wordDetails)]
                     ?: byKey[VocabularyRules.wordKey(entry.wordDetails.word)]
                     ?: continue
                 if (target.id.isBlank()) continue

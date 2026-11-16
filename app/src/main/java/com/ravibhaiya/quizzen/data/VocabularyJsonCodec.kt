@@ -43,6 +43,9 @@ object VocabularyJsonCodec {
     private fun StringBuilder.appendDetails(details: WordDetails) {
         append('{')
         append("\"word\":"); appendJsonString(details.word)
+        if (details.partOfSpeech.isNotBlank()) {
+            append(",\"partOfSpeech\":"); appendJsonString(details.partOfSpeech)
+        }
         append(",\"meaningEnglish\":"); appendJsonString(details.meaningEnglish)
         append(",\"meaningHinglish\":"); appendJsonString(details.meaningHinglish)
         append(",\"exampleSentence\":"); appendJsonString(details.exampleSentence)
@@ -196,7 +199,12 @@ object VocabularyJsonCodec {
     private fun decodeLegacyDetails(token: String): WordDetails? {
         val fields = token.split(':')
         if (fields.size < 4) return null
-        return WordDetails(unb64(fields[0]), unb64(fields[1]), unb64(fields[2]), unb64(fields[3]))
+        return WordDetails(
+            word = unb64(fields[0]),
+            meaningEnglish = unb64(fields[1]),
+            meaningHinglish = unb64(fields[2]),
+            exampleSentence = unb64(fields[3]),
+        )
     }
 
     private fun unb64(encoded: String): String = runCatching {

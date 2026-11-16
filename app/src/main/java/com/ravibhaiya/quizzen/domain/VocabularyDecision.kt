@@ -85,7 +85,10 @@ data class DecisionConflictQuestion(
     val entryId: String,
     val word: String,
     val mainMeaning: String = "",
+    val mainExample: String = "",
+    val mainPartOfSpeech: String = "",
     val isMainWordDefinition: Boolean = false,
+    val isPartOfSpeechCheck: Boolean = false,
     val isAntonym: Boolean = true,
     val relationIndex: Int = 0,
     val relationDetails: WordDetails = WordDetails(),
@@ -193,6 +196,8 @@ object VocabularyDecisionRules {
             if (dismissKey in dismissedKeys) continue
             val mainWord = entry.wordDetails.word.trim()
             val mainMeaning = entry.wordDetails.meaningEnglish.trim()
+            val mainExample = entry.wordDetails.exampleSentence.trim()
+            val mainPartOfSpeech = entry.wordDetails.partOfSpeech.trim()
 
             if (mainMeaning.isNotEmpty()) {
                 allConflicts += DecisionConflictQuestion(
@@ -200,12 +205,27 @@ object VocabularyDecisionRules {
                     entryId = entry.id,
                     word = mainWord,
                     mainMeaning = mainMeaning,
+                    mainExample = mainExample,
+                    mainPartOfSpeech = mainPartOfSpeech,
                     isMainWordDefinition = true,
+                )
+            }
+            if (mainPartOfSpeech.isNotEmpty()) {
+                allConflicts += DecisionConflictQuestion(
+                    questionId = "conflict_${idx}_main_pos",
+                    entryId = entry.id,
+                    word = mainWord,
+                    mainMeaning = mainMeaning,
+                    mainExample = mainExample,
+                    mainPartOfSpeech = mainPartOfSpeech,
+                    isMainWordDefinition = false,
+                    isPartOfSpeechCheck = true,
                 )
             }
 
             for ((synIdx, syn) in entry.synonyms.withIndex()) {
-                if (syn.word.isBlank()) continue
+                val cleanSyn = syn.trimmed()
+                if (cleanSyn.word.isBlank()) continue
                 allConflicts += DecisionConflictQuestion(
                     questionId = "conflict_${idx}_syn_$synIdx",
                     entryId = entry.id,
@@ -213,11 +233,24 @@ object VocabularyDecisionRules {
                     mainMeaning = mainMeaning,
                     isAntonym = false,
                     relationIndex = synIdx,
-                    relationDetails = syn.trimmed(),
+                    relationDetails = cleanSyn,
                 )
+                if (cleanSyn.partOfSpeech.isNotBlank()) {
+                    allConflicts += DecisionConflictQuestion(
+                        questionId = "conflict_${idx}_syn_${synIdx}_pos",
+                        entryId = entry.id,
+                        word = mainWord,
+                        mainMeaning = mainMeaning,
+                        isPartOfSpeechCheck = true,
+                        isAntonym = false,
+                        relationIndex = synIdx,
+                        relationDetails = cleanSyn,
+                    )
+                }
             }
             for ((antIdx, ant) in entry.antonyms.withIndex()) {
-                if (ant.word.isBlank()) continue
+                val cleanAnt = ant.trimmed()
+                if (cleanAnt.word.isBlank()) continue
                 allConflicts += DecisionConflictQuestion(
                     questionId = "conflict_${idx}_ant_$antIdx",
                     entryId = entry.id,
@@ -225,8 +258,20 @@ object VocabularyDecisionRules {
                     mainMeaning = mainMeaning,
                     isAntonym = true,
                     relationIndex = antIdx,
-                    relationDetails = ant.trimmed(),
+                    relationDetails = cleanAnt,
                 )
+                if (cleanAnt.partOfSpeech.isNotBlank()) {
+                    allConflicts += DecisionConflictQuestion(
+                        questionId = "conflict_${idx}_ant_${antIdx}_pos",
+                        entryId = entry.id,
+                        word = mainWord,
+                        mainMeaning = mainMeaning,
+                        isPartOfSpeechCheck = true,
+                        isAntonym = true,
+                        relationIndex = antIdx,
+                        relationDetails = cleanAnt,
+                    )
+                }
             }
         }
 
@@ -364,6 +409,7 @@ object VocabularyDecisionRules {
                 if (!primaryUnverified && dup.id in verifiedEntryIds) continue
                 val duplicateFeatures = features[j]
                 if (duplicateFeatures.key.isEmpty()) continue
+                if (VocabularyRules.hasDifferentPartOfSpeech(primary.wordDetails, dup.wordDetails)) continue
                 if (dismissedKeys.isNotEmpty() &&
                     VocabularyDecisionFinding.pairDismissKey(primary.id, dup.id) in dismissedKeys
                 ) continue
@@ -515,10 +561,29 @@ object VocabularyDecisionRules {
 
         for (q in conflictQuestions) {
             val relWord = q.relationDetails.word.trim()
+            val relPos = q.relationDetails.partOfSpeech.trim()
             val relMeaning = q.relationDetails.meaningEnglish.trim()
+            val relExample = q.relationDetails.exampleSentence.trim()
             val instruction = when {
                 q.isMainWordDefinition ->
                     "For vocabulary headword \"${q.word}\", is its listed meaning \"${q.mainMeaning}\" factually wrong, opposite, or the definition of a different word?"
+                q.isPartOfSpeechCheck && relWord.isEmpty() -> {
+                    val usageContext = formatUsageContext(q.mainMeaning, q.mainExample)
+                    if (usageContext.isNotEmpty()) {
+                        "For word \"${q.word}\" as used with $usageContext, is its listed part of speech \"${q.mainPartOfSpeech}\" wrong?"
+                    } else {
+                        "For word \"${q.word}\", is its listed part of speech \"${q.mainPartOfSpeech}\" wrong?"
+                    }
+                }
+                q.isPartOfSpeechCheck -> {
+                    val relKind = if (q.isAntonym) "antonym" else "synonym"
+                    val usageContext = formatUsageContext(relMeaning, relExample)
+                    if (usageContext.isNotEmpty()) {
+                        "For $relKind \"$relWord\" (under \"${q.word}\") as used with $usageContext, is its listed part of speech \"$relPos\" wrong?"
+                    } else {
+                        "For $relKind \"$relWord\" of \"${q.word}\" (\"${q.mainMeaning}\"), is its listed part of speech \"$relPos\" wrong?"
+                    }
+                }
                 q.isAntonym ->
                     "In \"${q.word}\" (\"${q.mainMeaning}\"), is listed antonym \"$relWord\" (\"$relMeaning\") a conflict (e.g., a synonym mistakenly listed under antonyms, or \"$relMeaning\" is the wrong definition of \"$relWord\")?"
                 else ->
@@ -576,6 +641,7 @@ object VocabularyDecisionRules {
         }
 
         val conflictByEntryId = LinkedHashMap<String, VocabularyDecisionFinding.MeaningConflict>()
+        val mainDefinitionByEntryId = HashSet<String>()
         for (q in plan.conflictQuestions) {
             val ans = answers[q.questionId] as? Map<*, *> ?: continue
             val noulProb = (ans["noul"] as? Number)?.toDouble()
@@ -583,8 +649,9 @@ object VocabularyDecisionRules {
                 ?: continue
             val confidence = (ans["confidence"] as? Number)?.toDouble() ?: noulProb
             if (noulProb >= minProbability) {
-                val candidate = if (q.isMainWordDefinition) {
-                    VocabularyDecisionFinding.MeaningConflict(
+                val relWord = q.relationDetails.word.trim()
+                val candidate = when {
+                    q.isMainWordDefinition -> VocabularyDecisionFinding.MeaningConflict(
                         entryId = q.entryId,
                         probability = noulProb,
                         confidence = confidence,
@@ -592,32 +659,72 @@ object VocabularyDecisionRules {
                         customConflictLabel = "Main word \"${q.word}\" definition",
                         customReason = "Wrong definition for main word \"${q.word}\": listed meaning \"${q.mainMeaning}\" was flagged by $MODEL_ID as factually incorrect.",
                     )
-                } else {
-                    val relLabel = if (q.isAntonym) "Antonym" else "Synonym"
-                    val relWord = q.relationDetails.word.trim()
-                    val relMeaning = q.relationDetails.meaningEnglish.trim()
-                    val target = if (relWord.isNotEmpty()) {
-                        VocabularyRules.ConflictingRelationTarget(
+                    q.isPartOfSpeechCheck && relWord.isEmpty() -> {
+                        val usage = formatUsageContext(q.mainMeaning, q.mainExample)
+                        val usageSuffix = if (usage.isNotEmpty()) " ($usage)" else ""
+                        VocabularyDecisionFinding.MeaningConflict(
+                            entryId = q.entryId,
+                            probability = noulProb,
+                            confidence = confidence,
+                            conflictingTarget = null,
+                            customConflictLabel = "Main word \"${q.word}\" part of speech",
+                            customReason = "Wrong part of speech \"${q.mainPartOfSpeech}\" for main word \"${q.word}\": flagged by $MODEL_ID as not matching how the word is used$usageSuffix.",
+                        )
+                    }
+                    q.isPartOfSpeechCheck -> {
+                        val relLabel = if (q.isAntonym) "Antonym" else "Synonym"
+                        val relPos = q.relationDetails.partOfSpeech.trim()
+                        val relMeaning = q.relationDetails.meaningEnglish.trim()
+                        val relExample = q.relationDetails.exampleSentence.trim()
+                        val usage = formatUsageContext(relMeaning, relExample)
+                        val usageSuffix = if (usage.isNotEmpty()) " ($usage)" else ""
+                        val target = VocabularyRules.ConflictingRelationTarget(
                             isAntonym = q.isAntonym,
                             index = q.relationIndex,
                             details = q.relationDetails,
-                            conflictingWordLabel = "$relLabel \"$relWord\"",
-                            reason = "Conflict in ${relLabel.lowercase()} \"$relWord\" (\"$relMeaning\"): flagged by $MODEL_ID as contradicting or misdefining main word \"${q.word}\" (\"${q.mainMeaning}\").",
+                            conflictingWordLabel = "$relLabel \"$relWord\" part of speech",
+                            reason = "Wrong part of speech \"$relPos\" for ${relLabel.lowercase()} \"$relWord\" in \"${q.word}\": flagged by $MODEL_ID as not matching how the word is used$usageSuffix.",
                         )
-                    } else {
-                        null
+                        VocabularyDecisionFinding.MeaningConflict(
+                            entryId = q.entryId,
+                            probability = noulProb,
+                            confidence = confidence,
+                            conflictingTarget = target,
+                        )
                     }
-                    VocabularyDecisionFinding.MeaningConflict(
-                        entryId = q.entryId,
-                        probability = noulProb,
-                        confidence = confidence,
-                        conflictingTarget = target,
-                    )
+                    else -> {
+                        val relLabel = if (q.isAntonym) "Antonym" else "Synonym"
+                        val relMeaning = q.relationDetails.meaningEnglish.trim()
+                        val target = if (relWord.isNotEmpty()) {
+                            VocabularyRules.ConflictingRelationTarget(
+                                isAntonym = q.isAntonym,
+                                index = q.relationIndex,
+                                details = q.relationDetails,
+                                conflictingWordLabel = "$relLabel \"$relWord\"",
+                                reason = "Conflict in ${relLabel.lowercase()} \"$relWord\" (\"$relMeaning\"): flagged by $MODEL_ID as contradicting or misdefining main word \"${q.word}\" (\"${q.mainMeaning}\").",
+                            )
+                        } else {
+                            null
+                        }
+                        VocabularyDecisionFinding.MeaningConflict(
+                            entryId = q.entryId,
+                            probability = noulProb,
+                            confidence = confidence,
+                            conflictingTarget = target,
+                        )
+                    }
                 }
                 val previous = conflictByEntryId[q.entryId]
-                val keepPreviousMainConflict = previous?.customConflictLabel != null && !q.isMainWordDefinition
-                if (!keepPreviousMainConflict && (previous == null || q.isMainWordDefinition || candidate.probability > previous.probability)) {
+                val previousIsMainDef = q.entryId in mainDefinitionByEntryId
+                val shouldReplace = when {
+                    previous == null -> true
+                    q.isMainWordDefinition && !previousIsMainDef -> true
+                    previousIsMainDef && !q.isMainWordDefinition -> false
+                    else -> candidate.probability > previous.probability
+                }
+                if (shouldReplace) {
                     conflictByEntryId[q.entryId] = candidate
+                    if (q.isMainWordDefinition) mainDefinitionByEntryId += q.entryId
                 }
             }
         }
@@ -675,6 +782,7 @@ object VocabularyDecisionRules {
                         append(",\n      \"targetIsAntonym\": ").append(t.isAntonym)
                         append(",\n      \"targetIndex\": ").append(t.index)
                         append(",\n      \"targetWord\": ").append(VocabularyJsonFormat.escapeJson(t.details.word))
+                        append(",\n      \"targetPartOfSpeech\": ").append(VocabularyJsonFormat.escapeJson(t.details.partOfSpeech))
                         append(",\n      \"targetMeaningEnglish\": ").append(VocabularyJsonFormat.escapeJson(t.details.meaningEnglish))
                         append(",\n      \"targetMeaningHinglish\": ").append(VocabularyJsonFormat.escapeJson(t.details.meaningHinglish))
                         append(",\n      \"targetExampleSentence\": ").append(VocabularyJsonFormat.escapeJson(t.details.exampleSentence))
@@ -741,6 +849,7 @@ object VocabularyDecisionRules {
                                 index = (map["targetIndex"] as? Number)?.toInt() ?: 0,
                                 details = WordDetails(
                                     word = targetWord,
+                                    partOfSpeech = (map["targetPartOfSpeech"] as? String).orEmpty(),
                                     meaningEnglish = (map["targetMeaningEnglish"] as? String).orEmpty(),
                                     meaningHinglish = (map["targetMeaningHinglish"] as? String).orEmpty(),
                                     exampleSentence = (map["targetExampleSentence"] as? String).orEmpty(),
@@ -767,5 +876,13 @@ object VocabularyDecisionRules {
             verifiedDigests = digestsMap,
             findings = findingsList,
         )
+    }
+
+    private fun formatUsageContext(meaning: String, example: String): String = buildString {
+        if (meaning.isNotEmpty()) append("meaning \"$meaning\"")
+        if (example.isNotEmpty()) {
+            if (isNotEmpty()) append(" and ")
+            append("example \"$example\"")
+        }
     }
 }

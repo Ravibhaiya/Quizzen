@@ -54,7 +54,7 @@ data class VocabularyEditorState(
     val isFocusedWordMode: Boolean
         get() = focusedRelation != null && focusedRelation.action != FocusedRelationAction.FULL_ENTRY_JSON
     val canSave: Boolean
-        get() = !isEditing || confirmText == VocabularyManagerViewModel.REQUIRED_EDIT_CONFIRM
+        get() = !isEditing || confirmText.trim() == VocabularyManagerViewModel.REQUIRED_EDIT_CONFIRM
 }
 
 /** Details of how one existing vocabulary word will be updated if the user approves the merge. */
@@ -172,14 +172,16 @@ data class VocabularyUiState(
 
     val duplicateDatabaseWords: List<String>
         get() {
-            val validIds = entries.map { it.id }.toSet()
+            val entryById = entries.filter { it.id.isNotBlank() }.associateBy { it.id }
             return decisionFindings
                 .filterIsInstance<VocabularyDecisionFinding.DuplicateOrVariant>()
-                .filter { it.primaryId in validIds && it.duplicateId in validIds }
                 .mapNotNull { finding ->
-                    entries.firstOrNull { it.id == finding.primaryId }
-                        ?.let { VocabularyRules.wordKey(it.wordDetails.word) }
-                        ?.takeIf { it.isNotEmpty() }
+                    val primary = entryById[finding.primaryId] ?: return@mapNotNull null
+                    val dup = entryById[finding.duplicateId] ?: return@mapNotNull null
+                    if (VocabularyRules.hasDifferentPartOfSpeech(primary.wordDetails, dup.wordDetails)) {
+                        return@mapNotNull null
+                    }
+                    VocabularyRules.wordKey(primary.wordDetails.word).takeIf { it.isNotEmpty() }
                 }
                 .distinct()
         }
@@ -210,6 +212,7 @@ internal fun buildDatabaseApprovalRequests(
             is VocabularyDecisionFinding.DuplicateOrVariant -> {
                 val primary = entryById[finding.primaryId] ?: continue
                 val dup = entryById[finding.duplicateId] ?: continue
+                if (VocabularyRules.hasDifferentPartOfSpeech(primary.wordDetails, dup.wordDetails)) continue
                 val res = VocabularyRules.mergeRelations(primary, dup)
                 val mergeItem = WordMergeItem(
                     existingWord = primary.wordDetails.word,
@@ -793,7 +796,7 @@ class VocabularyManagerViewModel(
         val editor = _uiState.value.editorState ?: return false
         if (editor.isSaving) return false
 
-        if (editor.isEditing && editor.confirmText != REQUIRED_EDIT_CONFIRM) {
+        if (editor.isEditing && editor.confirmText.trim() != REQUIRED_EDIT_CONFIRM) {
             showEditorError(editor, "Type $REQUIRED_EDIT_CONFIRM in capital letters to save changes.")
             return false
         }
@@ -873,9 +876,9 @@ class VocabularyManagerViewModel(
                 // 4. Adding 1 or more words where any word already exists: NEVER auto-merge!
                 //    Inspect all clashing words and require explicit user approval first.
                 if (!editor.isEditing && check.clashing.isNotEmpty()) {
-                    val existingByKey = existing.associateBy { VocabularyRules.wordKey(it.wordDetails.word) }
+                    val existingByKey = existing.associateBy { VocabularyRules.wordIdentityKey(it.wordDetails) }
                     val mergeItems = check.clashing.mapNotNull { clash ->
-                        val key = VocabularyRules.wordKey(clash.wordDetails.word)
+                        val key = VocabularyRules.wordIdentityKey(clash.wordDetails)
                         val target = existingByKey[key] ?: return@mapNotNull null
                         val preview = VocabularyRules.mergeRelations(target, clash)
                         WordMergeItem(

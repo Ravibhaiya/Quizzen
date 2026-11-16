@@ -64,7 +64,7 @@ Transitions: forward = the new screen fades in and rises 16 dp (380 ms, emphasiz
 ## Theming
 
 `QuizzenTheme` wraps `MaterialTheme` with a custom `ColorScheme`, `Typography` (Plus Jakarta Sans, five static font files) and an
-extra `QuizzenColors` set (tone30, success, error, timeout) via `MaterialTheme.quizzen`. The app is light-only: no dark
+extra `QuizzenColors` set (tone30, success, error, timeout, synonym/synonymContainer/onSynonymContainer, antonym/antonymContainer/onAntonymContainer) via `MaterialTheme.quizzen`. The app is light-only: no dark
 palette, no `values-night`, system bars forced to light style in `MainActivity`.
 
 ## Vocabulary database
@@ -73,7 +73,7 @@ Cloud Firestore (`vocabulary` collection, one document per main word, id from `V
 
 - Reads: `FirestoreVocabularyRepository.entries` follows a snapshot listener. Each server list replaces what the app knew (deletes on another device propagate) and is saved to `vocabulary_cache_v1.json` for offline reading. An empty answer from Firestore's own cache is ignored.
 - Writes (save, merge, delete) go through `inCloud`: fail at once without internet (`NoInternetException`), time out after 20 s, and use `runTransaction(...).await()` so that Firestore never queues a write for later. State (list, local file, mistake words) changes only after the server confirmed.
-- Merge & create-only rules: one transaction per word reads the server copy, applies `VocabularyRules.mergeRelations` and writes it back. `VocabularyRules.prepareEntriesForSave` marks only entries with a blank `id` as create-only (and disambiguates the ID if a renamed word still occupies that old deterministic ID); editing an existing entry replaces it. Field lengths (`MAX_WORD_LENGTH`, `MAX_MEANING_LENGTH`, `MAX_EXAMPLE_LENGTH`) are validated via `VocabularyRules.validateFieldLengths` before saving.
+- Merge & create-only rules: one transaction per word reads the server copy, applies `VocabularyRules.mergeRelations` and writes it back. `VocabularyRules.prepareEntriesForSave` marks only entries with a blank `id` as create-only (and disambiguates the ID if a renamed word still occupies that old deterministic ID); editing an existing entry replaces it. Field lengths (`MAX_WORD_LENGTH`, `MAX_PART_OF_SPEECH_LENGTH`, `MAX_MEANING_LENGTH`, `MAX_EXAMPLE_LENGTH`) are validated via `VocabularyRules.validateFieldLengths` before saving.
 - Nothing is seeded: no starter words and no test data go into the database. `VocabularyQuizRules.selectStudyWords` picks only from the user's database entries (returning `emptyList()` when none exist); `VocabularyQuizRules.FALLBACK_ENTRIES` is only a read-only distractor pool when fewer than 4 user words exist. Deleting all words from the database also clears `VocabularySessionStore`.
 - ViewModel: `VocabularyManagerViewModel` keeps the editor / approval sheet open while saving and shows failures inline, reporting completed steps accurately on partial merge failures so typed JSON is never lost.
 - Tests: the repository cannot run on the JVM (Firebase), so rules live in `domain/Vocabulary.kt` (`VocabularyRulesTest`) and the ViewModel is tested against a fake repository that fails every write on demand (`VocabularyManagerViewModelTest`).

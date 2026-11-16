@@ -2,513 +2,222 @@ package com.ravibhaiya.quizzen.domain
 
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
+import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
 class VocabularyRulesTest {
 
     @Test
-    fun `canSave requires main word and meaning in English`() {
-        assertFalse(
-            VocabularyRules.canSave(
-                wordDetails = WordDetails(word = "", meaningEnglish = "Quick"),
-                synonyms = emptyList(),
-                antonyms = emptyList(),
-            ),
-        )
-        assertFalse(
-            VocabularyRules.canSave(
-                wordDetails = WordDetails(word = "Swift", meaningEnglish = "   "),
-                synonyms = emptyList(),
-                antonyms = emptyList(),
-            ),
-        )
-        assertTrue(
-            VocabularyRules.canSave(
-                wordDetails = WordDetails(word = "Swift", meaningEnglish = "Moving very fast"),
-                synonyms = emptyList(),
-                antonyms = emptyList(),
-            ),
-        )
-    }
-
-    @Test
-    fun `canSave validates non-blank synonyms and antonyms while ignoring blank rows`() {
+    fun `canSave validates main word, synonyms, and antonyms while ignoring blank rows`() {
         val main = WordDetails(
-            word = "Benevolent",
-            meaningEnglish = "Well meaning and kindly",
-            meaningHinglish = "Dayalu aur paropkari",
-            exampleSentence = "She was a benevolent leader.",
+            word = "Ephemeral",
+            partOfSpeech = "Adjective",
+            meaningEnglish = "Lasting for a very short time",
+            meaningHinglish = "Kshanik",
+            exampleSentence = "Fame is ephemeral.",
         )
 
+        assertFalse(VocabularyRules.canSave(WordDetails(word = "", meaningEnglish = "Valid"), emptyList(), emptyList()))
+        assertFalse(VocabularyRules.canSave(WordDetails(word = "Valid", meaningEnglish = "  "), emptyList(), emptyList()))
         assertFalse(
             VocabularyRules.canSave(
                 wordDetails = main,
-                synonyms = listOf(WordDetails(word = "Kind", meaningEnglish = "")),
+                synonyms = listOf(WordDetails(word = "Transient", meaningEnglish = "")),
                 antonyms = emptyList(),
             ),
         )
-
         assertFalse(
             VocabularyRules.canSave(
                 wordDetails = main,
                 synonyms = emptyList(),
-                antonyms = listOf(WordDetails(word = "", meaningEnglish = "Cruel")),
+                antonyms = listOf(WordDetails(word = "", meaningEnglish = "Permanent")),
             ),
         )
-
         assertTrue(
             VocabularyRules.canSave(
                 wordDetails = main,
                 synonyms = listOf(
                     WordDetails(),
-                    WordDetails(
-                        word = "Compassionate",
-                        meaningEnglish = "Feeling or showing sympathy",
-                        meaningHinglish = "Dard samajhne wala",
-                        exampleSentence = "He is compassionate towards animals.",
-                    ),
+                    WordDetails(word = "Transient", partOfSpeech = "Adjective", meaningEnglish = "Short-lived"),
                 ),
                 antonyms = listOf(
-                    WordDetails(
-                        word = "Malevolent",
-                        meaningEnglish = "Having or showing a wish to do evil",
-                        meaningHinglish = "Bura chahne wala",
-                        exampleSentence = "The villain had a malevolent smile.",
-                    ),
+                    WordDetails(word = "Permanent", partOfSpeech = "Adjective", meaningEnglish = "Lasting forever"),
                 ),
             ),
         )
     }
 
     @Test
-    fun `sanitized trims fields and drops completely blank synonyms and antonyms`() {
-        val entry = VocabularyEntry(
-            id = "1",
-            wordDetails = WordDetails(
-                word = "  Candid ",
-                meaningEnglish = " Truthful and straightforward ",
-                meaningHinglish = " Saaf dil se bolne wala ",
-                exampleSentence = " Let me be candid with you. ",
-            ),
-            synonyms = listOf(
-                WordDetails(),
-                WordDetails(word = " Frank ", meaningEnglish = " Open and honest "),
-            ),
-            antonyms = listOf(
-                WordDetails(word = " Secretive ", meaningEnglish = " Inclined to conceal "),
-                WordDetails(word = "  ", meaningEnglish = "  "),
-            ),
-        ).sanitized()
-
-        assertEquals("Candid", entry.wordDetails.word)
-        assertEquals("Truthful and straightforward", entry.wordDetails.meaningEnglish)
-        assertEquals("Saaf dil se bolne wala", entry.wordDetails.meaningHinglish)
-        assertEquals("Let me be candid with you.", entry.wordDetails.exampleSentence)
-        assertEquals(1, entry.synonyms.size)
-        assertEquals("Frank", entry.synonyms.first().word)
-        assertEquals(1, entry.antonyms.size)
-        assertEquals("Secretive", entry.antonyms.first().word)
-    }
-
-    @Test
-    fun `matchesSearch checks main word, meanings, synonyms, and antonyms`() {
-        val entry = VocabularyEntry(
-            id = "1",
-            wordDetails = WordDetails(
-                word = "Ephemeral",
-                meaningEnglish = "Lasting for a very short time",
-                meaningHinglish = "Thode samay ke liye rehne wala",
-                exampleSentence = "Fame can be ephemeral.",
-            ),
-            synonyms = listOf(
-                WordDetails(
-                    word = "Transient",
-                    meaningEnglish = "Lasting only for a short time",
-                    meaningHinglish = "Kshanik",
-                    exampleSentence = "A transient mood.",
-                ),
-            ),
-            antonyms = listOf(
-                WordDetails(
-                    word = "Permanent",
-                    meaningEnglish = "Lasting forever",
-                    meaningHinglish = "Sthayi",
-                    exampleSentence = "A permanent solution.",
-                ),
-            ),
-        )
-
-        assertTrue(VocabularyRules.matchesSearch(entry, ""))
-        assertTrue(VocabularyRules.matchesSearch(entry, "ephem"))
-        assertTrue(VocabularyRules.matchesSearch(entry, "thode samay"))
-        assertTrue(VocabularyRules.matchesSearch(entry, "transient"))
-        assertTrue(VocabularyRules.matchesSearch(entry, "sthayi"))
-        assertFalse(VocabularyRules.matchesSearch(entry, "ubiquitous"))
-    }
-
-    @Test
-    fun `VocabularyJsonFormat parses bulk array and single object and round-trips`() {
-        val bulkJson = """
-            [
-              {
-                "word": "Diligent",
-                "meaningEnglish": "Hard-working",
-                "meaningHinglish": "Mehanti",
-                "exampleSentence": "She is diligent.",
-                "synonyms": [
-                  {
-                    "word": "Industrious",
-                    "meaningEnglish": "Assiduous",
-                    "meaningHinglish": "Parishrami",
-                    "exampleSentence": "An industrious student."
-                  }
-                ],
-                "antonyms": [
-                  {
-                    "word": "Lazy",
-                    "meaningEnglish": "Idle",
-                    "meaningHinglish": "Aalsi",
-                    "exampleSentence": "He was lazy."
-                  }
-                ]
-              },
-              {
-                "word": "Lucid",
-                "meaningEnglish": "Expressed clearly",
-                "meaningHinglish": "Spasht",
-                "exampleSentence": "A lucid explanation."
-              }
-            ]
-        """.trimIndent()
-
-        val parsed = VocabularyJsonFormat.parse(bulkJson, singleMode = false)
-        assertTrue(parsed is VocabularyJsonFormat.ParseResult.Success)
-        val entries = (parsed as VocabularyJsonFormat.ParseResult.Success).entries
-        assertEquals(2, entries.size)
-        assertEquals("Diligent", entries[0].wordDetails.word)
-        assertEquals("Industrious", entries[0].synonyms.single().word)
-        assertEquals("Lazy", entries[0].antonyms.single().word)
-        assertEquals("Lucid", entries[1].wordDetails.word)
-
-        // Single mode rejects multi-word array
-        val singleRejected = VocabularyJsonFormat.parse(bulkJson, singleMode = true)
-        assertTrue(singleRejected is VocabularyJsonFormat.ParseResult.Error)
-
-        // Single word formatting round-trip
-        val formattedSingle = VocabularyJsonFormat.formatSingle(entries[0])
-        val reparsedSingle = VocabularyJsonFormat.parse(formattedSingle, singleMode = true)
-        assertTrue(reparsedSingle is VocabularyJsonFormat.ParseResult.Success)
-        val singleEntry = (reparsedSingle as VocabularyJsonFormat.ParseResult.Success).entries.single()
-        assertEquals(entries[0].wordDetails, singleEntry.wordDetails)
-        assertEquals(entries[0].synonyms, singleEntry.synonyms)
-        assertEquals(entries[0].antonyms, singleEntry.antonyms)
-    }
-
-    @Test
-    fun `mergeDuplicateWords keeps one entry per word and the last one wins while combining relations`() {
-        val first = VocabularyEntry(
-            id = "a",
-            wordDetails = WordDetails(
-                word = "Diligent",
-                meaningEnglish = "Hard-working",
-                meaningHinglish = "Mehanti",
-            ),
-            synonyms = listOf(WordDetails(word = "Assiduous", meaningEnglish = "Careful")),
-            antonyms = listOf(WordDetails(word = "Lazy", meaningEnglish = "Idle")),
-            createdAt = 5L,
-        )
-        val other = VocabularyEntry(wordDetails = WordDetails(word = "Lazy", meaningEnglish = "Idle"))
-        val repeat = VocabularyEntry(
-            wordDetails = WordDetails(word = "  diligent ", meaningEnglish = "Industrious"),
-            synonyms = listOf(WordDetails(word = "Tireless", meaningEnglish = "Persistent")),
-            antonyms = listOf(WordDetails(word = "Slothful", meaningEnglish = "Inactive")),
-            createdAt = 9L,
-        )
-
-        val merged = VocabularyRules.mergeDuplicateWords(listOf(first, other, repeat))
-
-        assertEquals(listOf("diligent ", "Lazy").map { it.trim().lowercase() }, merged.map { it.wordDetails.word.trim().lowercase() })
-        assertEquals("Industrious", merged[0].wordDetails.meaningEnglish)
-        assertEquals("Mehanti", merged[0].wordDetails.meaningHinglish)
-        assertEquals(listOf("Assiduous", "Tireless"), merged[0].synonyms.map { it.word })
-        assertEquals(listOf("Lazy", "Slothful"), merged[0].antonyms.map { it.word })
-        assertEquals("a", merged[0].id)
-        assertEquals(5L, merged[0].createdAt)
-    }
-
-    @Test
-    fun `mergeDuplicateWords drops repeated synonyms and antonyms inside an entry`() {
-        val entry = VocabularyEntry(
-            wordDetails = WordDetails(word = "Quick", meaningEnglish = "Fast"),
-            synonyms = listOf(
-                WordDetails(word = "Fast", meaningEnglish = "Rapid"),
-                WordDetails(word = "FAST", meaningEnglish = "Rapid again"),
-                WordDetails(word = "Swift", meaningEnglish = "Speedy"),
-            ),
-            antonyms = listOf(
-                WordDetails(word = "Slow", meaningEnglish = "Not fast"),
-                WordDetails(word = "slow", meaningEnglish = "Not fast"),
-            ),
-        )
-
-        val merged = VocabularyRules.mergeDuplicateWords(listOf(entry)).single()
-
-        assertEquals(listOf("Fast", "Swift"), merged.synonyms.map { it.word })
-        assertEquals(listOf("Slow"), merged.antonyms.map { it.word })
-    }
-
-    private fun entry(
-        word: String,
-        id: String = "",
-        synonyms: List<String> = emptyList(),
-        antonyms: List<String> = emptyList(),
-        hinglish: String = "",
-        example: String = "",
-    ) = VocabularyEntry(
-        id = id,
-        wordDetails = WordDetails(word = word, meaningEnglish = "meaning", meaningHinglish = hinglish, exampleSentence = example),
-        synonyms = synonyms.map { WordDetails(word = it, meaningEnglish = "meaning") },
-        antonyms = antonyms.map { WordDetails(word = it, meaningEnglish = "meaning") },
-    )
-
-    private val abate = entry("abate", id = "a1", synonyms = listOf("reduce", "lessen"), antonyms = listOf("increase"))
-
-    @Test
-    fun `wordKey ignores case, extra spaces, hyphens, edge punctuation, and curly apostrophes`() {
+    fun `wordKey and wordIdentityKey normalize surface forms and distinguish different parts of speech`() {
         assertEquals("don't", VocabularyRules.wordKey(" Don\u2019t "))
-        assertEquals("give up", VocabularyRules.wordKey("Give  \u00A0up"))
-        assertEquals("hard working", VocabularyRules.wordKey("Hard-working"))
-        assertEquals("hard working", VocabularyRules.wordKey("hard\u2013working."))
-        assertEquals("diligent", VocabularyRules.wordKey(" \"Diligent!\" "))
+        assertEquals("hard working", VocabularyRules.wordKey("Hard-working."))
+        assertEquals("run", VocabularyRules.wordIdentityKey("Run", ""))
+        assertEquals("run#noun", VocabularyRules.wordIdentityKey("Run", "Noun"))
+        assertEquals("run#verb", VocabularyRules.wordIdentityKey(" run ", " VERB "))
+
+        val runNoun = WordDetails(word = "Run", partOfSpeech = "Noun", meaningEnglish = "A spell of running")
+        val runVerb = WordDetails(word = "Run", partOfSpeech = "Verb", meaningEnglish = "Move fast on foot")
+        val runNounLower = WordDetails(word = "run", partOfSpeech = "noun", meaningEnglish = "Act of running")
+        val runBlank = WordDetails(word = "Run", partOfSpeech = "", meaningEnglish = "Unspecified run")
+
+        assertTrue(VocabularyRules.hasDifferentPartOfSpeech(runNoun, runVerb))
+        assertTrue(VocabularyRules.hasDifferentPartOfSpeech(runNoun, runBlank))
+        assertFalse(VocabularyRules.hasDifferentPartOfSpeech(runNoun, runNounLower))
     }
 
     @Test
-    fun `documentIdForWord produces identical deterministic IDs for equivalent word keys`() {
-        val id1 = VocabularyRules.documentIdForWord("Hard-working")
-        val id2 = VocabularyRules.documentIdForWord("  hard working. ")
-        assertEquals(id1, id2)
-        assertTrue(id1.startsWith("word_hard_working_"))
-    }
+    fun `JSON formatting always emits partOfSpeech for main word, synonyms, and antonyms and round-trips`() {
+        val template = VocabularyJsonFormat.formatBulkTemplate()
+        assertEquals(3, "\"partOfSpeech\": \"\"".toRegex().findAll(template).count())
 
-    @Test
-    fun `findDuplicateMainWords and findEntryRelationConflict catch intra-JSON duplicates and conflicts`() {
-        val dupes = VocabularyRules.findDuplicateMainWords(
-            listOf(
-                entry("Abandon"),
-                entry("Brisk"),
-                entry("  abandon. "),
+        val detailsJson = VocabularyJsonFormat.formatWordDetails(
+            WordDetails(word = "Candid", partOfSpeech = "", meaningEnglish = "Honest"),
+        )
+        assertTrue(detailsJson.contains("\"partOfSpeech\": \"\""))
+
+        val entry = VocabularyEntry(
+            id = "e1",
+            wordDetails = WordDetails(
+                word = "Repudiate",
+                partOfSpeech = "Verb",
+                meaningEnglish = "Refuse to accept",
+                meaningHinglish = "Nakaarna",
+                exampleSentence = "He chose to repudiate the claim.",
+            ),
+            synonyms = listOf(
+                WordDetails(
+                    word = "Reject",
+                    partOfSpeech = "Verb",
+                    meaningEnglish = "Dismiss as inadequate",
+                ),
+            ),
+            antonyms = listOf(
+                WordDetails(
+                    word = "Embrace",
+                    partOfSpeech = "",
+                    meaningEnglish = "Accept willingly",
+                ),
             ),
         )
-        assertEquals(listOf("Abandon"), dupes)
 
-        val selfSyn = entry("Abate", synonyms = listOf("abate"))
-        assertEquals("Word \"Abate\" cannot list itself (\"abate\") as a synonym.", VocabularyRules.findEntryRelationConflict(selfSyn))
+        val formatted = VocabularyJsonFormat.formatSingle(entry)
+        assertEquals(3, "\"partOfSpeech\":".toRegex().findAll(formatted).count())
+        assertTrue(formatted.contains("\"partOfSpeech\": \"Verb\""))
+        assertTrue(formatted.contains("\"partOfSpeech\": \"\""))
 
-        val dupSyn = entry("Abate", synonyms = listOf("Reduce", " reduce "))
-        assertEquals("Word \"Abate\" has a duplicate synonym \"reduce\".", VocabularyRules.findEntryRelationConflict(dupSyn))
-
-        val crossConflict = entry("Abate", synonyms = listOf("Reduce"), antonyms = listOf("reduce"))
-        assertEquals("Word \"Abate\" lists \"reduce\" as both a synonym and an antonym.", VocabularyRules.findEntryRelationConflict(crossConflict))
+        val parsed = VocabularyJsonFormat.parse(formatted, singleMode = true)
+        assertTrue(parsed is VocabularyJsonFormat.ParseResult.Success)
+        val roundTripped = (parsed as VocabularyJsonFormat.ParseResult.Success).entries.single()
+        assertEquals(entry.wordDetails, roundTripped.wordDetails)
+        assertEquals(entry.synonyms, roundTripped.synonyms)
+        assertEquals(entry.antonyms, roundTripped.antonyms)
     }
 
     @Test
-    fun `checkMainWords flags the same main word in any capitalization or spacing`() {
-        val check = VocabularyRules.checkMainWords(listOf(entry(" ABATE ")), listOf(abate))
+    fun `same word with different partOfSpeech is allowed in JSON input, relations, checkMainWords, and document IDs`() {
+        val presentNoun = VocabularyEntry(
+            wordDetails = WordDetails(word = "Present", partOfSpeech = "Noun", meaningEnglish = "A gift"),
+            synonyms = listOf(
+                WordDetails(word = "Light", partOfSpeech = "Noun", meaningEnglish = "Illumination"),
+                WordDetails(word = "Light", partOfSpeech = "Adjective", meaningEnglish = "Not heavy"),
+            ),
+        )
+        val presentVerb = VocabularyEntry(
+            wordDetails = WordDetails(word = "Present", partOfSpeech = "Verb", meaningEnglish = "Give formally"),
+            synonyms = listOf(
+                WordDetails(word = "Award", partOfSpeech = "Verb", meaningEnglish = "Grant officially"),
+            ),
+        )
+
+        // 1. Relations with the same word but different partOfSpeech inside one entry are allowed
+        assertNull(VocabularyRules.findEntryRelationConflict(presentNoun))
+
+        // 2. Main words with the same spelling but different partOfSpeech in one JSON input are not duplicates
+        assertTrue(VocabularyRules.findDuplicateMainWords(listOf(presentNoun, presentVerb)).isEmpty())
+
+        // 3. Main words with the same spelling AND same partOfSpeech ARE caught as duplicates
+        val duplicateNoun = VocabularyEntry(
+            wordDetails = WordDetails(word = " present ", partOfSpeech = "noun", meaningEnglish = "Another gift"),
+        )
+        assertEquals(listOf("Present"), VocabularyRules.findDuplicateMainWords(listOf(presentNoun, duplicateNoun)))
+
+        // 4. Saving both entries assigns disambiguated document IDs without clashing
+        val savedNoun = VocabularyRules.prepareEntriesForSave(listOf(presentNoun), emptyList(), now = 100L).entries
+        val checkVerb = VocabularyRules.checkMainWords(listOf(presentVerb), savedNoun)
+        assertTrue(checkVerb.clashing.isEmpty())
+        assertEquals(1, checkVerb.toSave.size)
+
+        val savedVerbBatch = VocabularyRules.prepareEntriesForSave(checkVerb.toSave, savedNoun, now = 200L)
+        val baseId = VocabularyRules.documentIdForWord("Present")
+        assertEquals(baseId, savedNoun.single().id)
+        assertEquals("${baseId}_2", savedVerbBatch.entries.single().id)
+        assertEquals(setOf("${baseId}_2"), savedVerbBatch.createOnlyIds)
+    }
+
+    @Test
+    fun `checkMainWords and mergeRelations merge same-POS entries while preserving existing meanings`() {
+        val existing = VocabularyEntry(
+            id = "word_abate",
+            wordDetails = WordDetails(word = "Abate", partOfSpeech = "Verb", meaningEnglish = "Become less intense"),
+            synonyms = listOf(WordDetails(word = "Subside", partOfSpeech = "", meaningEnglish = "Die down")),
+            antonyms = listOf(WordDetails(word = "Intensify", partOfSpeech = "Verb", meaningEnglish = "Become stronger")),
+        )
+        val incomingSamePos = VocabularyEntry(
+            wordDetails = WordDetails(
+                word = "ABATE",
+                partOfSpeech = "verb",
+                meaningEnglish = "Different meaning",
+                meaningHinglish = "Kam hona",
+                exampleSentence = "The storm abated.",
+            ),
+            synonyms = listOf(
+                WordDetails(word = "Subside", partOfSpeech = "Verb", meaningEnglish = "Die down", meaningHinglish = "Shant hona"),
+                WordDetails(word = "Wane", partOfSpeech = "Verb", meaningEnglish = "Decrease in vigor"),
+            ),
+        )
+
+        val check = VocabularyRules.checkMainWords(listOf(incomingSamePos), listOf(existing))
         assertEquals(1, check.clashing.size)
         assertTrue(check.toSave.isEmpty())
+
+        val merged = VocabularyRules.mergeRelations(existing, incomingSamePos)
+        assertTrue(merged.changed)
+        assertTrue(merged.mainDetailsEnriched)
+        assertEquals(1, merged.addedSynonyms)
+        assertEquals(1, merged.enrichedRelations)
+        assertEquals("Become less intense", merged.entry.wordDetails.meaningEnglish)
+        assertEquals("Kam hona", merged.entry.wordDetails.meaningHinglish)
+        assertEquals("Verb", merged.entry.synonyms.first { it.word == "Subside" }.partOfSpeech)
+        assertEquals(listOf("Subside", "Wane"), merged.entry.synonyms.map { it.word })
     }
 
     @Test
-    fun `checkMainWords never compares synonyms or antonyms of other entries`() {
-        val asSynonym = VocabularyRules.checkMainWords(listOf(entry("Reduce")), listOf(abate))
-        val asAntonym = VocabularyRules.checkMainWords(listOf(entry("increase")), listOf(abate))
-        assertTrue(asSynonym.clashing.isEmpty() && asSynonym.toSave.size == 1)
-        assertTrue(asAntonym.clashing.isEmpty() && asAntonym.toSave.size == 1)
-    }
-
-    @Test
-    fun `checkMainWords lets an entry keep its own word even when an older duplicate exists`() {
-        val saved = listOf(entry("abate", id = "a1"), entry("abate", id = "a2"))
-        val check = VocabularyRules.checkMainWords(listOf(entry("abate", id = "a1", hinglish = "kam karna")), saved)
-        assertTrue(check.clashing.isEmpty())
-        assertEquals(1, check.toSave.size)
-    }
-
-    @Test
-    fun `checkMainWords refuses renaming an entry onto another entry's word`() {
-        val saved = listOf(entry("abate", id = "a1"), entry("abet", id = "a2"))
-        val check = VocabularyRules.checkMainWords(listOf(entry("abet", id = "a1")), saved)
-        assertEquals(1, check.clashing.size)
-    }
-
-    @Test
-    fun `checkMainWords on a bulk list splits new, existing and repeated words`() {
-        val incoming = listOf(
-            entry("abandon"),
-            entry("abate"),
-            entry("abhor"),
-            entry("Abandon", synonyms = listOf("leave")),
+    fun `validateFieldLengths and findEntryRelationConflict enforce firestore limits and catch true relation duplicates`() {
+        val selfSyn = VocabularyEntry(
+            wordDetails = WordDetails(word = "Abate", partOfSpeech = "Verb", meaningEnglish = "Lessen"),
+            synonyms = listOf(WordDetails(word = "abate", partOfSpeech = "Verb", meaningEnglish = "Lessen")),
         )
-        val check = VocabularyRules.checkMainWords(incoming, listOf(abate))
-        assertEquals(listOf("Abandon", "abhor"), check.toSave.map { it.wordDetails.word })
-        assertEquals(listOf("abate"), check.skippedExisting)
-        assertEquals(1, check.mergedRepeats)
-    }
-
-    @Test
-    fun `mergeRelations adds only new synonyms and antonyms and keeps the entry id`() {
-        val incoming = entry("abate", synonyms = listOf("Reduce", "subside"), antonyms = listOf("intensify"))
-        val result = VocabularyRules.mergeRelations(abate, incoming)
-        assertEquals(listOf("reduce", "lessen", "subside"), result.entry.synonyms.map { it.word })
-        assertEquals(listOf("increase", "intensify"), result.entry.antonyms.map { it.word })
-        assertEquals(listOf("subside"), result.addedSynonymWords)
-        assertEquals(listOf("intensify"), result.addedAntonymWords)
-        assertEquals(1, result.addedSynonyms)
-        assertEquals(1, result.addedAntonyms)
-        assertEquals(1, result.skipped)
-        assertEquals("a1", result.entry.id)
-        assertTrue(result.changed)
-    }
-
-    @Test
-    fun `mergeRelations fills blank Hinglish and example on existing synonyms and antonyms without overwriting`() {
-        val existingWithBlankSynonym = VocabularyEntry(
-            id = "a1",
-            wordDetails = WordDetails(word = "abate", meaningEnglish = "become less"),
-            synonyms = listOf(
-                WordDetails(word = "reduce", meaningEnglish = "make smaller", meaningHinglish = "", exampleSentence = ""),
-            ),
-        )
-        val incomingWithDetails = VocabularyEntry(
-            wordDetails = WordDetails(word = "abate", meaningEnglish = "different english"),
-            synonyms = listOf(
-                WordDetails(
-                    word = "Reduce",
-                    meaningEnglish = "ignored english",
-                    meaningHinglish = "Kam karna",
-                    exampleSentence = "Reduce the speed.",
-                ),
-            ),
+        assertEquals(
+            "Word \"Abate\" cannot list itself (\"abate\") as a synonym.",
+            VocabularyRules.findEntryRelationConflict(selfSyn),
         )
 
-        val result = VocabularyRules.mergeRelations(existingWithBlankSynonym, incomingWithDetails)
-        assertTrue(result.changed)
-        assertEquals(0, result.addedSynonyms)
-        assertEquals(1, result.enrichedRelations)
-        val updatedSyn = result.entry.synonyms.single()
-        assertEquals("make smaller", updatedSyn.meaningEnglish)
-        assertEquals("Kam karna", updatedSyn.meaningHinglish)
-        assertEquals("Reduce the speed.", updatedSyn.exampleSentence)
-    }
-
-    @Test
-    fun `mergeRelations skips the main word itself and a word already in the other list`() {
-        val incoming = entry("abate", synonyms = listOf("ABATE", "increase", "fresh"), antonyms = listOf("fresh", "decrease"))
-        val result = VocabularyRules.mergeRelations(abate, incoming)
-        assertEquals(listOf("reduce", "lessen", "fresh"), result.entry.synonyms.map { it.word })
-        assertEquals(listOf("increase", "decrease"), result.entry.antonyms.map { it.word })
-    }
-
-    @Test
-    fun `mergeRelations never lets a list grow past the limit`() {
-        val full = entry("big", id = "b", synonyms = (1..VocabularyRules.MAX_RELATIONS).map { "s$it" })
-        val result = VocabularyRules.mergeRelations(full, entry("big", synonyms = listOf("extra"), antonyms = listOf("small")))
-        assertEquals(VocabularyRules.MAX_RELATIONS, result.entry.synonyms.size)
-        assertTrue(result.limitReached)
-        assertEquals(0, result.addedSynonyms)
-        assertEquals(1, result.addedAntonyms)
-    }
-
-    @Test
-    fun `mergeRelations fills blank Hinglish and example but never overwrites`() {
-        val blank = entry("abate", id = "a1")
-        val filled = VocabularyRules.mergeRelations(blank, entry("abate", hinglish = "kam karna", example = "The storm abated."))
-        assertEquals("kam karna", filled.entry.wordDetails.meaningHinglish)
-        assertEquals("The storm abated.", filled.entry.wordDetails.exampleSentence)
-        assertTrue(filled.changed)
-
-        val kept = VocabularyRules.mergeRelations(
-            entry("abate", id = "a1", hinglish = "keep me", example = "keep"),
-            entry("abate", hinglish = "other", example = "other"),
+        val crossConflict = VocabularyEntry(
+            wordDetails = WordDetails(word = "Abate", partOfSpeech = "Verb", meaningEnglish = "Lessen"),
+            synonyms = listOf(WordDetails(word = "Reduce", partOfSpeech = "Verb", meaningEnglish = "Make smaller")),
+            antonyms = listOf(WordDetails(word = "reduce", partOfSpeech = "verb", meaningEnglish = "Make smaller")),
         )
-        assertEquals("keep me", kept.entry.wordDetails.meaningHinglish)
-        assertFalse(kept.changed)
-    }
-
-    @Test
-    fun `mergeRelations reports no change when everything is already present`() {
-        val result = VocabularyRules.mergeRelations(abate, entry("abate", synonyms = listOf("reduce"), antonyms = listOf("increase")))
-        assertFalse(result.changed)
-        assertEquals(2, result.skipped)
-    }
-
-    @Test
-    fun `prepareEntriesForSave marks only blank-id entries as createOnly and disambiguates IDs when a renamed word occupies the old deterministic ID`() {
-        // 1. "Accomodate" was originally created with deterministic ID for "Accomodate", then renamed to "Accommodate"
-        val oldAccomodateId = VocabularyRules.documentIdForWord("Accomodate")
-        val renamedAccommodate = VocabularyEntry(
-            id = oldAccomodateId,
-            wordDetails = WordDetails(word = "Accommodate", meaningEnglish = "Provide lodging or sufficient space"),
-            synonyms = listOf(WordDetails(word = "Lodge", meaningEnglish = "Provide housing")),
-            createdAt = 100L,
-            updatedAt = 200L,
+        assertEquals(
+            "Word \"Abate\" lists \"reduce\" as both a synonym and an antonym.",
+            VocabularyRules.findEntryRelationConflict(crossConflict),
         )
 
-        // 2. Editing an existing word (non-blank ID) is NOT create-only and keeps its ID
-        val editBatch = VocabularyRules.prepareEntriesForSave(
-            entries = listOf(renamedAccommodate.copy(wordDetails = renamedAccommodate.wordDetails.copy(meaningHinglish = "Thahrana"))),
-            existing = listOf(renamedAccommodate),
-            now = 300L,
+        val tooLongPos = "p".repeat(VocabularyRules.MAX_PART_OF_SPEECH_LENGTH + 5)
+        val posEntry = VocabularyEntry(
+            wordDetails = WordDetails(word = "Abate", partOfSpeech = tooLongPos, meaningEnglish = "Lessen"),
         )
-        assertTrue(editBatch.createOnlyIds.isEmpty())
-        assertEquals(oldAccomodateId, editBatch.entries.single().id)
-
-        // 3. Re-importing "Accomodate" as a new entry (blank ID) is create-only and gets a disambiguated ID so it never overwrites "Accommodate"
-        val reimportedOldSpelling = VocabularyEntry(
-            id = "",
-            wordDetails = WordDetails(word = "Accomodate", meaningEnglish = "Misspelled entry"),
-        )
-        val addBatch = VocabularyRules.prepareEntriesForSave(
-            entries = listOf(reimportedOldSpelling),
-            existing = listOf(renamedAccommodate),
-            now = 400L,
-        )
-        val assigned = addBatch.entries.single()
-        assertEquals("${oldAccomodateId}_2", assigned.id)
-        assertEquals(setOf("${oldAccomodateId}_2"), addBatch.createOnlyIds)
-    }
-
-    @Test
-    fun `validateFieldLengths and findEntryRelationConflict enforce firestore rules length limits with clear messages`() {
-        val tooLongWord = "a".repeat(VocabularyRules.MAX_WORD_LENGTH + 5)
-        val wordEntry = VocabularyEntry(
-            wordDetails = WordDetails(word = tooLongWord, meaningEnglish = "Valid meaning"),
-        )
-        val wordError = VocabularyRules.findEntryRelationConflict(wordEntry)
-        assertTrue(wordError!!.contains("${VocabularyRules.MAX_WORD_LENGTH} characters"))
-
-        val tooLongMeaning = "m".repeat(VocabularyRules.MAX_MEANING_LENGTH + 10)
-        val meaningEntry = VocabularyEntry(
-            wordDetails = WordDetails(word = "Abate", meaningEnglish = tooLongMeaning),
-        )
-        val meaningError = VocabularyRules.findEntryRelationConflict(meaningEntry)
-        assertTrue(meaningError!!.contains("English meaning for word \"Abate\" is too long"))
-        assertTrue(meaningError.contains("${VocabularyRules.MAX_MEANING_LENGTH} characters"))
-
-        val tooLongExample = "e".repeat(VocabularyRules.MAX_EXAMPLE_LENGTH + 20)
-        val synExampleEntry = VocabularyEntry(
-            wordDetails = WordDetails(word = "Abate", meaningEnglish = "Become less intense"),
-            synonyms = listOf(
-                WordDetails(
-                    word = "Subside",
-                    meaningEnglish = "Die down",
-                    exampleSentence = tooLongExample,
-                ),
-            ),
-        )
-        val exampleError = VocabularyRules.findEntryRelationConflict(synExampleEntry)
-        assertTrue(exampleError!!.contains("Example sentence for synonym \"Subside\" in \"Abate\" is too long"))
-        assertTrue(exampleError.contains("${VocabularyRules.MAX_EXAMPLE_LENGTH} characters"))
+        val posError = VocabularyRules.findEntryRelationConflict(posEntry)
+        assertTrue(posError!!.contains("Part of speech for word \"Abate\" is too long"))
     }
 }

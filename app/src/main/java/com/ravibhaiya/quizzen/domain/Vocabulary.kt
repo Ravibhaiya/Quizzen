@@ -3,16 +3,18 @@ package com.ravibhaiya.quizzen.domain
 import java.text.Normalizer
 
 /**
- * The four details stored and displayed for a primary vocabulary word, a synonym, or an antonym.
+ * The details stored and displayed for a primary vocabulary word, a synonym, or an antonym.
  */
 data class WordDetails(
     val word: String = "",
+    val partOfSpeech: String = "",
     val meaningEnglish: String = "",
     val meaningHinglish: String = "",
     val exampleSentence: String = "",
 ) {
     fun trimmed(): WordDetails = WordDetails(
         word = word.trim(),
+        partOfSpeech = partOfSpeech.trim(),
         meaningEnglish = meaningEnglish.trim(),
         meaningHinglish = meaningHinglish.trim(),
         exampleSentence = exampleSentence.trim(),
@@ -20,6 +22,7 @@ data class WordDetails(
 
     val isBlank: Boolean
         get() = word.isBlank() &&
+            partOfSpeech.isBlank() &&
             meaningEnglish.isBlank() &&
             meaningHinglish.isBlank() &&
             exampleSentence.isBlank()
@@ -65,24 +68,24 @@ object VocabularyRules {
     }
 
     /**
-     * Collapses entries that share the same word (case-insensitive) into one: the last occurrence wins for
-     * main word details (inheriting blank Hinglish/example, missing id, and earlier creation time from the
-     * first), while synonyms and antonyms from all occurrences are combined without duplicates.
-     * Duplicate synonyms and antonyms inside an entry (same word, case-insensitive) are also collapsed,
-     * keeping the first. Used before saving so one import can never create two documents for a word.
+     * Collapses entries that share the same word and part of speech ([wordIdentityKey], case-insensitive) into one:
+     * the last occurrence wins for main word details (inheriting blank part of speech/Hinglish/example, missing id,
+     * and earlier creation time from the first), while synonyms and antonyms from all occurrences are combined
+     * without duplicates. Duplicate synonyms and antonyms inside an entry (same [wordIdentityKey]) are also collapsed,
+     * keeping the first. Entries or relations with the same word but different parts of speech stay separate.
      */
     fun mergeDuplicateWords(entries: List<VocabularyEntry>): List<VocabularyEntry> {
         val byWord = LinkedHashMap<String, VocabularyEntry>()
         for (raw in entries) {
-            val key = wordKey(raw.wordDetails.word)
+            val key = wordIdentityKey(raw.wordDetails)
             val cleanSynonyms = raw.synonyms
-                .distinctBy { wordKey(it.word) }
-                .filterNot { wordKey(it.word) == key }
+                .distinctBy { wordIdentityKey(it) }
+                .filterNot { wordIdentityKey(it) == key }
                 .take(MAX_RELATIONS)
-            val synKeys = cleanSynonyms.map { wordKey(it.word) }.toSet()
+            val synKeys = cleanSynonyms.map { wordIdentityKey(it) }.toSet()
             val cleanAntonyms = raw.antonyms
-                .distinctBy { wordKey(it.word) }
-                .filterNot { wordKey(it.word) == key || wordKey(it.word) in synKeys }
+                .distinctBy { wordIdentityKey(it) }
+                .filterNot { wordIdentityKey(it) == key || wordIdentityKey(it) in synKeys }
                 .take(MAX_RELATIONS)
             val entry = raw.copy(
                 synonyms = cleanSynonyms,
@@ -94,6 +97,7 @@ object VocabularyRules {
             } else {
                 val mergedRelations = mergeRelations(previous, entry).entry
                 val latestDetails = entry.wordDetails.copy(
+                    partOfSpeech = entry.wordDetails.partOfSpeech.ifBlank { previous.wordDetails.partOfSpeech },
                     meaningEnglish = entry.wordDetails.meaningEnglish.ifBlank { previous.wordDetails.meaningEnglish },
                     meaningHinglish = entry.wordDetails.meaningHinglish.ifBlank { previous.wordDetails.meaningHinglish },
                     exampleSentence = entry.wordDetails.exampleSentence.ifBlank { previous.wordDetails.exampleSentence },
@@ -119,6 +123,9 @@ object VocabularyRules {
     /** Maximum length for a word field (`wordDetails.word`, synonym/antonym `word`); enforced by `firestore.rules`. */
     const val MAX_WORD_LENGTH = 120
 
+    /** Maximum length for an optional part of speech label; enforced by `firestore.rules`. */
+    const val MAX_PART_OF_SPEECH_LENGTH = 60
+
     /** Maximum length for an English or Hinglish meaning; enforced by `firestore.rules`. */
     const val MAX_MEANING_LENGTH = 500
 
@@ -130,7 +137,8 @@ object VocabularyRules {
 
     /**
      * Checks that the main word and all synonyms/antonyms stay within the character/UTF-8 byte limits
-     * enforced by `firestore.rules` ([MAX_WORD_LENGTH], [MAX_MEANING_LENGTH], [MAX_EXAMPLE_LENGTH]).
+     * enforced by `firestore.rules` ([MAX_WORD_LENGTH], [MAX_PART_OF_SPEECH_LENGTH], [MAX_MEANING_LENGTH],
+     * [MAX_EXAMPLE_LENGTH]).
      * Returns a clear human-readable error message, or `null` if all fields are within limits.
      */
     fun validateFieldLengths(entry: VocabularyEntry): String? {
@@ -152,6 +160,10 @@ object VocabularyRules {
         val wordLen = firestoreStringSize(details.word)
         if (wordLen > MAX_WORD_LENGTH) {
             return "$subjectLabel is too long ($wordLen/$MAX_WORD_LENGTH characters)."
+        }
+        val posLen = firestoreStringSize(details.partOfSpeech)
+        if (posLen > MAX_PART_OF_SPEECH_LENGTH) {
+            return "Part of speech for ${subjectLabel.replaceFirstChar { it.lowercase() }} is too long ($posLen/$MAX_PART_OF_SPEECH_LENGTH characters)."
         }
         val engLen = firestoreStringSize(details.meaningEnglish)
         if (engLen > MAX_MEANING_LENGTH) {
@@ -200,13 +212,13 @@ object VocabularyRules {
             val assignedId = if (!isNew) {
                 clean.id
             } else {
-                val key = wordKey(clean.wordDetails.word)
+                val key = wordIdentityKey(clean.wordDetails)
                 val baseId = documentIdForWord(clean.wordDetails.word)
                 var candidate = baseId
                 var suffix = 2
                 while (
                     candidate in allocatedNewIds ||
-                    (existingById[candidate] != null && wordKey(existingById.getValue(candidate).wordDetails.word) != key)
+                    (existingById[candidate] != null && wordIdentityKey(existingById.getValue(candidate).wordDetails) != key)
                 ) {
                     candidate = "${baseId}_$suffix"
                     suffix++
@@ -226,9 +238,8 @@ object VocabularyRules {
     }
 
     /**
-     * The identity of a main word: capitalization, extra or non-breaking spaces, hyphens versus spaces,
-     * surrounding punctuation, and curly versus straight apostrophes are ignored. Only ever applied to main
-     * words for the uniqueness rule; synonyms and antonyms are never compared with other entries' main words.
+     * Normalized surface form of a word or part of speech: capitalization, extra or non-breaking spaces,
+     * hyphens versus spaces, surrounding punctuation, and curly versus straight apostrophes are ignored.
      */
     fun wordKey(word: String): String =
         Normalizer.normalize(word, Normalizer.Form.NFC)
@@ -240,6 +251,39 @@ object VocabularyRules {
             .replace(whitespaceRun, " ")
             .trim()
             .lowercase()
+
+    /**
+     * Uniqueness key combining [wordKey] and normalized [partOfSpeech] so two entries or relations with the
+     * same word but different parts of speech (e.g. `"Run"` as `"Noun"` vs `"Run"` as `"Verb"`) are not
+     * treated as duplicates.
+     */
+    fun wordIdentityKey(details: WordDetails): String =
+        wordIdentityKey(details.word, details.partOfSpeech)
+
+    fun wordIdentityKey(word: String, partOfSpeech: String = ""): String {
+        val wKey = wordKey(word)
+        if (wKey.isEmpty()) return ""
+        val posKey = wordKey(partOfSpeech)
+        return if (posKey.isEmpty()) wKey else "$wKey#$posKey"
+    }
+
+    /**
+     * Returns true when [a] and [b] have different parts of speech and should not be treated as duplicates:
+     * - For the same normalized word (`wordKey(a.word) == wordKey(b.word)`), any difference in normalized
+     *   `partOfSpeech` makes them distinct entries.
+     * - For different surface words, two entries have different parts of speech when both specify a non-blank
+     *   `partOfSpeech` and their normalized `partOfSpeech` values differ.
+     */
+    fun hasDifferentPartOfSpeech(a: WordDetails, b: WordDetails): Boolean {
+        val posA = wordKey(a.partOfSpeech)
+        val posB = wordKey(b.partOfSpeech)
+        if (posA == posB) return false
+        return if (wordKey(a.word) == wordKey(b.word)) {
+            true
+        } else {
+            posA.isNotEmpty() && posB.isNotEmpty()
+        }
+    }
 
     /**
      * Deterministic document ID derived from [wordKey] so the same main word always maps to the same
@@ -256,14 +300,15 @@ object VocabularyRules {
     }
 
     /**
-     * Returns the display names of any main words that appear more than once in [entries] (compared via [wordKey]).
+     * Returns the display names of any main words that appear more than once in [entries] with the same
+     * [wordIdentityKey] (entries with the same word but different `partOfSpeech` are allowed).
      */
     fun findDuplicateMainWords(entries: List<VocabularyEntry>): List<String> {
         val seen = LinkedHashMap<String, String>()
         val duplicates = LinkedHashSet<String>()
         for (entry in entries) {
             val rawWord = entry.wordDetails.word.trim()
-            val key = wordKey(rawWord)
+            val key = wordIdentityKey(entry.wordDetails)
             if (key.isEmpty()) continue
             val firstWord = seen[key]
             if (firstWord != null) {
@@ -283,7 +328,7 @@ object VocabularyRules {
     fun findEntryRelationConflict(entry: VocabularyEntry): String? {
         validateFieldLengths(entry)?.let { return it }
         val label = entry.wordDetails.word.trim()
-        val mainKey = wordKey(label)
+        val mainKey = wordIdentityKey(entry.wordDetails)
         if (entry.synonyms.size > MAX_RELATIONS) {
             return "Word \"$label\" has ${entry.synonyms.size} synonyms (maximum is $MAX_RELATIONS)."
         }
@@ -293,7 +338,7 @@ object VocabularyRules {
         val synKeys = HashSet<String>()
         for (syn in entry.synonyms) {
             val synWord = syn.word.trim()
-            val key = wordKey(synWord)
+            val key = wordIdentityKey(syn)
             if (key == mainKey) {
                 return "Word \"$label\" cannot list itself (\"$synWord\") as a synonym."
             }
@@ -304,7 +349,7 @@ object VocabularyRules {
         val antKeys = HashSet<String>()
         for (ant in entry.antonyms) {
             val antWord = ant.word.trim()
-            val key = wordKey(antWord)
+            val key = wordIdentityKey(ant)
             if (key == mainKey) {
                 return "Word \"$label\" cannot list itself (\"$antWord\") as an antonym."
             }
@@ -338,11 +383,11 @@ object VocabularyRules {
      */
     fun findEntryRelationConflictTarget(entry: VocabularyEntry): ConflictingRelationTarget? {
         val label = entry.wordDetails.word.trim()
-        val mainKey = wordKey(label)
+        val mainKey = wordIdentityKey(entry.wordDetails)
         val synKeys = HashSet<String>()
         for ((index, syn) in entry.synonyms.withIndex()) {
             val synWord = syn.word.trim()
-            val key = wordKey(synWord)
+            val key = wordIdentityKey(syn)
             if (key == mainKey) {
                 return ConflictingRelationTarget(
                     isAntonym = false,
@@ -374,7 +419,7 @@ object VocabularyRules {
         val antKeys = HashSet<String>()
         for ((index, ant) in entry.antonyms.withIndex()) {
             val antWord = ant.word.trim()
-            val key = wordKey(antWord)
+            val key = wordIdentityKey(ant)
             if (key == mainKey) {
                 return ConflictingRelationTarget(
                     isAntonym = true,
@@ -417,7 +462,8 @@ object VocabularyRules {
 
     /**
      * Result of [checkMainWords]: [toSave] are new words (or unchanged/edited ones), [clashing] are incoming entries
-     * whose main word already belongs to another saved entry, [mergedRepeats] counts repeats collapsed inside the batch.
+     * whose main word and part of speech already belong to another saved entry, [mergedRepeats] counts repeats
+     * collapsed inside the batch.
      */
     data class WordCheck(
         val toSave: List<VocabularyEntry>,
@@ -428,16 +474,17 @@ object VocabularyRules {
     }
 
     /**
-     * Keeps one entry per main word. Repeats inside [incoming] are collapsed (the last one wins). An incoming entry
-     * clashes when its word key belongs to a saved entry, unless it is that same entry (same id, same word), so
-     * editing a word still works even if older duplicates exist. Renaming onto another word clashes.
+     * Keeps one entry per main word and part of speech ([wordIdentityKey]). Repeats inside [incoming] are collapsed
+     * (the last one wins). An incoming entry clashes when its [wordIdentityKey] belongs to a saved entry, unless it is
+     * that same entry (same id, same identity key), so editing a word still works even if older duplicates exist.
+     * Entries with the same word but different parts of speech do not clash and are saved separately.
      */
     fun checkMainWords(incoming: List<VocabularyEntry>, existing: List<VocabularyEntry>): WordCheck {
         val merged = mergeDuplicateWords(incoming)
-        val keyById = existing.filter { it.id.isNotBlank() }.associate { it.id to wordKey(it.wordDetails.word) }
-        val taken = existing.map { wordKey(it.wordDetails.word) }.toSet()
+        val keyById = existing.filter { it.id.isNotBlank() }.associate { it.id to wordIdentityKey(it.wordDetails) }
+        val taken = existing.map { wordIdentityKey(it.wordDetails) }.toSet()
         val (clashing, fresh) = merged.partition { entry ->
-            val key = wordKey(entry.wordDetails.word)
+            val key = wordIdentityKey(entry.wordDetails)
             val unchanged = entry.id.isNotBlank() && keyById[entry.id] == key
             key in taken && !unchanged
         }
@@ -468,15 +515,14 @@ object VocabularyRules {
 
     /**
      * Adds the new synonyms and antonyms of [incoming] to [existing]. The existing word, meanings and example are
-     * never overwritten (a blank Hinglish meaning or example on the main word or on an existing synonym/antonym is
-     * filled in). An item is skipped when it equals the main word, is already in either list (with no blank fields
-     * to fill), or would push a list past [MAX_RELATIONS].
+     * never overwritten (a blank part of speech, Hinglish meaning, or example on the main word or on an existing
+     * synonym/antonym is filled in). An item is skipped when it equals the main word, is already in either list
+     * with the same [wordIdentityKey] (and no blank fields to fill), or would push a list past [MAX_RELATIONS].
      */
     fun mergeRelations(existing: VocabularyEntry, incoming: VocabularyEntry): MergeResult {
         val clean = incoming.sanitized()
-        val mainKey = wordKey(existing.wordDetails.word)
-        val synKeys = existing.synonyms.map { wordKey(it.word) }.toMutableSet()
-        val antKeys = existing.antonyms.map { wordKey(it.word) }.toMutableSet()
+        val mainWordKey = wordKey(existing.wordDetails.word)
+        val mainPosKey = wordKey(existing.wordDetails.partOfSpeech)
         val synonyms = existing.synonyms.toMutableList()
         val antonyms = existing.antonyms.toMutableList()
         var skipped = 0
@@ -485,32 +531,41 @@ object VocabularyRules {
         val addedSynWords = mutableListOf<String>()
         val addedAntWords = mutableListOf<String>()
 
+        fun sameRelationSlot(a: WordDetails, b: WordDetails): Boolean {
+            if (wordKey(a.word) != wordKey(b.word)) return false
+            val posA = wordKey(a.partOfSpeech)
+            val posB = wordKey(b.partOfSpeech)
+            return posA.isEmpty() || posB.isEmpty() || posA == posB
+        }
+
+        fun matchesMainWord(item: WordDetails): Boolean {
+            if (wordKey(item.word) != mainWordKey) return false
+            val itemPosKey = wordKey(item.partOfSpeech)
+            return mainPosKey.isEmpty() || itemPosKey.isEmpty() || mainPosKey == itemPosKey
+        }
+
         fun absorb(
             source: List<WordDetails>,
             target: MutableList<WordDetails>,
-            own: MutableSet<String>,
-            other: Set<String>,
+            other: List<WordDetails>,
             addedWords: MutableList<String>,
         ): Int {
             var added = 0
             for (item in source) {
-                val key = wordKey(item.word)
+                val idxInOwn = target.indexOfFirst { sameRelationSlot(it, item) }
+                val inOther = other.any { sameRelationSlot(it, item) }
                 when {
-                    key == mainKey || key in other -> skipped++
-                    key in own -> {
-                        val idx = target.indexOfFirst { wordKey(it.word) == key }
-                        if (idx >= 0) {
-                            val current = target[idx]
-                            val updated = current.copy(
-                                meaningHinglish = current.meaningHinglish.ifBlank { item.meaningHinglish },
-                                exampleSentence = current.exampleSentence.ifBlank { item.exampleSentence },
-                            )
-                            if (updated != current) {
-                                target[idx] = updated
-                                enrichedRelations++
-                            } else {
-                                skipped++
-                            }
+                    matchesMainWord(item) || inOther -> skipped++
+                    idxInOwn >= 0 -> {
+                        val current = target[idxInOwn]
+                        val updated = current.copy(
+                            partOfSpeech = current.partOfSpeech.ifBlank { item.partOfSpeech },
+                            meaningHinglish = current.meaningHinglish.ifBlank { item.meaningHinglish },
+                            exampleSentence = current.exampleSentence.ifBlank { item.exampleSentence },
+                        )
+                        if (updated != current) {
+                            target[idxInOwn] = updated
+                            enrichedRelations++
                         } else {
                             skipped++
                         }
@@ -521,7 +576,6 @@ object VocabularyRules {
                     }
                     else -> {
                         target += item
-                        own += key
                         addedWords += item.word
                         added++
                     }
@@ -530,9 +584,10 @@ object VocabularyRules {
             return added
         }
 
-        val addedSyn = absorb(clean.synonyms, synonyms, synKeys, antKeys, addedSynWords)
-        val addedAnt = absorb(clean.antonyms, antonyms, antKeys, synKeys, addedAntWords)
+        val addedSyn = absorb(clean.synonyms, synonyms, antonyms, addedSynWords)
+        val addedAnt = absorb(clean.antonyms, antonyms, synonyms, addedAntWords)
         val mainDetails = existing.wordDetails.copy(
+            partOfSpeech = existing.wordDetails.partOfSpeech.ifBlank { clean.wordDetails.partOfSpeech },
             meaningHinglish = existing.wordDetails.meaningHinglish.ifBlank { clean.wordDetails.meaningHinglish },
             exampleSentence = existing.wordDetails.exampleSentence.ifBlank { clean.wordDetails.exampleSentence },
         )
@@ -552,7 +607,7 @@ object VocabularyRules {
     }
 
     /**
-     * Case-insensitive search across the primary word, its meanings/example, and all synonyms and antonyms.
+     * Case-insensitive search across the primary word, its part of speech/meanings/example, and all synonyms and antonyms.
      */
     fun matchesSearch(entry: VocabularyEntry, query: String): Boolean {
         val q = query.trim()
@@ -565,6 +620,7 @@ object VocabularyRules {
 
     private fun WordDetails.matches(query: String): Boolean =
         word.contains(query, ignoreCase = true) ||
+            partOfSpeech.contains(query, ignoreCase = true) ||
             meaningEnglish.contains(query, ignoreCase = true) ||
             meaningHinglish.contains(query, ignoreCase = true) ||
             exampleSentence.contains(query, ignoreCase = true)
@@ -593,6 +649,7 @@ object VocabularyJsonFormat {
         val sb = StringBuilder()
         sb.append("{\n")
         sb.append("  \"word\": ").append(escapeJson(d.word)).append(",\n")
+        sb.append("  \"partOfSpeech\": ").append(escapeJson(d.partOfSpeech)).append(",\n")
         sb.append("  \"meaningEnglish\": ").append(escapeJson(d.meaningEnglish)).append(",\n")
         sb.append("  \"meaningHinglish\": ").append(escapeJson(d.meaningHinglish)).append(",\n")
         sb.append("  \"exampleSentence\": ").append(escapeJson(d.exampleSentence)).append("\n")
@@ -629,12 +686,14 @@ object VocabularyJsonFormat {
 [
   {
     "word": "",
+    "partOfSpeech": "",
     "meaningEnglish": "",
     "meaningHinglish": "",
     "exampleSentence": "",
     "synonyms": [
       {
         "word": "",
+        "partOfSpeech": "",
         "meaningEnglish": "",
         "meaningHinglish": "",
         "exampleSentence": ""
@@ -643,6 +702,7 @@ object VocabularyJsonFormat {
     "antonyms": [
       {
         "word": "",
+        "partOfSpeech": "",
         "meaningEnglish": "",
         "meaningHinglish": "",
         "exampleSentence": ""
@@ -712,7 +772,21 @@ object VocabularyJsonFormat {
             } else {
                 obj
             }
-            val mainDetails = extractWordDetails(mainSource)
+            val extractedMain = extractWordDetails(mainSource)
+            val mainDetails = if (extractedMain.partOfSpeech.isBlank() && nestedMain != null) {
+                extractedMain.copy(
+                    partOfSpeech = stringField(
+                        obj,
+                        "partOfSpeech",
+                        "partsOfSpeech",
+                        "part_of_speech",
+                        "parts_of_speech",
+                        "pos",
+                    ),
+                )
+            } else {
+                extractedMain
+            }
             if (mainDetails.word.isBlank()) {
                 return ParseResult.Error("${prefix}Missing or empty \"word\" field.")
             }
@@ -793,6 +867,14 @@ object VocabularyJsonFormat {
 
     private fun extractWordDetails(map: Map<String, Any?>): WordDetails {
         val word = stringField(map, "word", "Word", "term")
+        val partOfSpeech = stringField(
+            map,
+            "partOfSpeech",
+            "partsOfSpeech",
+            "part_of_speech",
+            "parts_of_speech",
+            "pos",
+        )
         val meaningEnglish = stringField(
             map,
             "meaningEnglish",
@@ -818,6 +900,7 @@ object VocabularyJsonFormat {
         )
         return WordDetails(
             word = word,
+            partOfSpeech = partOfSpeech,
             meaningEnglish = meaningEnglish,
             meaningHinglish = meaningHinglish,
             exampleSentence = exampleSentence,
@@ -842,6 +925,7 @@ object VocabularyJsonFormat {
         val sb = StringBuilder()
         sb.append(indent).append("{\n")
         sb.append(nextIndent).append("\"word\": ").append(escapeJson(entry.wordDetails.word)).append(",\n")
+        sb.append(nextIndent).append("\"partOfSpeech\": ").append(escapeJson(entry.wordDetails.partOfSpeech)).append(",\n")
         sb.append(nextIndent).append("\"meaningEnglish\": ").append(escapeJson(entry.wordDetails.meaningEnglish)).append(",\n")
         sb.append(nextIndent).append("\"meaningHinglish\": ").append(escapeJson(entry.wordDetails.meaningHinglish)).append(",\n")
         sb.append(nextIndent).append("\"exampleSentence\": ").append(escapeJson(entry.wordDetails.exampleSentence)).append(",\n")
@@ -859,6 +943,7 @@ object VocabularyJsonFormat {
         items.forEachIndexed { index, d ->
             sb.append(itemIndent).append("{\n")
             sb.append(fieldIndent).append("\"word\": ").append(escapeJson(d.word)).append(",\n")
+            sb.append(fieldIndent).append("\"partOfSpeech\": ").append(escapeJson(d.partOfSpeech)).append(",\n")
             sb.append(fieldIndent).append("\"meaningEnglish\": ").append(escapeJson(d.meaningEnglish)).append(",\n")
             sb.append(fieldIndent).append("\"meaningHinglish\": ").append(escapeJson(d.meaningHinglish)).append(",\n")
             sb.append(fieldIndent).append("\"exampleSentence\": ").append(escapeJson(d.exampleSentence)).append("\n")

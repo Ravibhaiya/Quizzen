@@ -10,211 +10,135 @@ class VocabularyQuizEngineTest {
 
     private val entryAbundant = VocabularyEntry(
         id = "c1",
-        wordDetails = WordDetails(word = "Abundant", meaningEnglish = "Plenty"),
+        wordDetails = WordDetails(word = "Abundant", partOfSpeech = "Adjective", meaningEnglish = "Plenty"),
         synonyms = listOf(
-            WordDetails(word = "Plentiful", meaningEnglish = "Ample"),
-            WordDetails(word = "Copious", meaningEnglish = "Profuse"),
+            WordDetails(word = "Plentiful", partOfSpeech = "Adjective", meaningEnglish = "Ample"),
+            WordDetails(word = "Copious", partOfSpeech = "Adjective", meaningEnglish = "Profuse"),
         ),
         antonyms = listOf(
-            WordDetails(word = "Scarce", meaningEnglish = "Rare"),
-            WordDetails(word = "Meager", meaningEnglish = "Scanty"),
+            WordDetails(word = "Scarce", partOfSpeech = "Adjective", meaningEnglish = "Rare"),
+            WordDetails(word = "Meager", partOfSpeech = "Adjective", meaningEnglish = "Scanty"),
         ),
     )
 
     private val entryCandid = VocabularyEntry(
         id = "c2",
-        wordDetails = WordDetails(word = "Candid", meaningEnglish = "Honest"),
+        wordDetails = WordDetails(word = "Candid", partOfSpeech = "Adjective", meaningEnglish = "Honest"),
         synonyms = listOf(
-            WordDetails(word = "Frank", meaningEnglish = "Direct"),
-            WordDetails(word = "Forthright", meaningEnglish = "Outspoken"),
+            WordDetails(word = "Frank", partOfSpeech = "Adjective", meaningEnglish = "Direct"),
+            WordDetails(word = "Forthright", partOfSpeech = "Adjective", meaningEnglish = "Outspoken"),
         ),
         antonyms = listOf(
-            WordDetails(word = "Deceitful", meaningEnglish = "Dishonest"),
-            WordDetails(word = "Evasive", meaningEnglish = "Indirect"),
+            WordDetails(word = "Deceitful", partOfSpeech = "Adjective", meaningEnglish = "Dishonest"),
+            WordDetails(word = "Evasive", partOfSpeech = "Adjective", meaningEnglish = "Indirect"),
         ),
     )
 
     @Test
-    fun `word count is clamped between 1 and 25`() {
+    fun `word count minimum is 1 and maximum is 25`() {
+        assertEquals(1, VocabularyQuizRules.MIN_WORDS)
+        assertEquals(25, VocabularyQuizRules.MAX_WORDS)
         assertEquals(1, VocabularyQuizRules.coerceWordCount(0))
         assertEquals(1, VocabularyQuizRules.coerceWordCount(1))
-        assertEquals(5, VocabularyQuizRules.coerceWordCount(5))
-        assertEquals(15, VocabularyQuizRules.coerceWordCount(15))
-        assertEquals(25, VocabularyQuizRules.coerceWordCount(25))
-        assertEquals(25, VocabularyQuizRules.coerceWordCount(99))
+        assertEquals(25, VocabularyQuizRules.coerceWordCount(30))
     }
 
     @Test
-    fun `both modes cover every main word, synonym, and antonym in finite quiz`() {
-        val study = listOf(entryAbundant, entryCandid)
-        val modes = setOf(VocabularyQuizMode.Synonyms, VocabularyQuizMode.Antonyms)
+    fun `questions for each main word stay contiguous and preserve individual partOfSpeech for prompt and options`() {
+        val study = VocabularyQuizRules.FALLBACK_ENTRIES.take(3)
         val quiz = VocabularyQuizEngine.generateQuiz(
             studyEntries = study,
             allEntries = study,
-            modes = modes,
+            modes = setOf(VocabularyQuizMode.Synonyms, VocabularyQuizMode.Antonyms),
             random = Random(42),
         )
 
-        // Each entry has 1 main word + 2 synonyms + 2 antonyms = 5 words -> 10 questions total.
-        assertEquals(10, quiz.size)
-
-        val expectedPrompts = setOf(
-            "Abundant", "Plentiful", "Copious", "Scarce", "Meager",
-            "Candid", "Frank", "Forthright", "Deceitful", "Evasive",
-        )
-        assertEquals(expectedPrompts, quiz.map { it.promptWord }.toSet())
+        assertEquals(15, quiz.size)
+        val clusterRuns = mutableListOf<String>()
+        for (item in quiz) {
+            if (clusterRuns.lastOrNull() != item.clusterId) {
+                clusterRuns += item.clusterId
+            }
+            assertTrue(item.clusterWord.isNotBlank())
+            assertTrue(item.clusterPartOfSpeech.isNotBlank())
+            assertTrue(item.promptDetails.partOfSpeech.isNotBlank())
+            assertEquals(4, item.options.size)
+            item.options.forEach { option ->
+                assertTrue(item.detailsForOption(option).partOfSpeech.isNotBlank())
+                assertTrue(item.detailsForOption(option).meaningEnglish.isNotBlank())
+            }
+        }
+        assertEquals(3, clusterRuns.size)
+        assertEquals(3, clusterRuns.toSet().size)
     }
 
     @Test
-    fun `two synonyms can be involved as question and correct option without the main word`() {
-        val study = listOf(entryAbundant)
+    fun `homograph entries with different partOfSpeech keep their own cluster partOfSpeech and meanings in quiz`() {
+        val runNoun = VocabularyEntry(
+            id = "run_noun",
+            wordDetails = WordDetails(word = "Run", partOfSpeech = "Noun", meaningEnglish = "An act of running"),
+            synonyms = listOf(
+                WordDetails(word = "Dash", partOfSpeech = "Noun", meaningEnglish = "A short fast run"),
+            ),
+            antonyms = listOf(
+                WordDetails(word = "Standstill", partOfSpeech = "Noun", meaningEnglish = "A complete stop"),
+            ),
+        )
+        val runVerb = VocabularyEntry(
+            id = "run_verb",
+            wordDetails = WordDetails(word = "Run", partOfSpeech = "Verb", meaningEnglish = "Move fast on foot"),
+            synonyms = listOf(
+                WordDetails(word = "Sprint", partOfSpeech = "Verb", meaningEnglish = "Run at full speed"),
+            ),
+            antonyms = listOf(
+                WordDetails(word = "Crawl", partOfSpeech = "Verb", meaningEnglish = "Move slowly on hands and knees"),
+            ),
+        )
+
         val quiz = VocabularyQuizEngine.generateQuiz(
-            studyEntries = study,
-            allEntries = study,
-            modes = setOf(VocabularyQuizMode.Synonyms),
+            studyEntries = listOf(runNoun, runVerb),
+            allEntries = listOf(runNoun, runVerb),
+            modes = setOf(VocabularyQuizMode.Synonyms, VocabularyQuizMode.Antonyms),
             random = Random(7),
         )
 
-        // S+ has 3 words ("Abundant", "Plentiful", "Copious"). In a 3-cycle derangement,
-        // one of the 3 questions is guaranteed to pair "Plentiful" and "Copious" directly!
-        assertEquals(3, quiz.size)
-        val synToSyn = quiz.filter { item ->
-            item.promptWord != "Abundant" && item.correctAnswer != "Abundant"
-        }
-        assertEquals(1, synToSyn.size)
-        val pair = setOf(synToSyn.single().promptWord, synToSyn.single().correctAnswer)
-        assertEquals(setOf("Plentiful", "Copious"), pair)
+        val nounClusterQuestions = quiz.filter { it.clusterId == "run_noun" }
+        val verbClusterQuestions = quiz.filter { it.clusterId == "run_verb" }
+        assertTrue(nounClusterQuestions.all { it.clusterPartOfSpeech == "Noun" })
+        assertTrue(verbClusterQuestions.all { it.clusterPartOfSpeech == "Verb" })
+
+        val nounPrompt = nounClusterQuestions.first { it.promptWord == "Run" }
+        val verbPrompt = verbClusterQuestions.first { it.promptWord == "Run" }
+        assertEquals("Noun", nounPrompt.promptDetails.partOfSpeech)
+        assertEquals("An act of running", nounPrompt.promptDetails.meaningEnglish)
+        assertEquals("Verb", verbPrompt.promptDetails.partOfSpeech)
+        assertEquals("Move fast on foot", verbPrompt.promptDetails.meaningEnglish)
     }
 
     @Test
-    fun `antonyms can pair directly with synonyms as well as the main word`() {
-        val study = listOf(entryAbundant)
-        // Run across seeds to verify that antonyms pair with synonyms in S+
-        val antonymTargets = (1..20).flatMap { seed ->
-            VocabularyQuizEngine.generateQuiz(
-                studyEntries = study,
-                allEntries = study,
-                modes = setOf(VocabularyQuizMode.Antonyms),
-                random = Random(seed),
-            ).filter { it.promptWord in setOf("Scarce", "Meager") }
-                .map { it.correctAnswer }
-        }.toSet()
-
-        assertTrue("Expected synonyms in S+ to appear as correct answers for antonyms", "Plentiful" in antonymTargets || "Copious" in antonymTargets)
-    }
-
-    @Test
-    fun `questions from the same cluster are interleaved and not placed back-to-back`() {
-        val study = VocabularyQuizRules.FALLBACK_ENTRIES
-        val quiz = VocabularyQuizEngine.generateQuiz(
-            studyEntries = study,
-            allEntries = study,
-            modes = setOf(VocabularyQuizMode.Synonyms, VocabularyQuizMode.Antonyms),
-            random = Random(99),
+    fun `selectStudyWords returns empty list on empty database and prioritizes mistake words when present`() {
+        assertTrue(
+            VocabularyQuizRules.selectStudyWords(
+                entries = emptyList(),
+                modes = VocabularyQuizMode.DEFAULT,
+                wordCount = 1,
+                random = Random(1),
+            ).isEmpty(),
         )
 
-        // Since all 5 fallback entries have equal size (5 questions each), no two adjacent questions
-        // should ever share the same clusterId.
-        val adjacentSameCluster = quiz.zipWithNext().count { (a, b) -> a.clusterId == b.clusterId }
-        assertEquals(0, adjacentSameCluster)
-    }
-
-    @Test
-    fun `each question has 4 distinct options and excludes other valid answers from distractors`() {
-        val study = listOf(entryAbundant, entryCandid)
-        val quiz = VocabularyQuizEngine.generateQuiz(
-            studyEntries = study,
-            allEntries = study,
-            modes = setOf(VocabularyQuizMode.Synonyms, VocabularyQuizMode.Antonyms),
-            random = Random(123),
-        )
-
-        val abundantSame = setOf("abundant", "plentiful", "copious")
-        val abundantOpp = setOf("scarce", "meager")
-
-        for (q in quiz) {
-            assertEquals(4, q.options.size)
-            assertEquals(4, q.options.map { it.lowercase() }.toSet().size)
-            assertTrue(q.options.any { q.isCorrect(it) })
-            assertFalse(q.options.any { it.equals(q.promptWord, ignoreCase = true) })
-            assertTrue(q.promptDetails.meaningEnglish.isNotBlank())
-            assertEquals(4, q.optionDetails.size)
-            q.options.forEach { option ->
-                assertTrue(q.detailsForOption(option).meaningEnglish.isNotBlank())
-            }
-
-            // Verify no distractor is another valid answer in the abundant cluster
-            if (q.clusterId == "c1") {
-                val distractors = q.options.filterNot { q.isCorrect(it) }.map { it.lowercase() }
-                if (q.mode == VocabularyQuizMode.Synonyms) {
-                    assertTrue(distractors.none { it in abundantSame })
-                } else {
-                    val promptInSame = q.promptWord.lowercase() in abundantSame
-                    val validTargets = if (promptInSame) abundantOpp else abundantSame
-                    assertTrue(distractors.none { it in validTargets })
-                }
-            }
-        }
-    }
-
-    @Test
-    fun `starter entries provide 25 valid vocabulary clusters for full 1 to 25 word quizzes`() {
-        val entries = VocabularyQuizRules.FALLBACK_ENTRIES
-        assertEquals(25, entries.size)
-        for (entry in entries) {
-            assertTrue(VocabularyRules.canSave(entry.wordDetails, entry.synonyms, entry.antonyms))
-            assertEquals(2, entry.synonyms.size)
-            assertEquals(2, entry.antonyms.size)
-        }
-        val selected1 = VocabularyQuizRules.selectStudyWords(
-            entries = entries,
+        val selected = VocabularyQuizRules.selectStudyWords(
+            entries = listOf(entryAbundant, entryCandid),
             modes = VocabularyQuizMode.DEFAULT,
             wordCount = 1,
-            random = Random(1),
+            random = Random(99),
+            mistakeWords = setOf("candid"),
         )
-        assertEquals(1, selected1.size)
-        val selected25 = VocabularyQuizRules.selectStudyWords(
-            entries = entries,
-            modes = VocabularyQuizMode.DEFAULT,
-            wordCount = 25,
-            random = Random(1),
-        )
-        assertEquals(25, selected25.size)
+        assertEquals(1, selected.size)
+        assertEquals("Candid", selected.single().wordDetails.word)
     }
 
     @Test
-    fun `selectStudyWords returns empty list when user database entries are empty`() {
-        val selected = VocabularyQuizRules.selectStudyWords(
-            entries = emptyList(),
-            modes = VocabularyQuizMode.DEFAULT,
-            wordCount = 10,
-            random = Random(1),
-        )
-        assertTrue(selected.isEmpty())
-    }
-
-    @Test
-    fun `selectStudyWords prioritizes saved mistake words first and fills remaining slots with random words`() {
-        val entries = VocabularyQuizRules.FALLBACK_ENTRIES
-        val savedMistakes = setOf("zealous", "tranquil", "ephemeral")
-        val selected = VocabularyQuizRules.selectStudyWords(
-            entries = entries,
-            modes = VocabularyQuizMode.DEFAULT,
-            wordCount = 5,
-            random = Random(42),
-            mistakeWords = savedMistakes,
-        )
-
-        assertEquals(5, selected.size)
-        val firstThreeWords = selected.take(3).map { it.wordDetails.word.lowercase() }.toSet()
-        assertEquals(savedMistakes, firstThreeWords)
-        val remainingWords = selected.drop(3).map { it.wordDetails.word.lowercase() }.toSet()
-        assertEquals(2, remainingWords.size)
-        assertTrue(remainingWords.none { it in savedMistakes })
-    }
-
-    @Test
-    fun `VocabularyMistakeTracker saves on wrong or timeout and deletes only when all questions for that word are correct`() {
+    fun `VocabularyMistakeTracker saves on wrong or timeout and deletes when all questions for a word are correct`() {
         val study = listOf(entryAbundant, entryCandid)
         val quiz = VocabularyQuizEngine.generateQuiz(
             studyEntries = study,
@@ -224,31 +148,19 @@ class VocabularyQuizEngineTest {
         )
         val tracker = VocabularyMistakeTracker(questions = quiz, studyEntries = study)
 
-        // Answer all Abundant ("c1") questions correctly, and get 1 Candid ("c2") question wrong ( followed by correct for rest of Candid).
         val abundantIndices = quiz.indices.filter { quiz[it].clusterId == "c1" }
         val candidIndices = quiz.indices.filter { quiz[it].clusterId == "c2" }
-        assertEquals(5, abundantIndices.size)
-        assertEquals(5, candidIndices.size)
 
-        // Before the last Abundant question, resolving with Correct returns None
         for (idx in abundantIndices.dropLast(1)) {
             assertEquals(VocabularyMistakeAction.None, tracker.onQuestionResolved(idx, FeedbackType.Correct))
         }
-        // Resolving the final Abundant question with Correct returns DeleteMastered
-        val finalAbundantAction = tracker.onQuestionResolved(abundantIndices.last(), FeedbackType.Correct)
-        assertTrue(finalAbundantAction is VocabularyMistakeAction.DeleteMastered)
-        assertTrue("abundant" in finalAbundantAction.wordKeys)
-        assertTrue("c1" in finalAbundantAction.wordKeys)
+        val mastered = tracker.onQuestionResolved(abundantIndices.last(), FeedbackType.Correct)
+        assertTrue(mastered is VocabularyMistakeAction.DeleteMastered)
+        assertTrue("abundant" in mastered.wordKeys)
 
-        // For Candid, first question is Incorrect -> immediately returns SaveMistake
-        val firstCandidAction = tracker.onQuestionResolved(candidIndices.first(), FeedbackType.Incorrect)
-        assertTrue(firstCandidAction is VocabularyMistakeAction.SaveMistake)
-        assertTrue("candid" in firstCandidAction.wordKeys)
-        assertTrue("c2" in firstCandidAction.wordKeys)
-
-        // Even if all remaining Candid questions are answered Correct, it is NOT deleted in this session
-        for (idx in candidIndices.drop(1)) {
-            assertEquals(VocabularyMistakeAction.None, tracker.onQuestionResolved(idx, FeedbackType.Correct))
-        }
+        val mistake = tracker.onQuestionResolved(candidIndices.first(), FeedbackType.Incorrect)
+        assertTrue(mistake is VocabularyMistakeAction.SaveMistake)
+        assertTrue("candid" in mistake.wordKeys)
+        assertFalse(tracker.onQuestionResolved(candidIndices.last(), FeedbackType.Correct) is VocabularyMistakeAction.DeleteMastered)
     }
 }

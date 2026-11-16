@@ -32,22 +32,33 @@ object VocabularyFirestoreMapper {
         )
     }
 
-    fun detailsToMap(details: WordDetails): Map<String, String> = mapOf(
-        "word" to details.word.trim(),
-        "meaningEnglish" to details.meaningEnglish.trim(),
-        "meaningHinglish" to details.meaningHinglish.trim(),
-        "exampleSentence" to details.exampleSentence.trim(),
-    )
+    fun detailsToMap(details: WordDetails): Map<String, String> = buildMap {
+        put("word", details.word.trim())
+        val pos = details.partOfSpeech.trim()
+        if (pos.isNotEmpty()) {
+            put("partOfSpeech", pos)
+        }
+        put("meaningEnglish", details.meaningEnglish.trim())
+        put("meaningHinglish", details.meaningHinglish.trim())
+        put("exampleSentence", details.exampleSentence.trim())
+    }
 
     fun docToEntry(docId: String, data: Map<String, Any?>?): VocabularyEntry? {
         if (data == null) return null
 
         val wordDetailsMap = data["wordDetails"] as? Map<*, *>
+        val topLevelPos = extractPartOfSpeech(data)
         val mainDetails = if (wordDetailsMap != null) {
-            mapToDetails(wordDetailsMap)
+            val mapped = mapToDetails(wordDetailsMap)
+            if (mapped.partOfSpeech.isBlank() && topLevelPos.isNotEmpty()) {
+                mapped.copy(partOfSpeech = topLevelPos)
+            } else {
+                mapped
+            }
         } else {
             WordDetails(
                 word = (data["word"] as? String).orEmpty().trim(),
+                partOfSpeech = topLevelPos,
                 meaningEnglish = (data["meaningEnglish"] as? String).orEmpty().trim(),
                 meaningHinglish = (data["meaningHinglish"] as? String).orEmpty().trim(),
                 exampleSentence = (data["exampleSentence"] as? String).orEmpty().trim(),
@@ -93,8 +104,17 @@ object VocabularyFirestoreMapper {
 
     private fun mapToDetails(map: Map<*, *>): WordDetails = WordDetails(
         word = (map["word"] as? String).orEmpty().trim(),
+        partOfSpeech = extractPartOfSpeech(map),
         meaningEnglish = (map["meaningEnglish"] as? String).orEmpty().trim(),
         meaningHinglish = (map["meaningHinglish"] as? String).orEmpty().trim(),
         exampleSentence = (map["exampleSentence"] as? String).orEmpty().trim(),
     )
+
+    private fun extractPartOfSpeech(map: Map<*, *>): String = (
+        (map["partOfSpeech"] as? String)
+            ?: (map["partsOfSpeech"] as? String)
+            ?: (map["part_of_speech"] as? String)
+            ?: (map["parts_of_speech"] as? String)
+            ?: (map["pos"] as? String)
+        ).orEmpty().trim()
 }

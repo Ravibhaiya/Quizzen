@@ -20,6 +20,8 @@ opts out of OEM "force dark". There is no dark palette, no `values-night` resour
 | onSurfaceVariant | `#5C4A3B` |
 | quizzen.tone30 (gradient end) | `#B85E1E` |
 | quizzen.success / error / timeout | `#1FAE6A / #E14C4C / #2E9FE0` (timeout = the sky-blue "Time's Up" sheet) |
+| quizzen.synonym / synonymContainer / onSynonymContainer | `#15806A / #D6F3EC / #0B4A3E` (emerald-teal badge, border, and surface tint for Synonyms) |
+| quizzen.antonym / antonymContainer / onAntonymContainer | `#7B3FA0 / #EDE0FA / #421861` (plum-violet badge, border, and surface tint for Antonyms) |
 
 Material roles without a dedicated token (secondary, tertiary, inverse*, outline*, extra surface containers) reuse these
 same tokens (see `ui/theme/Color.kt`) so no component can fall back to the baseline purple palette.

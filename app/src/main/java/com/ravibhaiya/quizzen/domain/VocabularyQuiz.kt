@@ -47,6 +47,7 @@ data class VocabularyQuizItem(
     val promptDetails: WordDetails = WordDetails(word = promptWord),
     val optionDetails: List<WordDetails> = options.map { WordDetails(word = it) },
     val clusterWord: String = "",
+    val clusterPartOfSpeech: String = "",
 ) {
     fun isCorrect(selectedOption: String): Boolean =
         selectedOption.trim().equals(correctAnswer.trim(), ignoreCase = true)

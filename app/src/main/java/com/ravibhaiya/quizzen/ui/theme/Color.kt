@@ -14,6 +14,13 @@ data class QuizzenColors(
     val error: Color,
     /** Background of the "Time's Up" sheet. */
     val timeout: Color,
+    /** Accent and badge colors that visually distinguish Synonyms (same meaning) from Antonyms (opposite meaning). */
+    val synonym: Color,
+    val synonymContainer: Color,
+    val onSynonymContainer: Color,
+    val antonym: Color,
+    val antonymContainer: Color,
+    val onAntonymContainer: Color,
 )
 
 // Palette of the app. It is light-only by design (no dark palette).
@@ -34,10 +41,29 @@ private val Error = Color(0xFFE14C4C)
 // Sky blue: sits with the green/red sheets at a similar brightness (white text contrast ~2.9:1, like the green one).
 private val Timeout = Color(0xFF2E9FE0)
 
+// Vocabulary relation tokens: Emerald-Teal for Synonyms vs Plum-Violet for Antonyms.
+private val SynonymAccent = Color(0xFF15806A)
+private val SynonymContainer = Color(0xFFD6F3EC)
+private val OnSynonymContainer = Color(0xFF0B4A3E)
+private val AntonymAccent = Color(0xFF7B3FA0)
+private val AntonymContainer = Color(0xFFEDE0FA)
+private val OnAntonymContainer = Color(0xFF421861)
+
 // Only Material's `inversePrimary` slot needs this extra color.
 private val InversePrimary = Color(0xFFF4B178)
 
-internal val QuizzenExtraColors = QuizzenColors(Tone30, Success, Error, Timeout)
+internal val QuizzenExtraColors = QuizzenColors(
+    tone30 = Tone30,
+    success = Success,
+    error = Error,
+    timeout = Timeout,
+    synonym = SynonymAccent,
+    synonymContainer = SynonymContainer,
+    onSynonymContainer = OnSynonymContainer,
+    antonym = AntonymAccent,
+    antonymContainer = AntonymContainer,
+    onAntonymContainer = OnAntonymContainer,
+)
 
 /**
  * Every Material role is set explicitly so no component (Snackbar, dividers, sheets...) can fall back to the

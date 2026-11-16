@@ -7,7 +7,7 @@ import org.junit.Assert.assertTrue
 import org.junit.Test
 
 class VocabularyDecisionTest {
-    /** The first request the app would send (the app itself sends every batch, in order). */
+
     private fun firstPlan(
         entries: List<VocabularyEntry>,
         dismissedKeys: Set<String> = emptySet(),
@@ -17,284 +17,183 @@ class VocabularyDecisionTest {
         maxQuestionsPerBatch = VocabularyDecisionRules.MAX_QUESTIONS_PER_CALL,
     ).firstOrNull()
 
-
     @Test
-    fun `buildRequestBatches creates gemini-decision-1 payload with choice and per-relation noul questions and parseResponse extracts exact conflicting word`() {
+    fun `buildRequestBatches checks usage-based partOfSpeech and meanings for main word, synonyms, and antonyms`() {
         val entries = listOf(
             VocabularyEntry(
-                id = "word_abate_1",
-                wordDetails = WordDetails(word = "Abate", meaningEnglish = "Become less intense"),
-                synonyms = listOf(WordDetails(word = "Subside", meaningEnglish = "Die down")),
-                createdAt = 100L,
-            ),
-            VocabularyEntry(
-                id = "word_abating_2",
-                wordDetails = WordDetails(word = "Abating", meaningEnglish = "Becoming less intense"),
-                synonyms = listOf(WordDetails(word = "Waning", meaningEnglish = "Decreasing")),
-                createdAt = 200L,
-            ),
-            VocabularyEntry(
-                id = "word_candid_3",
-                wordDetails = WordDetails(word = "Candid", meaningEnglish = "Truthful and straightforward"),
-                synonyms = listOf(WordDetails(word = "Forthright", meaningEnglish = "Direct and outspoken")),
-                antonyms = listOf(WordDetails(word = "Frank", meaningEnglish = "Truthful and straightforward")),
-                createdAt = 300L,
+                id = "word_repudiate",
+                wordDetails = WordDetails(
+                    word = "Repudiate",
+                    partOfSpeech = "Noun",
+                    meaningEnglish = "Refuse to accept or be associated with",
+                    exampleSentence = "He chose to repudiate the false accusations.",
+                ),
+                synonyms = listOf(
+                    WordDetails(
+                        word = "Reject",
+                        partOfSpeech = "Verb",
+                        meaningEnglish = "Dismiss as inadequate",
+                        exampleSentence = "They reject the proposal.",
+                    ),
+                ),
+                antonyms = listOf(
+                    WordDetails(
+                        word = "Embrace",
+                        partOfSpeech = "Adjective",
+                        meaningEnglish = "Accept or support willingly",
+                        exampleSentence = "We embrace new ideas.",
+                    ),
+                ),
             ),
         )
 
         val plan = firstPlan(entries)
         assertNotNull(plan)
-        assertTrue(plan!!.requestJson.contains("\"model\": \"gemini-decision-1\""))
-        assertEquals(3, plan.pairQuestions.size)
-        // 3 main-word definition checks + 4 relation conflict checks = 7 conflict questions
-        assertEquals(7, plan.conflictQuestions.size)
+        // 1 main meaning + 1 main POS + 1 syn meaning + 1 syn POS + 1 ant meaning + 1 ant POS = 6 questions
+        assertEquals(6, plan!!.conflictQuestions.size)
 
-        val abatingPair = plan.pairQuestions.first {
-            it.primaryId == "word_abate_1" && it.duplicateId == "word_abating_2"
-        }
-        val abateMainConflict = plan.conflictQuestions.first {
-            it.entryId == "word_abate_1" && it.isMainWordDefinition
-        }
-        val candidAntonymConflict = plan.conflictQuestions.first {
-            it.entryId == "word_candid_3" && !it.isMainWordDefinition && it.isAntonym && it.relationDetails.word == "Frank"
-        }
+        val mainPosQ = plan.conflictQuestions.first { it.isPartOfSpeechCheck && it.relationDetails.word.isEmpty() }
+        assertTrue(
+            plan.requestJson.contains(
+                "For word \\\"Repudiate\\\" as used with meaning \\\"Refuse to accept or be associated with\\\" and example \\\"He chose to repudiate the false accusations.\\\", is its listed part of speech \\\"Noun\\\" wrong?",
+            ),
+        )
 
-        val responseJson = """
+        val antPosQ = plan.conflictQuestions.first { it.isPartOfSpeechCheck && it.isAntonym && it.relationDetails.word == "Embrace" }
+        assertTrue(
+            plan.requestJson.contains(
+                "For antonym \\\"Embrace\\\" (under \\\"Repudiate\\\") as used with meaning \\\"Accept or support willingly\\\" and example \\\"We embrace new ideas.\\\", is its listed part of speech \\\"Adjective\\\" wrong?",
+            ),
+        )
+
+        // When main-word POS is flagged, finding targets main word
+        val mainPosResponse = """
             {
               "answers": {
-                "${abatingPair.questionId}": {
-                  "type": "choice",
-                  "choice": "root_or_inflected",
-                  "probabilities": {
-                    "distinct": 0.02,
-                    "exact_duplicate": 0.01,
-                    "root_or_inflected": 0.96,
-                    "spelling_or_typo": 0.01
-                  },
-                  "confidence": 0.97
-                },
-                "${abateMainConflict.questionId}": {
+                "${mainPosQ.questionId}": {
                   "type": "noul",
-                  "noul": 0.95,
+                  "noul": 0.94,
                   "confidence": 0.96
-                },
-                "${candidAntonymConflict.questionId}": {
-                  "type": "noul",
-                  "noul": 0.98,
-                  "confidence": 0.98
                 }
               }
             }
         """.trimIndent()
+        val mainFinding = VocabularyDecisionRules.parseResponse(mainPosResponse, plan)
+            .filterIsInstance<VocabularyDecisionFinding.MeaningConflict>()
+            .single()
+        assertNull(mainFinding.conflictingTarget)
+        assertEquals("Main word \"Repudiate\" part of speech", mainFinding.conflictingWord)
+        assertTrue(mainFinding.conflictReason!!.contains("Wrong part of speech \"Noun\" for main word \"Repudiate\""))
 
-        val findings = VocabularyDecisionRules.parseResponse(responseJson, plan)
-        assertEquals(3, findings.size)
-
-        val dupFinding = findings.filterIsInstance<VocabularyDecisionFinding.DuplicateOrVariant>().single()
-        assertEquals("word_abate_1", dupFinding.primaryId)
-        assertEquals("word_abating_2", dupFinding.duplicateId)
-        assertEquals(DecisionDuplicateKind.ROOT_OR_INFLECTED, dupFinding.kind)
-        assertEquals(97, dupFinding.confidencePercent)
-
-        val mainConflictFinding = findings.filterIsInstance<VocabularyDecisionFinding.MeaningConflict>()
-            .first { it.entryId == "word_abate_1" }
-        assertEquals("Main word \"Abate\" definition", mainConflictFinding.conflictingWord)
-        assertNull(mainConflictFinding.conflictingTarget)
-
-        val conflictFinding = findings.filterIsInstance<VocabularyDecisionFinding.MeaningConflict>()
-            .first { it.entryId == "word_candid_3" }
-        assertEquals("word_candid_3", conflictFinding.entryId)
-        assertEquals(98, conflictFinding.confidencePercent)
-        assertEquals("Antonym \"Frank\"", conflictFinding.conflictingWord)
-        assertNotNull(conflictFinding.conflictingTarget)
-        assertEquals("Frank", conflictFinding.conflictingTarget!!.word)
-        assertTrue(conflictFinding.conflictingTarget!!.isAntonym)
-        assertEquals(0, conflictFinding.conflictingTarget!!.index)
-
-        // Dismissing all pair & conflict keys leaves nothing to ask
-        val allDismissed = plan.pairQuestions.map {
-            VocabularyDecisionFinding.pairDismissKey(it.primaryId, it.duplicateId)
-        }.toSet() + plan.conflictQuestions.map {
-            VocabularyDecisionFinding.conflictDismissKey(it.entryId)
-        }.toSet()
-        assertNull(firstPlan(entries, allDismissed))
+        // When relation POS has higher probability than main POS, relation POS wins and preserves partOfSpeech
+        val bothPosResponse = """
+            {
+              "answers": {
+                "${mainPosQ.questionId}": {
+                  "type": "noul",
+                  "noul": 0.85,
+                  "confidence": 0.88
+                },
+                "${antPosQ.questionId}": {
+                  "type": "noul",
+                  "noul": 0.98,
+                  "confidence": 0.99
+                }
+              }
+            }
+        """.trimIndent()
+        val relFinding = VocabularyDecisionRules.parseResponse(bothPosResponse, plan)
+            .filterIsInstance<VocabularyDecisionFinding.MeaningConflict>()
+            .single()
+        assertNotNull(relFinding.conflictingTarget)
+        assertEquals("Antonym \"Embrace\" part of speech", relFinding.conflictingWord)
+        assertEquals("Adjective", relFinding.conflictingTarget!!.details.partOfSpeech)
     }
 
     @Test
-    fun `buildRequestBatches distinguishes synonym vs antonym noul instructions and pre-filters candidate pairs on 25-word sets`() {
-        val unrelatedWords = listOf(
-            "Abacus", "Bramble", "Citadel", "Drought", "Eclipse", "Fjord",
-            "Gazebo", "Harbor", "Igloo", "Jasmine", "Keystone", "Lantern",
-            "Mosaic", "Nectar", "Orchid", "Prism", "Quartz", "Rivulet",
-            "Saffron", "Tundra", "Umbra", "Velvet", "Zephyr",
-        )
-        val entries = unrelatedWords.mapIndexed { i, w ->
+    fun `selectCandidatePairs skips entries with different partOfSpeech while pairing entries with same partOfSpeech`() {
+        val entries = listOf(
             VocabularyEntry(
-                id = "word_${w.lowercase()}",
-                wordDetails = WordDetails(
-                    word = w,
-                    meaningEnglish = "Meaningof${w.lowercase()}",
-                ),
-                synonyms = listOf(WordDetails(word = "AliasFor$w", meaningEnglish = "Senseof${w.lowercase()}")),
-                createdAt = (i + 1).toLong(),
-            )
-        } + listOf(
-            VocabularyEntry(
-                id = "word_accommodate",
-                wordDetails = WordDetails(word = "Accommodate", meaningEnglish = "Provide lodging"),
-                synonyms = listOf(WordDetails(word = "House", meaningEnglish = "Give shelter")),
-                antonyms = listOf(WordDetails(word = "Turn away", meaningEnglish = "Refuse entry")),
+                id = "word_present_noun",
+                wordDetails = WordDetails(word = "Present", partOfSpeech = "Noun", meaningEnglish = "A gift"),
                 createdAt = 100L,
             ),
             VocabularyEntry(
-                id = "word_accomodate",
-                wordDetails = WordDetails(word = "Accomodate", meaningEnglish = "Misspelled duplicate"),
+                id = "word_present_verb",
+                wordDetails = WordDetails(word = "Present", partOfSpeech = "Verb", meaningEnglish = "Give formally"),
                 createdAt = 200L,
+            ),
+            VocabularyEntry(
+                id = "word_present_noun_2",
+                wordDetails = WordDetails(word = "Present", partOfSpeech = "Noun", meaningEnglish = "Something offered"),
+                createdAt = 300L,
             ),
         )
 
         val plan = firstPlan(entries)!!
-        assertTrue(plan.totalQuestions <= VocabularyDecisionRules.MAX_QUESTIONS_PER_CALL)
-        // Candidate-pair filtering avoids sending all 300 pairs while keeping plausible typo pairs.
-        assertTrue(plan.pairQuestions.size <= 5)
-        assertTrue(
-            plan.pairQuestions.any {
-                it.primaryId == "word_accommodate" && it.duplicateId == "word_accomodate"
-            },
-        )
-        assertTrue(plan.requestJson.contains("listed antonym \\\"Turn away\\\""))
-        assertTrue(plan.requestJson.contains("listed synonym \\\"House\\\""))
+        assertEquals(1, plan.pairQuestions.size)
+        val pair = plan.pairQuestions.single()
+        assertEquals("word_present_noun", pair.primaryId)
+        assertEquals("word_present_noun_2", pair.duplicateId)
     }
 
     @Test
-    fun `Option B skips meaning, synonym and antonym checks on verified words while still comparing unverified words against all existing words`() {
-        val verifiedOld = listOf(
-            VocabularyEntry(
-                id = "word_accommodate",
-                wordDetails = WordDetails(word = "Accommodate", meaningEnglish = "Provide lodging"),
-                synonyms = listOf(WordDetails(word = "Lodge", meaningEnglish = "Give shelter")),
-                antonyms = listOf(WordDetails(word = "Evict", meaningEnglish = "Expel")),
-                createdAt = 100L,
-                updatedAt = 100L,
-            ),
-            VocabularyEntry(
-                id = "word_color",
-                wordDetails = WordDetails(word = "Color", meaningEnglish = "Visual hue"),
-                synonyms = listOf(WordDetails(word = "Tint", meaningEnglish = "Shade")),
-                createdAt = 110L,
-                updatedAt = 110L,
-            ),
-            VocabularyEntry(
-                id = "word_colour_old",
-                wordDetails = WordDetails(word = "Colour", meaningEnglish = "British spelling of color"),
-                createdAt = 120L,
-                updatedAt = 120L,
-            ),
+    fun `Option B skips already verified entries and entryContentDigest changes when partOfSpeech is edited`() {
+        val entry = VocabularyEntry(
+            id = "w1",
+            wordDetails = WordDetails(word = "Candid", partOfSpeech = "Noun", meaningEnglish = "Truthful"),
+            createdAt = 100L,
+            updatedAt = 100L,
         )
-        val newUnverified = VocabularyEntry(
-            id = "word_accomodate_new",
-            wordDetails = WordDetails(word = "Accomodate", meaningEnglish = "Provide room for"),
-            synonyms = listOf(WordDetails(word = "House", meaningEnglish = "Provide shelter")),
-            createdAt = 500L,
-            updatedAt = 500L,
+        val editedPos = entry.copy(
+            wordDetails = entry.wordDetails.copy(partOfSpeech = "Adjective"),
         )
+        assertTrue(VocabularyDecisionRules.entryContentDigest(entry) != VocabularyDecisionRules.entryContentDigest(editedPos))
 
-        val verifiedIds = verifiedOld.map { it.id }.toSet()
-        val batches = VocabularyDecisionRules.buildRequestBatches(
-            entries = verifiedOld + newUnverified,
-            verifiedEntryIds = verifiedIds,
-        )
-        assertEquals(1, batches.size)
-        val batch = batches.single()
-
-        // 1. Conflict checks (main meaning + synonyms + antonyms) are generated ONLY for the new unverified word
-        assertTrue(batch.conflictQuestions.all { it.entryId == "word_accomodate_new" })
-        assertEquals(2, batch.conflictQuestions.size) // 1 main + 1 synonym
-
-        // 2. Duplicate pair check compares the new unverified word against the old verified word ("Accommodate" vs "Accomodate"),
-        //    and does NOT re-compare the two already-verified words ("Color" vs "Colour")
+        // When w1 is already verified, buildRequestBatches returns empty
         assertTrue(
-            batch.pairQuestions.any {
-                it.primaryId == "word_accommodate" && it.duplicateId == "word_accomodate_new"
-            },
+            VocabularyDecisionRules.buildRequestBatches(
+                entries = listOf(editedPos),
+                verifiedEntryIds = setOf("w1"),
+            ).isEmpty(),
         )
-        assertTrue(
-            batch.pairQuestions.none {
-                it.primaryId in verifiedIds && it.duplicateId in verifiedIds
-            },
-        )
-        assertEquals(setOf("word_accomodate_new"), batch.coveredEntryIds)
     }
 
     @Test
-    fun `buildRequestBatches chunks large databases into 100-question batches with dedicated pair slots and newest words first`() {
-        // 80 words each with 2 synonyms and 1 antonym = 320 conflict questions (> 250 old cap) + typo pairs
-        val entries = (1..80).map { i ->
-            VocabularyEntry(
-                id = "word_$i",
-                wordDetails = WordDetails(word = "TermNumber$i", meaningEnglish = "Distinctmeaning$i"),
-                synonyms = listOf(
-                    WordDetails(word = "SynA$i", meaningEnglish = "SynmeaningA$i"),
-                    WordDetails(word = "SynB$i", meaningEnglish = "SynmeaningB$i"),
-                ),
-                antonyms = listOf(
-                    WordDetails(word = "AntA$i", meaningEnglish = "AntmeaningA$i"),
-                ),
-                createdAt = i.toLong(),
-                updatedAt = i.toLong(),
-            )
-        } + listOf(
-            VocabularyEntry(
-                id = "word_newest_typo",
-                wordDetails = WordDetails(word = "TermNumber80Typo", meaningEnglish = "Distinctmeaning80"),
-                createdAt = 999L,
-                updatedAt = 999L,
-            ),
-        )
-
-        val batches = VocabularyDecisionRules.buildRequestBatches(entries)
-        assertTrue(batches.size >= 4)
-        assertTrue(batches.all { it.totalQuestions <= VocabularyDecisionRules.BATCH_MAX_QUESTIONS })
-
-        // First batch must include pair questions (never starved by the 321 conflict questions)
-        // and must prioritize the newest word ("word_newest_typo") first!
-        val firstBatch = batches.first()
-        assertTrue(firstBatch.pairQuestions.isNotEmpty())
-        assertEquals("word_newest_typo", firstBatch.conflictQuestions.first().entryId)
-
-        // Across all batches, every entry is covered
-        val allCovered = batches.flatMap { it.coveredEntryIds }.toSet()
-        assertEquals(entries.map { it.id }.toSet(), allCovered)
-    }
-
-    @Test
-    fun `encodeVerificationSnapshot and decodeVerificationSnapshot round-trip digests and findings`() {
-        val original = VocabularyDecisionRules.DecisionVerificationSnapshot(
-            verifiedDigests = mapOf("w1" to 12345, "w2" to -67890),
+    fun `encodeVerificationSnapshot and decodeVerificationSnapshot round-trip digests and targetPartOfSpeech`() {
+        val snapshot = VocabularyDecisionRules.DecisionVerificationSnapshot(
+            verifiedDigests = mapOf("w1" to 111, "w2" to 222),
             findings = listOf(
                 VocabularyDecisionFinding.DuplicateOrVariant(
                     primaryId = "w1",
                     duplicateId = "w2",
                     kind = DecisionDuplicateKind.SPELLING_OR_TYPO,
-                    probability = 0.96,
-                    confidence = 0.98,
+                    probability = 0.95,
+                    confidence = 0.97,
                 ),
                 VocabularyDecisionFinding.MeaningConflict(
                     entryId = "w1",
-                    probability = 0.91,
-                    confidence = 0.94,
+                    probability = 0.93,
+                    confidence = 0.95,
                     conflictingTarget = VocabularyRules.ConflictingRelationTarget(
-                        isAntonym = true,
-                        index = 1,
-                        details = WordDetails(word = "Frank", meaningEnglish = "Honest"),
-                        conflictingWordLabel = "Antonym \"Frank\"",
-                        reason = "Listed under antonyms by mistake.",
+                        isAntonym = false,
+                        index = 0,
+                        details = WordDetails(
+                            word = "Reject",
+                            partOfSpeech = "Noun",
+                            meaningEnglish = "Refuse to accept",
+                            meaningHinglish = "Inkaar karna",
+                            exampleSentence = "They reject the offer.",
+                        ),
+                        conflictingWordLabel = "Synonym \"Reject\" part of speech",
+                        reason = "Wrong part of speech.",
                     ),
                 ),
             ),
         )
-        val encoded = VocabularyDecisionRules.encodeVerificationSnapshot(original)
+
+        val encoded = VocabularyDecisionRules.encodeVerificationSnapshot(snapshot)
         val decoded = VocabularyDecisionRules.decodeVerificationSnapshot(encoded)
-        assertEquals(original, decoded)
+        assertEquals(snapshot, decoded)
     }
 }

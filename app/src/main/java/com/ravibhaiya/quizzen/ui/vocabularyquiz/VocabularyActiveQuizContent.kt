@@ -233,11 +233,30 @@ private fun QuestionPromptCard(
     modifier: Modifier = Modifier,
 ) {
     val colors = MaterialTheme.colorScheme
+    val extra = MaterialTheme.quizzen
     val shape = RoundedCornerShape(24.dp)
+    val isSynonym = question.mode == VocabularyQuizMode.Synonyms
     val relationLabel = when (question.mode) {
         VocabularyQuizMode.Synonyms -> stringResource(R.string.vocabulary_find_synonym)
         VocabularyQuizMode.Antonyms -> stringResource(R.string.vocabulary_find_antonym)
     }
+    val modeBadgeText = when (question.mode) {
+        VocabularyQuizMode.Synonyms -> stringResource(R.string.vocabulary_mode_synonym_badge)
+        VocabularyQuizMode.Antonyms -> stringResource(R.string.vocabulary_mode_antonym_badge)
+    }
+    val modeBadgeContainer = if (isSynonym) extra.synonymContainer else extra.antonymContainer
+    val modeBadgeContent = if (isSynonym) extra.onSynonymContainer else extra.onAntonymContainer
+    val modeBorderColor = (if (isSynonym) extra.synonym else extra.antonym).copy(alpha = 0.42f)
+
+    val mainWord = question.clusterWord.ifBlank { question.promptWord }
+    val mainPartOfSpeech = question.clusterPartOfSpeech.ifBlank {
+        if (question.promptWord.equals(mainWord, ignoreCase = true)) {
+            question.promptDetails.partOfSpeech
+        } else {
+            ""
+        }
+    }.trim()
+    val promptPartOfSpeech = question.promptDetails.partOfSpeech.trim()
 
     Column(
         modifier = modifier
@@ -251,23 +270,72 @@ private fun QuestionPromptCard(
                 shape = shape,
             )
             .background(colors.surfaceContainer, shape)
-            .padding(horizontal = 18.dp, vertical = 16.dp),
+            .border(1.5.dp, modeBorderColor, shape)
+            .padding(horizontal = 18.dp, vertical = 14.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.spacedBy(10.dp),
     ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .background(colors.surface, RoundedCornerShape(16.dp))
+                .padding(horizontal = 14.dp, vertical = 8.dp)
+                .testTag("vocabulary_main_word_header"),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.SpaceBetween,
+        ) {
+            Row(
+                modifier = Modifier.weight(1f),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+            ) {
+                Text(
+                    text = stringResource(R.string.vocabulary_main_word_label).uppercase(),
+                    style = MaterialTheme.typography.labelSmall,
+                    color = colors.onSurfaceVariant,
+                )
+                Text(
+                    text = mainWord,
+                    style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
+                    color = colors.onSurface,
+                    modifier = Modifier.testTag("vocabulary_main_word_text"),
+                )
+            }
+
+            if (mainPartOfSpeech.isNotEmpty()) {
+                Box(
+                    modifier = Modifier
+                        .padding(start = 8.dp)
+                        .background(colors.primaryContainer, CircleShape)
+                        .padding(horizontal = 10.dp, vertical = 4.dp)
+                        .testTag("vocabulary_main_word_pos"),
+                ) {
+                    Text(
+                        text = mainPartOfSpeech,
+                        style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.SemiBold),
+                        color = colors.onPrimaryContainer,
+                        maxLines = 1,
+                        softWrap = false,
+                    )
+                }
+            }
+        }
+
         Row(
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(8.dp),
         ) {
             Box(
                 modifier = Modifier
-                    .background(colors.primaryContainer, CircleShape)
-                    .padding(horizontal = 14.dp, vertical = 5.dp),
+                    .background(modeBadgeContainer, CircleShape)
+                    .border(1.dp, modeBorderColor, CircleShape)
+                    .padding(horizontal = 14.dp, vertical = 5.dp)
+                    .testTag("vocabulary_mode_badge"),
             ) {
                 Text(
-                    text = relationLabel.uppercase(),
-                    style = MaterialTheme.typography.labelSmall,
-                    color = colors.onPrimaryContainer,
+                    text = modeBadgeText,
+                    style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold),
+                    color = modeBadgeContent,
                 )
             }
 
@@ -276,16 +344,39 @@ private fun QuestionPromptCard(
             }
         }
 
-        FitText(
-            text = AnnotatedString(question.promptWord),
-            style = MaterialTheme.typography.headlineLarge.copy(color = colors.onSurface),
-            maxFontSize = MaterialTheme.typography.headlineLarge.fontSize * 1.35f,
-            minFontSize = MaterialTheme.typography.headlineMedium.fontSize,
-            step = MaterialTheme.typography.labelSmall.fontSize * 0.15f,
-            modifier = Modifier
-                .semantics { contentDescription = "$relationLabel: ${question.promptWord}" }
-                .testTag("vocabulary_prompt_word"),
-        )
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(10.dp),
+        ) {
+            FitText(
+                text = AnnotatedString(question.promptWord),
+                style = MaterialTheme.typography.headlineLarge.copy(color = colors.onSurface),
+                maxFontSize = MaterialTheme.typography.headlineLarge.fontSize * 1.35f,
+                minFontSize = MaterialTheme.typography.headlineMedium.fontSize,
+                step = MaterialTheme.typography.labelSmall.fontSize * 0.15f,
+                modifier = Modifier
+                    .weight(1f, fill = false)
+                    .semantics { contentDescription = "$relationLabel: ${question.promptWord}" }
+                    .testTag("vocabulary_prompt_word"),
+            )
+
+            if (promptPartOfSpeech.isNotEmpty() && !question.promptWord.equals(mainWord, ignoreCase = true)) {
+                Box(
+                    modifier = Modifier
+                        .background(colors.surfaceContainerHigh, CircleShape)
+                        .padding(horizontal = 10.dp, vertical = 4.dp)
+                        .testTag("vocabulary_prompt_word_pos"),
+                ) {
+                    Text(
+                        text = promptPartOfSpeech,
+                        style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.SemiBold),
+                        color = colors.onSurfaceVariant,
+                        maxLines = 1,
+                        softWrap = false,
+                    )
+                }
+            }
+        }
 
         if (showMeaning) {
             PromptWordMeaningBox(
@@ -472,11 +563,36 @@ private fun VocabularyOptionCard(
             modifier = Modifier.weight(1f),
             verticalArrangement = Arrangement.spacedBy(2.dp),
         ) {
-            Text(
-                text = optionText,
-                style = MaterialTheme.typography.titleMedium,
-                color = titleColor,
-            )
+            val optionPos = optionDetails.partOfSpeech.trim()
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.SpaceBetween,
+            ) {
+                Text(
+                    text = optionText,
+                    style = MaterialTheme.typography.titleMedium,
+                    color = titleColor,
+                    modifier = Modifier.weight(1f, fill = false),
+                )
+                if (showMeaning && optionPos.isNotEmpty()) {
+                    Box(
+                        modifier = Modifier
+                            .padding(start = 8.dp)
+                            .background(colors.surfaceContainerHigh, CircleShape)
+                            .padding(horizontal = 8.dp, vertical = 2.dp)
+                            .testTag("vocabulary_option_pos_$optionIndex"),
+                    ) {
+                        Text(
+                            text = optionPos,
+                            style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.SemiBold),
+                            color = colors.onSurfaceVariant,
+                            maxLines = 1,
+                            softWrap = false,
+                        )
+                    }
+                }
+            }
 
             if (showMeaning) {
                 val meaningLine = formatWordMeaning(optionDetails)
