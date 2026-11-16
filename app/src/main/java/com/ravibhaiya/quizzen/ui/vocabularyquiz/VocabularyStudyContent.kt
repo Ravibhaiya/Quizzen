@@ -20,6 +20,7 @@ import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Icon
@@ -27,6 +28,8 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -34,14 +37,19 @@ import androidx.compose.ui.graphics.RectangleShape
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.ravibhaiya.quizzen.R
 import com.ravibhaiya.quizzen.domain.VocabularyEntry
+import com.ravibhaiya.quizzen.domain.VocabularyRules
 import com.ravibhaiya.quizzen.domain.WordDetails
+import com.ravibhaiya.quizzen.ui.components.FitText
 import com.ravibhaiya.quizzen.ui.components.NeutralShadowColor
 import com.ravibhaiya.quizzen.ui.components.PrimaryButton
 import com.ravibhaiya.quizzen.ui.components.QuizzenIcons
@@ -61,6 +69,13 @@ internal fun VocabularyStudyView(
 ) {
     val colors = MaterialTheme.colorScheme
     val extra = MaterialTheme.quizzen
+    val listState = rememberLazyListState()
+    val studyKey = remember(entries) {
+        entries.joinToString("|") { it.id.ifBlank { VocabularyRules.wordIdentityKey(it.wordDetails) } }
+    }
+    LaunchedEffect(studyKey) {
+        listState.scrollToItem(0)
+    }
 
     Column(
         modifier = Modifier
@@ -79,7 +94,7 @@ internal fun VocabularyStudyView(
                 trailing = {
                     Row(
                         verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(10.dp),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
                     ) {
                         Box(
                             modifier = Modifier
@@ -90,6 +105,8 @@ internal fun VocabularyStudyView(
                                 text = stringResource(R.string.vocabulary_word_count_summary, entries.size),
                                 style = MaterialTheme.typography.labelSmall,
                                 color = colors.onSurface,
+                                maxLines = 1,
+                                softWrap = false,
                             )
                         }
                         if (entries.isNotEmpty()) {
@@ -99,6 +116,7 @@ internal fun VocabularyStudyView(
                                     .bouncyClickable(
                                         shape = CircleShape,
                                         pressedScale = 0.88f,
+                                        role = Role.Button,
                                         onClick = onShuffleWords,
                                     )
                                     .background(colors.primaryContainer, CircleShape)
@@ -119,6 +137,7 @@ internal fun VocabularyStudyView(
         }
 
         LazyColumn(
+            state = listState,
             modifier = Modifier
                 .weight(1f)
                 .fillMaxWidth()
@@ -132,7 +151,7 @@ internal fun VocabularyStudyView(
             } else {
                 entries.forEachIndexed { entryIndex, entry ->
                     val index = entryIndex + 1
-                    val entryKey = entry.id.ifBlank { "${entry.wordDetails.word}_$entryIndex" }
+                    val entryKey = "${entryIndex}_${entry.id.ifBlank { VocabularyRules.wordIdentityKey(entry.wordDetails) }}"
                     val hasSynonyms = entry.synonyms.isNotEmpty()
                     val hasAntonyms = entry.antonyms.isNotEmpty()
                     val mainDetailsIsLast = !hasSynonyms && !hasAntonyms
@@ -329,11 +348,16 @@ private fun StudyMainWordStickyHeader(
                                 letterSpacing = 0.6.sp,
                             ),
                             color = colors.primary,
+                            maxLines = 1,
+                            softWrap = false,
                         )
-                        Text(
-                            text = entry.wordDetails.word,
-                            style = MaterialTheme.typography.headlineMedium,
-                            color = colors.onSurface,
+                        FitText(
+                            text = AnnotatedString(entry.wordDetails.word),
+                            style = MaterialTheme.typography.headlineMedium.copy(color = colors.onSurface),
+                            maxFontSize = MaterialTheme.typography.headlineMedium.fontSize,
+                            minFontSize = 14.sp,
+                            step = 0.5.sp,
+                            textAlign = TextAlign.Start,
                         )
                     }
                     if (mainPartOfSpeech.isNotEmpty()) {
@@ -359,7 +383,7 @@ private fun StudyMainWordStickyHeader(
                     horizontalArrangement = Arrangement.spacedBy(8.dp),
                 ) {
                     StudyRelationCountPill(
-                        text = "≈ " + resources.getQuantityString(
+                        text = resources.getQuantityString(
                             R.plurals.synonym_count,
                             entry.synonyms.size,
                             entry.synonyms.size,
@@ -368,7 +392,7 @@ private fun StudyMainWordStickyHeader(
                         contentColor = extra.onSynonymContainer,
                     )
                     StudyRelationCountPill(
-                        text = "⇄ " + resources.getQuantityString(
+                        text = resources.getQuantityString(
                             R.plurals.antonym_count,
                             entry.antonyms.size,
                             entry.antonyms.size,
@@ -555,10 +579,13 @@ private fun StudyDetailsBlock(
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.SpaceBetween,
             ) {
-                Text(
-                    text = details.word,
-                    style = MaterialTheme.typography.titleMedium,
-                    color = headingColor,
+                FitText(
+                    text = AnnotatedString(details.word),
+                    style = MaterialTheme.typography.titleMedium.copy(color = headingColor),
+                    maxFontSize = MaterialTheme.typography.titleMedium.fontSize,
+                    minFontSize = 12.sp,
+                    step = 0.5.sp,
+                    textAlign = TextAlign.Start,
                     modifier = Modifier.weight(1f),
                 )
                 if (pos.isNotEmpty()) {

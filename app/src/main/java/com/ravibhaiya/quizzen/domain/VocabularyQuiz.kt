@@ -90,11 +90,15 @@ object VocabularyQuizRules {
         return hasSynonyms || hasAntonyms
     }
 
+    private fun entryIdentity(entry: VocabularyEntry): String =
+        entry.id.trim().lowercase().ifEmpty { VocabularyRules.wordIdentityKey(entry.wordDetails) }
+
     /**
      * Picks up to [wordCount] distinct vocabulary entries from [entries] to study and be quizzed on:
-     * 1. First prioritizes eligible entries whose word/ID is in [mistakeWords] (saved from previous wrong answers or
-     *    timeouts), shuffled so repeated practice stays fresh.
-     * 2. Fills the remaining slots with random non-mistake eligible entries from [entries].
+     * - When [excludeEntries] is provided (for example when tapping the Shuffle button on the Study Words screen),
+     *   excludes the currently shown entries first so new random word(s) are chosen whenever additional eligible words
+     *   exist in the database (or reorders them when all eligible words are already shown).
+     * - Otherwise selects randomly from eligible entries (prioritizing [mistakeWords] only when explicitly provided).
      *
      * Returns [emptyList] when [entries] has no eligible words for the selected [modes].
      */
@@ -104,16 +108,33 @@ object VocabularyQuizRules {
         wordCount: Int,
         random: Random = Random.Default,
         mistakeWords: Set<String> = emptySet(),
+        excludeEntries: List<VocabularyEntry> = emptyList(),
     ): List<VocabularyEntry> {
         val targetCount = coerceWordCount(wordCount)
-        val normalizedMistakes = mistakeWords.map(::mistakeKey).filter { it.isNotEmpty() }.toSet()
-
         val eligibleUser = entries
             .map { it.sanitized() }
             .filter { isEligible(it, modes) }
-            .distinctBy { it.wordDetails.word.lowercase() }
+            .distinctBy(::entryIdentity)
 
         if (eligibleUser.isEmpty()) return emptyList()
+
+        val excludedKeys = excludeEntries.map(::entryIdentity).toSet()
+        if (excludedKeys.isNotEmpty() && eligibleUser.size > 1) {
+            val freshPool = eligibleUser.filterNot { entryIdentity(it) in excludedKeys }.shuffled(random)
+            if (freshPool.size >= targetCount) {
+                return freshPool.take(targetCount)
+            }
+            val needed = targetCount - freshPool.size
+            val fallbackPool = eligibleUser.filter { entryIdentity(it) in excludedKeys }.shuffled(random)
+            val combined = (freshPool + fallbackPool.take(needed)).shuffled(random)
+            val currentOrder = excludeEntries.map(::entryIdentity)
+            if (combined.size > 1 && combined.map(::entryIdentity) == currentOrder) {
+                return combined.drop(1) + combined.first()
+            }
+            return combined
+        }
+
+        val normalizedMistakes = mistakeWords.map(::mistakeKey).filter { it.isNotEmpty() }.toSet()
         if (normalizedMistakes.isEmpty()) {
             return eligibleUser.shuffled(random).take(targetCount)
         }

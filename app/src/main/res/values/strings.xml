@@ -250,8 +250,8 @@
     <string name="vocabulary_main_word_label">Main Word</string>
     <string name="vocabulary_find_synonym">Synonym</string>
     <string name="vocabulary_find_antonym">Antonym</string>
-    <string name="vocabulary_mode_synonym_badge">≈ SYNONYM • SAME MEANING</string>
-    <string name="vocabulary_mode_antonym_badge">⇄ ANTONYM • OPPOSITE MEANING</string>
+    <string name="vocabulary_mode_synonym_badge">SYNONYM</string>
+    <string name="vocabulary_mode_antonym_badge">ANTONYM</string>
     <string name="vocabulary_quiz_complete_title">Quiz Complete</string>
     <string name="vocabulary_quiz_accuracy_badge">SCORE</string>
     <string name="vocabulary_next_question">Next</string>

@@ -159,4 +159,33 @@ class VocabularyQuizViewModelTest {
         assertFalse(vm.state.value.isLocked)
         vm.onPause()
     }
+
+    @Test
+    fun `shuffleStudyWords switches to a different random word even when mistakeWords exist`() = runTest(dispatcher) {
+        val entries = listOf(
+            sampleEntries.first(),
+            VocabularyEntry(
+                id = "w2",
+                wordDetails = WordDetails(word = "Swift", partOfSpeech = "Adjective", meaningEnglish = "Fast"),
+                synonyms = listOf(WordDetails(word = "Rapid", partOfSpeech = "Adjective", meaningEnglish = "Quick")),
+                antonyms = listOf(WordDetails(word = "Slow", partOfSpeech = "Adjective", meaningEnglish = "Sluggish")),
+            ),
+        )
+        val repo = FakeVocabularyRepo(entries, initialMistakes = setOf("bright"))
+        val vm = VocabularyQuizViewModel(
+            config = VocabularyQuizConfig(wordCount = 1),
+            repository = repo,
+            random = Random(12),
+        )
+        runCurrent()
+
+        val initialWord = vm.state.value.studyEntries.single().wordDetails.word
+        vm.shuffleStudyWords()
+        val secondWord = vm.state.value.studyEntries.single().wordDetails.word
+        assertFalse("Expected shuffleStudyWords to change the current study word", initialWord == secondWord)
+
+        vm.shuffleStudyWords()
+        val thirdWord = vm.state.value.studyEntries.single().wordDetails.word
+        assertEquals(initialWord, thirdWord)
+    }
 }

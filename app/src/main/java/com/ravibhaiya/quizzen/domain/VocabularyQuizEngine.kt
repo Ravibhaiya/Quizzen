@@ -66,13 +66,10 @@ object VocabularyQuizEngine {
         val detailsByWord = buildWordDetailsLookup(allSourceEntries)
 
         val orderedRaw = mutableListOf<RawQuestion>()
-        for (cluster in clusters) {
+        for (cluster in clusters.shuffled(random)) {
             val questions = buildQuestionsForCluster(cluster, modes, random)
             if (questions.isNotEmpty()) {
-                val synQuestions = questions.filter { it.mode == VocabularyQuizMode.Synonyms }.shuffled(random)
-                val antQuestions = questions.filter { it.mode == VocabularyQuizMode.Antonyms }.shuffled(random)
-                orderedRaw += synQuestions
-                orderedRaw += antQuestions
+                orderedRaw += shuffleClusterQuestions(questions, random)
             }
         }
         if (orderedRaw.isEmpty()) return emptyList()
@@ -242,6 +239,33 @@ object VocabularyQuizEngine {
         }
 
         return questions
+    }
+
+    /**
+     * Shuffles all Synonym and Antonym questions of a single main-word cluster together randomly. When both modes are
+     * present and the random shuffle happens to leave all questions of one mode in a single contiguous block before all
+     * questions of the other mode, swaps the boundary question so Synonym and Antonym questions are genuinely mixed.
+     */
+    private fun shuffleClusterQuestions(
+        questions: List<RawQuestion>,
+        random: Random,
+    ): List<RawQuestion> {
+        if (questions.size <= 1) return questions
+        val shuffled = questions.shuffled(random).toMutableList()
+        val hasSyn = shuffled.any { it.mode == VocabularyQuizMode.Synonyms }
+        val hasAnt = shuffled.any { it.mode == VocabularyQuizMode.Antonyms }
+        if (hasSyn && hasAnt && shuffled.size >= 3) {
+            val transitions = shuffled.zipWithNext().count { (a, b) -> a.mode != b.mode }
+            if (transitions == 1) {
+                val boundary = shuffled.zipWithNext().indexOfFirst { (a, b) -> a.mode != b.mode }
+                if (boundary >= 0 && boundary + 1 < shuffled.size) {
+                    val temp = shuffled[boundary]
+                    shuffled[boundary] = shuffled[boundary + 1]
+                    shuffled[boundary + 1] = temp
+                }
+            }
+        }
+        return shuffled
     }
 
     private fun buildOptions(

@@ -20,6 +20,7 @@ import com.ravibhaiya.quizzen.domain.VocabularyQuizConfig
 import com.ravibhaiya.quizzen.domain.VocabularyQuizEngine
 import com.ravibhaiya.quizzen.domain.VocabularyQuizItem
 import com.ravibhaiya.quizzen.domain.VocabularyQuizRules
+import com.ravibhaiya.quizzen.domain.VocabularyRules
 import com.ravibhaiya.quizzen.ui.navigation.Routes
 import com.ravibhaiya.quizzen.ui.navigation.VocabularyQuizArgs
 import kotlinx.coroutines.Job
@@ -117,8 +118,6 @@ class VocabularyQuizViewModel(
             combine(repository.entries, repository.mistakeWords) { repoEntries, repoMistakes ->
                 repoEntries to repoMistakes
             }.collect { (repoEntries, repoMistakes) ->
-                val previousEntries = allEntries
-                val previousMistakes = savedMistakeWords
                 allEntries = repoEntries
                 savedMistakeWords = repoMistakes
                     .map(VocabularyQuizRules::mistakeKey)
@@ -126,10 +125,10 @@ class VocabularyQuizViewModel(
                     .toSet()
                 val nowHasUserEligible = repoEntries.any { VocabularyQuizRules.isEligible(it, config.modes) }
                 val currentStudy = _state.value.studyEntries
-                val repoEntryKeys = repoEntries.map { it.wordDetails.word.lowercase() }.toSet()
-                val studyHasDeletedWords = currentStudy.any { it.wordDetails.word.lowercase() !in repoEntryKeys }
-                val mistakesChangedBeforeQuiz =
-                    previousMistakes != savedMistakeWords && _state.value.questions.isEmpty() && restoredSnapshot == null
+                val repoEntryKeys = repoEntries.map { VocabularyRules.wordIdentityKey(it.wordDetails) }.toSet()
+                val studyHasDeletedWords = currentStudy.any {
+                    VocabularyRules.wordIdentityKey(it.wordDetails) !in repoEntryKeys
+                }
 
                 // Keep the Study screen synced with user words from the repository (unless restored from process death).
                 if (_state.value.phase == VocabularyQuizPhase.Study &&
@@ -138,11 +137,10 @@ class VocabularyQuizViewModel(
                         !hasLoadedInitialStudy ||
                             (currentStudy.isEmpty() && nowHasUserEligible) ||
                             studyHasDeletedWords ||
-                            (!nowHasUserEligible && currentStudy.isNotEmpty()) ||
-                            (mistakesChangedBeforeQuiz && previousEntries == repoEntries)
+                            (!nowHasUserEligible && currentStudy.isNotEmpty())
                         )
                 ) {
-                    hasLoadedInitialStudy = true
+                    hasLoadedInitialStudy = if (repoEntries.isNotEmpty()) true else hasLoadedInitialStudy
                     updateAndPersistState {
                         it.copy(
                             studyEntries = VocabularyQuizRules.selectStudyWords(
@@ -150,7 +148,6 @@ class VocabularyQuizViewModel(
                                 modes = config.modes,
                                 wordCount = config.wordCount,
                                 random = random,
-                                mistakeWords = savedMistakeWords,
                             ),
                         )
                     }
@@ -184,17 +181,18 @@ class VocabularyQuizViewModel(
         }
     }
 
-    /** Picks a new set of words to read on the Study screen, prioritizing locally saved mistake words first. */
+    /** Picks a new random set of words on the Study screen, excluding the currently displayed word(s) when possible. */
     fun shuffleStudyWords() {
         tickJob?.cancel()
         mistakeTracker = null
         hasLoadedInitialStudy = true
+        val currentStudy = _state.value.studyEntries
         val nextStudy = VocabularyQuizRules.selectStudyWords(
             entries = allEntries,
             modes = config.modes,
             wordCount = config.wordCount,
             random = random,
-            mistakeWords = savedMistakeWords,
+            excludeEntries = currentStudy,
         )
         updateAndPersistState {
             it.copy(
@@ -223,7 +221,6 @@ class VocabularyQuizViewModel(
                 modes = config.modes,
                 wordCount = config.wordCount,
                 random = random,
-                mistakeWords = savedMistakeWords,
             )
         }
         val generated = VocabularyQuizEngine.generateQuiz(

@@ -47,6 +47,7 @@ import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import com.ravibhaiya.quizzen.R
 import com.ravibhaiya.quizzen.domain.Feedback
 import com.ravibhaiya.quizzen.domain.FeedbackType
@@ -293,12 +294,22 @@ private fun QuestionPromptCard(
                     text = stringResource(R.string.vocabulary_main_word_label).uppercase(),
                     style = MaterialTheme.typography.labelSmall,
                     color = colors.onSurfaceVariant,
+                    maxLines = 1,
+                    softWrap = false,
                 )
-                Text(
-                    text = mainWord,
-                    style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
-                    color = colors.onSurface,
-                    modifier = Modifier.testTag("vocabulary_main_word_text"),
+                FitText(
+                    text = AnnotatedString(mainWord),
+                    style = MaterialTheme.typography.titleMedium.copy(
+                        fontWeight = FontWeight.Bold,
+                        color = colors.onSurface,
+                    ),
+                    maxFontSize = MaterialTheme.typography.titleMedium.fontSize,
+                    minFontSize = 12.sp,
+                    step = 0.5.sp,
+                    textAlign = TextAlign.Start,
+                    modifier = Modifier
+                        .weight(1f)
+                        .testTag("vocabulary_main_word_text"),
                 )
             }
 
@@ -336,6 +347,8 @@ private fun QuestionPromptCard(
                     text = modeBadgeText,
                     style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold),
                     color = modeBadgeContent,
+                    maxLines = 1,
+                    softWrap = false,
                 )
             }
 
@@ -352,7 +365,7 @@ private fun QuestionPromptCard(
                 text = AnnotatedString(question.promptWord),
                 style = MaterialTheme.typography.headlineLarge.copy(color = colors.onSurface),
                 maxFontSize = MaterialTheme.typography.headlineLarge.fontSize * 1.35f,
-                minFontSize = MaterialTheme.typography.headlineMedium.fontSize,
+                minFontSize = 14.sp,
                 step = MaterialTheme.typography.labelSmall.fontSize * 0.15f,
                 modifier = Modifier
                     .weight(1f, fill = false)

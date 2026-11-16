@@ -116,7 +116,24 @@ class VocabularyQuizEngineTest {
     }
 
     @Test
-    fun `selectStudyWords returns empty list on empty database and prioritizes mistake words when present`() {
+    fun `synonym and antonym questions within a cluster are mixed randomly instead of all synonyms before all antonyms`() {
+        val quiz = VocabularyQuizEngine.generateQuiz(
+            studyEntries = listOf(entryAbundant),
+            allEntries = listOf(entryAbundant, entryCandid),
+            modes = setOf(VocabularyQuizMode.Synonyms, VocabularyQuizMode.Antonyms),
+            random = Random(11),
+        )
+
+        assertEquals(5, quiz.size)
+        val modes = quiz.map { it.mode }
+        assertTrue(modes.contains(VocabularyQuizMode.Synonyms))
+        assertTrue(modes.contains(VocabularyQuizMode.Antonyms))
+        val transitions = modes.zipWithNext().count { (a, b) -> a != b }
+        assertTrue("Expected synonyms and antonyms to be mixed rather than grouped by mode", transitions >= 2)
+    }
+
+    @Test
+    fun `selectStudyWords returns empty list on empty database and switches words when excludeEntries is passed`() {
         assertTrue(
             VocabularyQuizRules.selectStudyWords(
                 entries = emptyList(),
@@ -135,6 +152,17 @@ class VocabularyQuizEngineTest {
         )
         assertEquals(1, selected.size)
         assertEquals("Candid", selected.single().wordDetails.word)
+
+        val reshuffled = VocabularyQuizRules.selectStudyWords(
+            entries = listOf(entryAbundant, entryCandid),
+            modes = VocabularyQuizMode.DEFAULT,
+            wordCount = 1,
+            random = Random(99),
+            mistakeWords = setOf("candid"),
+            excludeEntries = selected,
+        )
+        assertEquals(1, reshuffled.size)
+        assertEquals("Abundant", reshuffled.single().wordDetails.word)
     }
 
     @Test

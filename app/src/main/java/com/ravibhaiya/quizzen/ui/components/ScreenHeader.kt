@@ -5,11 +5,12 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.AnnotatedString
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.ravibhaiya.quizzen.R
@@ -27,17 +28,23 @@ fun ScreenHeader(
             .fillMaxWidth()
             .padding(bottom = 24.dp),
         verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(14.dp),
+        horizontalArrangement = Arrangement.spacedBy(12.dp),
     ) {
         QuizzenIconButton(
             icon = QuizzenIcons.ChevronLeft,
             contentDescription = stringResource(R.string.back),
             onClick = onBack,
         )
-        Text(
-            text = title,
-            style = MaterialTheme.typography.headlineLarge.copy(fontSize = 24.sp),
-            color = MaterialTheme.colorScheme.onSurface,
+        FitText(
+            text = AnnotatedString(title),
+            style = MaterialTheme.typography.headlineLarge.copy(
+                fontSize = 24.sp,
+                color = MaterialTheme.colorScheme.onSurface,
+            ),
+            maxFontSize = 24.sp,
+            minFontSize = 12.sp,
+            step = 0.5.sp,
+            textAlign = TextAlign.Start,
             modifier = Modifier.weight(1f),
         )
         trailing()
