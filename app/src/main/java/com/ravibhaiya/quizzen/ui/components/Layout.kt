@@ -31,6 +31,7 @@ val ContentMaxWidth = 440.dp
 @Composable
 fun QuizzenScreen(
     modifier: Modifier = Modifier,
+    overlay: @Composable BoxScope.() -> Unit = {},
     content: @Composable BoxScope.() -> Unit,
 ) {
     CompositionLocalProvider(LocalContentColor provides MaterialTheme.colorScheme.onSurface) {
@@ -50,6 +51,7 @@ fun QuizzenScreen(
                 GlowBackground()
                 content()
             }
+            overlay()
         }
     }
 }

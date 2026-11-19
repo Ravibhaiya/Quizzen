@@ -13,6 +13,7 @@ import com.ravibhaiya.quizzen.data.vocabularyRepository
 import com.ravibhaiya.quizzen.data.vocabularySessionStore
 import com.ravibhaiya.quizzen.domain.Feedback
 import com.ravibhaiya.quizzen.domain.FeedbackType
+import com.ravibhaiya.quizzen.domain.StreakRules
 import com.ravibhaiya.quizzen.domain.VocabularyEntry
 import com.ravibhaiya.quizzen.domain.VocabularyMistakeAction
 import com.ravibhaiya.quizzen.domain.VocabularyMistakeTracker
@@ -21,6 +22,7 @@ import com.ravibhaiya.quizzen.domain.VocabularyQuizEngine
 import com.ravibhaiya.quizzen.domain.VocabularyQuizItem
 import com.ravibhaiya.quizzen.domain.VocabularyQuizRules
 import com.ravibhaiya.quizzen.domain.VocabularyRules
+import com.ravibhaiya.quizzen.ui.components.STREAK_CELEBRATION_DURATION_MS
 import com.ravibhaiya.quizzen.ui.navigation.Routes
 import com.ravibhaiya.quizzen.ui.navigation.VocabularyQuizArgs
 import kotlinx.coroutines.Job
@@ -31,6 +33,7 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import kotlin.math.roundToInt
 import kotlin.random.Random
 
 enum class VocabularyQuizPhase {
@@ -54,6 +57,16 @@ data class VocabularyQuizUiState(
     val feedback: Feedback? = null,
     val isLocked: Boolean = false,
     val shakeCount: Int = 0,
+    /** Consecutive correct answers in the current quiz; resets to 0 on incorrect or timeout. */
+    val currentStreak: Int = 0,
+    /** Milestone streak count (5, 10, 15, ...) for the latest streak celebration. */
+    val streakMilestone: Int = 0,
+    /** Increments only when a new streak milestone is hit so the UI plays a one-shot celebration. */
+    val streakMilestoneEventId: Int = 0,
+    /** True while the full-screen 3-second streak celebration is playing; holds Next so the next timer never ticks hidden. */
+    val isStreakCelebrating: Boolean = false,
+    /** Per-question resolved outcomes (index -> feedback type) used to review and retry missed words. */
+    val outcomes: Map<Int, FeedbackType> = emptyMap(),
     /** True while an unfinished quiz is being read from the device (resume); the screen shows nothing until it is ready. */
     val isRestoring: Boolean = false,
 ) {
@@ -67,7 +80,50 @@ data class VocabularyQuizUiState(
         get() = remainingSeconds <= LOW_TIME_THRESHOLD_SECONDS
 
     val accuracyPercent: Int
-        get() = if (totalCount == 0) 0 else ((correctCount * 100.0) / totalCount).toInt()
+        get() = if (totalCount == 0) 0 else ((correctCount * 100.0) / totalCount).roundToInt()
+
+    /** Questions answered incorrectly or timed out during this quiz session, paired with their outcome. */
+    val missedQuestions: List<Pair<VocabularyQuizItem, FeedbackType>>
+        get() = questions.mapIndexedNotNull { index, item ->
+            val outcome = outcomes[index]
+            if (outcome == FeedbackType.Incorrect || outcome == FeedbackType.Timeout) {
+                item to outcome
+            } else {
+                null
+            }
+        }
+
+    /** Distinct studied words that had at least one wrong or timed-out question in this quiz session. */
+    val missedStudyEntries: List<VocabularyEntry>
+        get() {
+            val missed = missedQuestions
+            if (missed.isEmpty()) return emptyList()
+            val missedClusterIds = missed
+                .map { it.first.clusterId.trim().lowercase() }
+                .filter { it.isNotEmpty() }
+                .toSet()
+            val missedIdentities = missed
+                .filter { it.first.clusterId.isBlank() && it.first.clusterWord.isNotBlank() }
+                .map {
+                    VocabularyRules.wordIdentityKey(
+                        com.ravibhaiya.quizzen.domain.WordDetails(
+                            word = it.first.clusterWord,
+                            partOfSpeech = it.first.clusterPartOfSpeech,
+                        ),
+                    )
+                }
+                .toSet()
+            return studyEntries.filterIndexed { index, entry ->
+                val clean = entry.sanitized()
+                val mainLower = clean.wordDetails.word.trim().lowercase()
+                val idLower = clean.id.trim().lowercase()
+                val fallbackId = "cluster_${index}_$mainLower"
+                val identity = VocabularyRules.wordIdentityKey(clean.wordDetails)
+                (idLower.isNotEmpty() && idLower in missedClusterIds) ||
+                    fallbackId in missedClusterIds ||
+                    (identity.isNotEmpty() && identity in missedIdentities)
+            }
+        }
 
     companion object {
         const val LOW_TIME_THRESHOLD_SECONDS = 5
@@ -85,6 +141,7 @@ class VocabularyQuizViewModel(
 
     private var allEntries: List<VocabularyEntry> = emptyList()
     private var savedMistakeWords: Set<String> = emptySet()
+    private var mistakeWordsLoaded: Boolean = false
     private val restoredSnapshot = VocabularyQuizSavedState.restore(savedStateHandle, config)
     private var hasLoadedInitialStudy: Boolean = restoredSnapshot != null
     private var mistakeTracker: VocabularyMistakeTracker? = restoredSnapshot?.let { snapshot ->
@@ -92,6 +149,7 @@ class VocabularyQuizViewModel(
             VocabularyMistakeTracker(
                 questions = snapshot.uiState.questions,
                 studyEntries = snapshot.uiState.studyEntries,
+                modes = config.modes,
                 initialOutcomes = snapshot.outcomes,
             )
         } else {
@@ -110,19 +168,27 @@ class VocabularyQuizViewModel(
     val state: StateFlow<VocabularyQuizUiState> = _state.asStateFlow()
 
     private var tickJob: Job? = null
+    private var streakHoldJob: Job? = null
     private var inForeground = false
 
     init {
         if (_state.value.isRestoring) restoreFromDevice()
         viewModelScope.launch {
-            combine(repository.entries, repository.mistakeWords) { repoEntries, repoMistakes ->
-                repoEntries to repoMistakes
-            }.collect { (repoEntries, repoMistakes) ->
+            combine(
+                repository.entries,
+                repository.mistakeWords,
+                repository.mistakeWordsLoaded,
+            ) { repoEntries, repoMistakes, mistakesReady ->
+                Triple(repoEntries, repoMistakes, mistakesReady)
+            }.collect { (repoEntries, repoMistakes, mistakesReady) ->
                 allEntries = repoEntries
                 savedMistakeWords = repoMistakes
                     .map(VocabularyQuizRules::mistakeKey)
                     .filter { it.isNotEmpty() }
                     .toSet()
+                mistakeWordsLoaded = mistakesReady
+                if (!mistakesReady) return@collect
+
                 val nowHasUserEligible = repoEntries.any { VocabularyQuizRules.isEligible(it, config.modes) }
                 val currentStudy = _state.value.studyEntries
                 val repoEntryKeys = repoEntries.map { VocabularyRules.wordIdentityKey(it.wordDetails) }.toSet()
@@ -148,6 +214,7 @@ class VocabularyQuizViewModel(
                                 modes = config.modes,
                                 wordCount = config.wordCount,
                                 random = random,
+                                mistakeWords = savedMistakeWords,
                             ),
                         )
                     }
@@ -166,12 +233,31 @@ class VocabularyQuizViewModel(
             val snapshot = VocabularyQuizSavedState.decodeSession(sessionStore.load())
             if (snapshot == null) {
                 sessionStore.clear()
-                _state.update { it.copy(isRestoring = false) }
+                val fallbackStudy = if (mistakeWordsLoaded && allEntries.isNotEmpty()) {
+                    hasLoadedInitialStudy = true
+                    VocabularyQuizRules.selectStudyWords(
+                        entries = allEntries,
+                        modes = config.modes,
+                        wordCount = config.wordCount,
+                        random = random,
+                        mistakeWords = savedMistakeWords,
+                    )
+                } else {
+                    emptyList()
+                }
+                _state.update {
+                    it.copy(
+                        isRestoring = false,
+                        studyEntries = fallbackStudy,
+                    )
+                }
+                if (fallbackStudy.isNotEmpty()) persistSnapshot()
                 return@launch
             }
             mistakeTracker = VocabularyMistakeTracker(
                 questions = snapshot.uiState.questions,
                 studyEntries = snapshot.uiState.studyEntries,
+                modes = config.modes,
                 initialOutcomes = snapshot.outcomes,
             )
             hasLoadedInitialStudy = true
@@ -184,6 +270,7 @@ class VocabularyQuizViewModel(
     /** Picks a new random set of words on the Study screen, excluding the currently displayed word(s) when possible. */
     fun shuffleStudyWords() {
         tickJob?.cancel()
+        streakHoldJob?.cancel()
         mistakeTracker = null
         hasLoadedInitialStudy = true
         val currentStudy = _state.value.studyEntries
@@ -208,25 +295,46 @@ class VocabularyQuizViewModel(
                 remainingSeconds = config.timerSeconds,
                 feedback = null,
                 isLocked = false,
+                currentStreak = 0,
+                streakMilestone = 0,
+                isStreakCelebrating = false,
+                outcomes = emptyMap(),
             )
         }
     }
 
     /** Transitions from the Study screen to the active finite quiz. */
     fun startQuiz() {
-        tickJob?.cancel()
         val study = _state.value.studyEntries.ifEmpty {
             VocabularyQuizRules.selectStudyWords(
                 entries = allEntries,
                 modes = config.modes,
                 wordCount = config.wordCount,
                 random = random,
+                mistakeWords = savedMistakeWords,
             )
         }
+        startQuizWithEntries(study)
+    }
+
+    /** Starts a fresh quiz containing only the words that had at least one wrong or timed-out question. */
+    fun retryMissedWords() {
+        val missed = _state.value.missedStudyEntries
+        if (missed.isEmpty()) {
+            startQuiz()
+            return
+        }
+        startQuizWithEntries(missed)
+    }
+
+    private fun startQuizWithEntries(study: List<VocabularyEntry>) {
+        tickJob?.cancel()
+        streakHoldJob?.cancel()
         val generated = VocabularyQuizEngine.generateQuiz(
             studyEntries = study,
             allEntries = allEntries,
             modes = config.modes,
+            maxQuestions = config.questionCount,
             random = random,
         )
         if (generated.isEmpty()) return
@@ -234,6 +342,7 @@ class VocabularyQuizViewModel(
         mistakeTracker = VocabularyMistakeTracker(
             questions = generated,
             studyEntries = study,
+            modes = config.modes,
         )
 
         updateAndPersistState {
@@ -250,6 +359,10 @@ class VocabularyQuizViewModel(
                 remainingSeconds = config.timerSeconds,
                 feedback = null,
                 isLocked = false,
+                currentStreak = 0,
+                streakMilestone = 0,
+                isStreakCelebrating = false,
+                outcomes = emptyMap(),
             )
         }
         persistSession()
@@ -262,12 +375,14 @@ class VocabularyQuizViewModel(
     /** Returns to the Study screen to review the selected words. */
     fun backToStudy() {
         tickJob?.cancel()
+        streakHoldJob?.cancel()
         updateAndPersistState {
             it.copy(
                 phase = VocabularyQuizPhase.Study,
                 selectedOption = null,
                 feedback = null,
                 isLocked = false,
+                isStreakCelebrating = false,
                 remainingSeconds = config.timerSeconds,
             )
         }
@@ -288,7 +403,7 @@ class VocabularyQuizViewModel(
     /** Advances to the next MCQ question (or finishes the quiz on the last question) when the Next button is clicked. */
     fun nextQuestion() {
         val current = _state.value
-        if (current.phase != VocabularyQuizPhase.Quiz || !current.isLocked) return
+        if (current.phase != VocabularyQuizPhase.Quiz || !current.isLocked || current.isStreakCelebrating) return
         val nextIndex = current.currentIndex + 1
         if (nextIndex >= current.questions.size) {
             updateAndPersistState {
@@ -326,6 +441,10 @@ class VocabularyQuizViewModel(
     fun onPause() {
         inForeground = false
         tickJob?.cancel()
+        streakHoldJob?.cancel()
+        if (_state.value.isStreakCelebrating) {
+            _state.update { it.copy(isStreakCelebrating = false) }
+        }
         persistSnapshot()
         persistSession()
     }
@@ -361,7 +480,14 @@ class VocabularyQuizViewModel(
                 }
             }
             is VocabularyMistakeAction.DeleteMastered -> {
-                val keys = mistakeAction.wordKeys.map(VocabularyQuizRules::mistakeKey).filter { it.isNotEmpty() }.toSet()
+                val keys = buildSet {
+                    addAll(mistakeAction.wordKeys.map(VocabularyQuizRules::mistakeKey).filter { it.isNotEmpty() })
+                    val bareWord = VocabularyQuizRules.mistakeKey(question.clusterWord)
+                    val bareCounts = VocabularyQuizRules.bareWordCounts(allEntries)
+                    if (bareWord.isNotEmpty() && (bareCounts[bareWord] ?: 0) <= 1) {
+                        add(bareWord)
+                    }
+                }
                 savedMistakeWords = savedMistakeWords - keys
                 viewModelScope.launch {
                     repository.removeMistakeWords(keys)
@@ -370,6 +496,10 @@ class VocabularyQuizViewModel(
             VocabularyMistakeAction.None -> Unit
         }
 
+        val updatedOutcomes = mistakeTracker?.outcomesSnapshot()
+            ?: (current.outcomes + (current.currentIndex to type))
+        val nextStreak = StreakRules.nextStreak(current.currentStreak, type)
+        val hitMilestone = type == FeedbackType.Correct && StreakRules.isMilestone(nextStreak)
         updateAndPersistState {
             it.copy(
                 selectedOption = selected,
@@ -380,9 +510,21 @@ class VocabularyQuizViewModel(
                 feedback = Feedback(type, question.correctAnswer),
                 isLocked = true,
                 shakeCount = if (type == FeedbackType.Incorrect) it.shakeCount + 1 else it.shakeCount,
+                currentStreak = nextStreak,
+                streakMilestone = if (hitMilestone) nextStreak else it.streakMilestone,
+                streakMilestoneEventId = if (hitMilestone) it.streakMilestoneEventId + 1 else it.streakMilestoneEventId,
+                isStreakCelebrating = hitMilestone,
+                outcomes = updatedOutcomes,
             )
         }
         persistSession()
+        if (hitMilestone) {
+            streakHoldJob?.cancel()
+            streakHoldJob = viewModelScope.launch {
+                delay(STREAK_CELEBRATION_DURATION_MS)
+                _state.update { it.copy(isStreakCelebrating = false) }
+            }
+        }
     }
 
     private inline fun updateAndPersistState(transform: (VocabularyQuizUiState) -> VocabularyQuizUiState) {

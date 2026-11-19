@@ -35,12 +35,57 @@ class VocabularyQuizEngineTest {
     )
 
     @Test
-    fun `word count minimum is 1 and maximum is 25`() {
+    fun `word count minimum is 1 and maximum is 25, and question count minimum is 1 and maximum is 100`() {
         assertEquals(1, VocabularyQuizRules.MIN_WORDS)
         assertEquals(25, VocabularyQuizRules.MAX_WORDS)
         assertEquals(1, VocabularyQuizRules.coerceWordCount(0))
         assertEquals(1, VocabularyQuizRules.coerceWordCount(1))
         assertEquals(25, VocabularyQuizRules.coerceWordCount(30))
+
+        assertEquals(1, VocabularyQuizRules.MIN_QUESTIONS)
+        assertEquals(100, VocabularyQuizRules.MAX_QUESTIONS)
+        assertEquals(1, VocabularyQuizRules.coerceQuestionCount(0))
+        assertEquals(1, VocabularyQuizRules.coerceQuestionCount(1))
+        assertEquals(100, VocabularyQuizRules.coerceQuestionCount(100))
+        assertEquals(100, VocabularyQuizRules.coerceQuestionCount(150))
+    }
+
+    @Test
+    fun `maxQuestions limits total questions fairly across studied clusters while keeping clusters contiguous`() {
+        val study = VocabularyQuizRules.FALLBACK_ENTRIES.take(3) // 15 total unique questions across 3 clusters
+        val cappedToSeven = VocabularyQuizEngine.generateQuiz(
+            studyEntries = study,
+            allEntries = study,
+            modes = setOf(VocabularyQuizMode.Synonyms, VocabularyQuizMode.Antonyms),
+            maxQuestions = 7,
+            random = Random(42),
+        )
+        assertEquals(7, cappedToSeven.size)
+        // Every cluster stays contiguous and every studied cluster receives at least 2 questions (3 + 2 + 2)
+        val runs = mutableListOf<String>()
+        for (q in cappedToSeven) {
+            if (runs.lastOrNull() != q.clusterId) runs += q.clusterId
+        }
+        assertEquals(3, runs.size)
+        assertEquals(3, runs.toSet().size)
+
+        val cappedToOne = VocabularyQuizEngine.generateQuiz(
+            studyEntries = study,
+            allEntries = study,
+            modes = setOf(VocabularyQuizMode.Synonyms, VocabularyQuizMode.Antonyms),
+            maxQuestions = 1,
+            random = Random(42),
+        )
+        assertEquals(1, cappedToOne.size)
+
+        val cappedToHundred = VocabularyQuizEngine.generateQuiz(
+            studyEntries = study,
+            allEntries = study,
+            modes = setOf(VocabularyQuizMode.Synonyms, VocabularyQuizMode.Antonyms),
+            maxQuestions = 100,
+            random = Random(42),
+        )
+        assertEquals(15, cappedToHundred.size)
     }
 
     @Test
@@ -174,7 +219,11 @@ class VocabularyQuizEngineTest {
             modes = setOf(VocabularyQuizMode.Synonyms, VocabularyQuizMode.Antonyms),
             random = Random(42),
         )
-        val tracker = VocabularyMistakeTracker(questions = quiz, studyEntries = study)
+        val tracker = VocabularyMistakeTracker(
+            questions = quiz,
+            studyEntries = study,
+            modes = setOf(VocabularyQuizMode.Synonyms, VocabularyQuizMode.Antonyms),
+        )
 
         val abundantIndices = quiz.indices.filter { quiz[it].clusterId == "c1" }
         val candidIndices = quiz.indices.filter { quiz[it].clusterId == "c2" }
@@ -184,11 +233,75 @@ class VocabularyQuizEngineTest {
         }
         val mastered = tracker.onQuestionResolved(abundantIndices.last(), FeedbackType.Correct)
         assertTrue(mastered is VocabularyMistakeAction.DeleteMastered)
-        assertTrue("abundant" in mastered.wordKeys)
+        assertTrue("c1" in mastered.wordKeys)
 
         val mistake = tracker.onQuestionResolved(candidIndices.first(), FeedbackType.Incorrect)
         assertTrue(mistake is VocabularyMistakeAction.SaveMistake)
-        assertTrue("candid" in mistake.wordKeys)
+        assertTrue("c2" in mistake.wordKeys)
         assertFalse(tracker.onQuestionResolved(candidIndices.last(), FeedbackType.Correct) is VocabularyMistakeAction.DeleteMastered)
+    }
+
+    @Test
+    fun `VocabularyMistakeTracker does not clear weak word when questionCount tests too few questions from its cluster`() {
+        val study = listOf(entryAbundant) // 5 full questions (3 S+ + 2 S-)
+        val modes = setOf(VocabularyQuizMode.Synonyms, VocabularyQuizMode.Antonyms)
+        val shortQuiz = VocabularyQuizEngine.generateQuiz(
+            studyEntries = study,
+            allEntries = study,
+            modes = modes,
+            maxQuestions = 2,
+            random = Random(42),
+        )
+        assertEquals(2, shortQuiz.size)
+        val shortTracker = VocabularyMistakeTracker(questions = shortQuiz, studyEntries = study, modes = modes)
+        assertEquals(VocabularyMistakeAction.None, shortTracker.onQuestionResolved(0, FeedbackType.Correct))
+        // Answering only 2 out of 5 questions must not clear mastery.
+        assertEquals(VocabularyMistakeAction.None, shortTracker.onQuestionResolved(1, FeedbackType.Correct))
+
+        // Answering 3 out of 5 (>= half and >= MIN_CAPPED_MASTERY_QUESTIONS) all right clears mastery.
+        val mediumQuiz = VocabularyQuizEngine.generateQuiz(
+            studyEntries = study,
+            allEntries = study,
+            modes = modes,
+            maxQuestions = 3,
+            random = Random(42),
+        )
+        val mediumTracker = VocabularyMistakeTracker(questions = mediumQuiz, studyEntries = study, modes = modes)
+        assertEquals(VocabularyMistakeAction.None, mediumTracker.onQuestionResolved(0, FeedbackType.Correct))
+        assertEquals(VocabularyMistakeAction.None, mediumTracker.onQuestionResolved(1, FeedbackType.Correct))
+        assertTrue(mediumTracker.onQuestionResolved(2, FeedbackType.Correct) is VocabularyMistakeAction.DeleteMastered)
+    }
+
+    @Test
+    fun `homograph entries with different partOfSpeech do not collide in mistake keys or study prioritization`() {
+        val presentNoun = VocabularyEntry(
+            id = "present_noun",
+            wordDetails = WordDetails(word = "Present", partOfSpeech = "Noun", meaningEnglish = "A gift"),
+            synonyms = listOf(WordDetails(word = "Gift", partOfSpeech = "Noun", meaningEnglish = "Something given")),
+        )
+        val presentVerb = VocabularyEntry(
+            id = "present_verb",
+            wordDetails = WordDetails(word = "Present", partOfSpeech = "Verb", meaningEnglish = "To show or offer"),
+            synonyms = listOf(WordDetails(word = "Offer", partOfSpeech = "Verb", meaningEnglish = "To put forward")),
+        )
+        val entries = listOf(presentNoun, presentVerb)
+        assertEquals(setOf("present_noun"), VocabularyQuizRules.entryMistakeKeys(presentNoun))
+        assertEquals(setOf("present_verb"), VocabularyQuizRules.entryMistakeKeys(presentVerb))
+
+        val bareCounts = VocabularyQuizRules.bareWordCounts(entries)
+        val nounOnlyMistakes = setOf("present_noun")
+        assertTrue(VocabularyQuizRules.matchesMistakeWords(presentNoun, nounOnlyMistakes, bareCounts))
+        assertFalse(VocabularyQuizRules.matchesMistakeWords(presentVerb, nounOnlyMistakes, bareCounts))
+
+        for (seed in 1..10) {
+            val selected = VocabularyQuizRules.selectStudyWords(
+                entries = entries,
+                modes = setOf(VocabularyQuizMode.Synonyms),
+                wordCount = 1,
+                random = Random(seed),
+                mistakeWords = nounOnlyMistakes,
+            )
+            assertEquals(listOf("present_noun"), selected.map { it.id })
+        }
     }
 }

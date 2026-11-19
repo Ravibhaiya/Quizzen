@@ -3,13 +3,19 @@ package com.ravibhaiya.quizzen.ui.vocabularyquiz
 import androidx.annotation.StringRes
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -18,8 +24,10 @@ import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
@@ -38,6 +46,7 @@ import com.ravibhaiya.quizzen.ui.components.SectionTitle
 import com.ravibhaiya.quizzen.ui.components.TimerFooter
 import com.ravibhaiya.quizzen.ui.components.rememberHaptics
 
+@OptIn(ExperimentalLayoutApi::class)
 @Composable
 fun VocabularyConfigScreen(
     hapticEnabled: Boolean,
@@ -49,6 +58,7 @@ fun VocabularyConfigScreen(
     val state by viewModel.state.collectAsStateWithLifecycle()
     val timer by viewModel.timer.state.collectAsStateWithLifecycle()
     val haptics = rememberHaptics(hapticEnabled)
+    val resources = LocalContext.current.resources
 
     // Coming back from a quiz: the unfinished quiz may have moved on, finished or been left.
     val lifecycleOwner = LocalLifecycleOwner.current
@@ -83,8 +93,56 @@ fun VocabularyConfigScreen(
                     text = stringResource(R.string.configure_challenge),
                     style = MaterialTheme.typography.bodyLarge,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    modifier = Modifier.padding(bottom = 20.dp),
+                    modifier = Modifier.padding(bottom = 12.dp),
                 )
+
+                FlowRow(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(bottom = 20.dp),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    verticalArrangement = Arrangement.spacedBy(8.dp),
+                ) {
+                    val dbCountText = if (state.databaseWordCount > 0) {
+                        resources.getQuantityString(
+                            R.plurals.vocabulary_db_word_count,
+                            state.databaseWordCount,
+                            state.databaseWordCount,
+                        )
+                    } else {
+                        stringResource(R.string.vocabulary_db_empty_badge)
+                    }
+                    Box(
+                        modifier = Modifier
+                            .background(MaterialTheme.colorScheme.surfaceContainer, CircleShape)
+                            .padding(horizontal = 12.dp, vertical = 6.dp)
+                            .testTag("vocabulary_db_count_badge"),
+                    ) {
+                        Text(
+                            text = dbCountText,
+                            style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.SemiBold),
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                    }
+                    if (state.mistakeWordCount > 0) {
+                        Box(
+                            modifier = Modifier
+                                .background(MaterialTheme.colorScheme.primaryContainer, CircleShape)
+                                .padding(horizontal = 12.dp, vertical = 6.dp)
+                                .testTag("vocabulary_weak_words_badge"),
+                        ) {
+                            Text(
+                                text = resources.getQuantityString(
+                                    R.plurals.vocabulary_weak_words_badge,
+                                    state.mistakeWordCount,
+                                    state.mistakeWordCount,
+                                ),
+                                style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold),
+                                color = MaterialTheme.colorScheme.onPrimaryContainer,
+                            )
+                        }
+                    }
+                }
 
                 state.resume?.let { resume ->
                     VocabularyResumeCard(
@@ -112,6 +170,27 @@ fun VocabularyConfigScreen(
                     modifier = Modifier
                         .padding(bottom = 28.dp)
                         .testTag("vocabulary_word_count_slider"),
+                )
+
+                SectionTitle(R.string.vocabulary_question_count_title)
+                PillSliderCard(
+                    value = state.questionCount,
+                    lowest = VocabularyQuizRules.MIN_QUESTIONS,
+                    highest = VocabularyQuizRules.MAX_QUESTIONS,
+                    valueLabel = state.questionCount.toString(),
+                    lowestLabel = VocabularyQuizRules.MIN_QUESTIONS.toString(),
+                    highestLabel = VocabularyQuizRules.MAX_QUESTIONS.toString(),
+                    summary = resources.getQuantityString(
+                        R.plurals.vocabulary_question_count_summary,
+                        state.questionCount,
+                        state.questionCount,
+                    ),
+                    thumbDescription = stringResource(R.string.vocabulary_question_count_thumb),
+                    onValueChange = viewModel::onQuestionCountChanged,
+                    onValueChangeFinished = { haptics.tick() },
+                    modifier = Modifier
+                        .padding(bottom = 28.dp)
+                        .testTag("vocabulary_question_count_slider"),
                 )
 
                 SectionTitle(R.string.vocabulary_quiz_mode_title)

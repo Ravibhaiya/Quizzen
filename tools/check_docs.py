@@ -4,7 +4,7 @@
 Run from the repository root: python3 tools/check_docs.py
 Checks (pure standard library, takes a second):
 1. Every `CamelCaseName` or `path/file.ext` written in backticks in AGENTS.md, README.md or docs/*.md must exist in the
-   code, the Gradle/CI files, the Firestore rules or the list of tracked files.
+   code, the Gradle files, the Firestore rules or the list of tracked files.
 2. The synonym/antonym limit in `VocabularyRules.MAX_RELATIONS` must equal the one in `firestore.rules`.
 """
 import glob
@@ -23,14 +23,14 @@ try:
     tracked = subprocess.check_output(["git", "ls-files"], text=True, stderr=subprocess.DEVNULL).split("\n")
 except Exception:
     tracked = [
-        p for p in (glob.glob("**/*", recursive=True) + glob.glob(".github/**/*", recursive=True))
+        p for p in glob.glob("**/*", recursive=True)
         if not p.startswith(("build/", "app/build/", ".gradle/", ".aistudio/"))
     ]
 tracked = [t for t in tracked if t]
 stems = {t.split("/")[-1].rsplit(".", 1)[0] for t in tracked} | {t.split("/")[-1] for t in tracked}
 
 corpus = ""
-for pattern in ("app/src/**/*.kt", "app/src/**/*.xml", "*.kts", "app/*.kts", "tools/*", ".github/workflows/*"):
+for pattern in ("app/src/**/*.kt", "app/src/**/*.xml", "*.kts", "app/*.kts", "tools/*"):
     for path in glob.glob(pattern, recursive=True):
         corpus += open(path, errors="ignore").read() + "\n"
 corpus += open("firestore.rules").read()

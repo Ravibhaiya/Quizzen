@@ -52,6 +52,7 @@ object VocabularyQuizEngine {
         allEntries: List<VocabularyEntry> = studyEntries,
         modes: Set<VocabularyQuizMode>,
         random: Random = Random.Default,
+        maxQuestions: Int? = null,
     ): List<VocabularyQuizItem> {
         if (studyEntries.isEmpty() || modes.isEmpty()) return emptyList()
 
@@ -65,13 +66,18 @@ object VocabularyQuizEngine {
             .mapIndexedNotNull { index, entry -> toCluster(entry, fallbackId = "all_$index") }
         val detailsByWord = buildWordDetailsLookup(allSourceEntries)
 
-        val orderedRaw = mutableListOf<RawQuestion>()
-        for (cluster in clusters.shuffled(random)) {
-            val questions = buildQuestionsForCluster(cluster, modes, random)
-            if (questions.isNotEmpty()) {
-                orderedRaw += shuffleClusterQuestions(questions, random)
+        val clusterBatches = clusters.shuffled(random)
+            .mapNotNull { cluster ->
+                val questions = buildQuestionsForCluster(cluster, modes, random)
+                if (questions.isEmpty()) null else shuffleClusterQuestions(questions, random)
             }
-        }
+        if (clusterBatches.isEmpty()) return emptyList()
+
+        val orderedRaw = selectQuestionsWithQuota(
+            clusterBatches = clusterBatches,
+            maxQuestions = maxQuestions,
+            random = random,
+        )
         if (orderedRaw.isEmpty()) return emptyList()
 
         val studiedWordPool = clusters.flatMap { it.sameMeaning + it.oppositeMeaning }.distinctBy { it.lowercase() }
@@ -164,6 +170,21 @@ object VocabularyQuizEngine {
             oppositeMeaning = opposite,
             detailsByWordLower = buildWordDetailsLookup(listOf(clean)),
         )
+    }
+
+    /** Total number of unique questions [entry] produces under [modes] when not capped by `questionCount`. */
+    fun fullQuestionCountFor(entry: VocabularyEntry, modes: Set<VocabularyQuizMode>): Int {
+        val cluster = toCluster(entry, fallbackId = "count") ?: return 0
+        val wantSynonyms = VocabularyQuizMode.Synonyms in modes && cluster.sameMeaning.size >= 2
+        val wantAntonyms = VocabularyQuizMode.Antonyms in modes &&
+            cluster.sameMeaning.isNotEmpty() &&
+            cluster.oppositeMeaning.isNotEmpty()
+        return when {
+            wantSynonyms && wantAntonyms -> cluster.sameMeaning.size + cluster.oppositeMeaning.size
+            wantSynonyms -> cluster.sameMeaning.size
+            wantAntonyms -> cluster.sameMeaning.size + cluster.oppositeMeaning.size
+            else -> 0
+        }
     }
 
     private fun buildQuestionsForCluster(
@@ -268,6 +289,70 @@ object VocabularyQuizEngine {
         return shuffled
     }
 
+    /**
+     * Enforces [maxQuestions] across shuffled cluster batches while keeping every cluster's questions contiguous and
+     * ensuring each studied word contributes questions before any single word takes extra slots.
+     */
+    private fun selectQuestionsWithQuota(
+        clusterBatches: List<List<RawQuestion>>,
+        maxQuestions: Int?,
+        random: Random,
+    ): List<RawQuestion> {
+        val totalAvailable = clusterBatches.sumOf { it.size }
+        val limit = maxQuestions?.let { VocabularyQuizRules.coerceQuestionCount(it) } ?: totalAvailable
+        if (limit >= totalAvailable) {
+            return clusterBatches.flatten()
+        }
+
+        val quotas = IntArray(clusterBatches.size)
+        var remaining = limit
+        while (remaining > 0) {
+            var assignedInPass = false
+            for (i in clusterBatches.indices) {
+                if (remaining == 0) break
+                if (quotas[i] < clusterBatches[i].size) {
+                    quotas[i]++
+                    remaining--
+                    assignedInPass = true
+                }
+            }
+            if (!assignedInPass) break
+        }
+
+        val selected = mutableListOf<RawQuestion>()
+        for (i in clusterBatches.indices) {
+            val quota = quotas[i]
+            if (quota <= 0) continue
+            val batch = clusterBatches[i]
+            if (quota >= batch.size) {
+                selected += batch
+            } else {
+                selected += pickMixedSubset(batch, quota, random)
+            }
+        }
+        return selected
+    }
+
+    private fun pickMixedSubset(
+        batch: List<RawQuestion>,
+        quota: Int,
+        random: Random,
+    ): List<RawQuestion> {
+        val taken = batch.take(quota).toMutableList()
+        if (quota >= 2) {
+            val remaining = batch.drop(quota)
+            if (taken.none { it.mode == VocabularyQuizMode.Synonyms }) {
+                val syn = remaining.firstOrNull { it.mode == VocabularyQuizMode.Synonyms }
+                if (syn != null) taken[taken.lastIndex] = syn
+            } else if (taken.none { it.mode == VocabularyQuizMode.Antonyms }) {
+                val ant = remaining.firstOrNull { it.mode == VocabularyQuizMode.Antonyms }
+                if (ant != null) taken[taken.lastIndex] = ant
+            }
+            return shuffleClusterQuestions(taken, random)
+        }
+        return taken
+    }
+
     private fun buildOptions(
         raw: RawQuestion,
         allClusters: List<SemanticCluster>,
@@ -286,24 +371,25 @@ object VocabularyQuizEngine {
             val inSame = cluster.sameMeaning.any { it.equals(raw.promptWord, ignoreCase = true) }
             val inOpposite = cluster.oppositeMeaning.any { it.equals(raw.promptWord, ignoreCase = true) }
             if (!inSame && !inOpposite) continue
+            val isActiveCluster = cluster.id == raw.cluster.id
 
             when (raw.mode) {
                 VocabularyQuizMode.Synonyms -> {
                     if (inSame) {
                         cluster.sameMeaning.forEach { forbiddenLower += it.lowercase() }
-                        cluster.oppositeMeaning.forEach { trapCandidates += it }
+                        if (isActiveCluster) cluster.oppositeMeaning.forEach { trapCandidates += it }
                     } else {
                         cluster.oppositeMeaning.forEach { forbiddenLower += it.lowercase() }
-                        cluster.sameMeaning.forEach { trapCandidates += it }
+                        if (isActiveCluster) cluster.sameMeaning.forEach { trapCandidates += it }
                     }
                 }
                 VocabularyQuizMode.Antonyms -> {
                     if (inSame) {
                         cluster.oppositeMeaning.forEach { forbiddenLower += it.lowercase() }
-                        cluster.sameMeaning.forEach { trapCandidates += it }
+                        if (isActiveCluster) cluster.sameMeaning.forEach { trapCandidates += it }
                     } else {
                         cluster.sameMeaning.forEach { forbiddenLower += it.lowercase() }
-                        cluster.oppositeMeaning.forEach { trapCandidates += it }
+                        if (isActiveCluster) cluster.oppositeMeaning.forEach { trapCandidates += it }
                     }
                 }
             }
@@ -366,17 +452,37 @@ sealed interface VocabularyMistakeAction {
  * Pure-Kotlin per-session tracker that monitors every question belonging to each studied [VocabularyEntry] cluster:
  * - If any question for a word is answered wrong or times out, emits [VocabularyMistakeAction.SaveMistake] immediately
  *   so the word is saved locally even if the user leaves the quiz early.
- * - When the last question for a word in the quiz session is resolved and **all** questions for that word were answered
- *   correctly in this session, emits [VocabularyMistakeAction.DeleteMastered] so the word is automatically removed
- *   from local mistake storage.
+ * - When the last question for a word in the quiz session is resolved, **all** questions for that word were answered
+ *   correctly, and the session tested enough of that word's full cluster (all questions for clusters up to
+ *   [MIN_CAPPED_MASTERY_QUESTIONS], or at least half of a larger cluster when capped by `questionCount`), emits
+ *   [VocabularyMistakeAction.DeleteMastered] so the word is automatically removed from local mistake storage.
  */
 class VocabularyMistakeTracker(
     private val questions: List<VocabularyQuizItem>,
     studyEntries: List<VocabularyEntry> = emptyList(),
+    modes: Set<VocabularyQuizMode> = VocabularyQuizMode.DEFAULT,
     initialOutcomes: Map<Int, FeedbackType> = emptyMap(),
 ) {
     private val questionIndicesByCluster: Map<String, List<Int>> =
         questions.indices.groupBy { index -> questions[index].clusterId }
+
+    private val requiredCorrectByCluster: Map<String, Int> = buildMap {
+        studyEntries.forEachIndexed { index, entry ->
+            val clean = entry.sanitized()
+            val main = clean.wordDetails.word.trim()
+            if (main.isNotEmpty()) {
+                val clusterId = clean.id.ifBlank { "cluster_${index}_${main.lowercase()}" }
+                val fullCount = VocabularyQuizEngine.fullQuestionCountFor(clean, modes)
+                if (fullCount > 0) {
+                    val required = minOf(
+                        fullCount,
+                        maxOf(MIN_CAPPED_MASTERY_QUESTIONS, (fullCount + 1) / 2),
+                    )
+                    put(clusterId, required)
+                }
+            }
+        }
+    }
 
     private val keysByCluster: Map<String, Set<String>> = buildMap {
         studyEntries.forEachIndexed { index, entry ->
@@ -389,11 +495,20 @@ class VocabularyMistakeTracker(
         }
         for (item in questions) {
             val existing = get(item.clusterId).orEmpty()
-            val extra = buildSet {
-                if (item.clusterWord.isNotBlank()) add(VocabularyQuizRules.mistakeKey(item.clusterWord))
-                if (item.clusterId.isNotBlank()) add(VocabularyQuizRules.mistakeKey(item.clusterId))
+            if (existing.isEmpty()) {
+                val fallback = buildSet {
+                    if (item.clusterId.isNotBlank()) {
+                        add(VocabularyQuizRules.mistakeKey(item.clusterId))
+                    } else if (item.clusterWord.isNotBlank()) {
+                        add(
+                            VocabularyRules.wordIdentityKey(
+                                WordDetails(word = item.clusterWord, partOfSpeech = item.clusterPartOfSpeech),
+                            ),
+                        )
+                    }
+                }
+                if (fallback.isNotEmpty()) put(item.clusterId, fallback)
             }
-            put(item.clusterId, existing + extra)
         }
     }
 
@@ -417,11 +532,18 @@ class VocabularyMistakeTracker(
         val allResolved = clusterIndices.isNotEmpty() && clusterIndices.all { it in outcomesByIndex }
         if (!allResolved) return VocabularyMistakeAction.None
 
+        val requiredCount = requiredCorrectByCluster[clusterId] ?: clusterIndices.size
+        val hasEnoughCoverage = clusterIndices.size >= requiredCount
         val allCorrect = clusterIndices.all { outcomesByIndex[it] == FeedbackType.Correct }
-        return if (allCorrect) {
+        return if (allCorrect && hasEnoughCoverage) {
             VocabularyMistakeAction.DeleteMastered(keys)
         } else {
             VocabularyMistakeAction.None
         }
+    }
+
+    companion object {
+        /** Minimum number of tested questions required to clear a weak word when `questionCount` caps its cluster. */
+        const val MIN_CAPPED_MASTERY_QUESTIONS = 3
     }
 }

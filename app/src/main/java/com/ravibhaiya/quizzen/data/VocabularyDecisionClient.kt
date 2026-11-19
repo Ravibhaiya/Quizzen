@@ -210,6 +210,36 @@ class GeminiDecisionClient(
         Result.success(findingsByKey.values.toList())
     }
 
+    /**
+     * Verifies a candidate Gemini API key with a single lightweight `gemini-decision-1` request on [Dispatchers.IO]
+     * (zero output tokens). Does not touch persisted verification state.
+     */
+    suspend fun verifyApiKey(rawApiKey: String): Result<Unit> = withContext(Dispatchers.IO) {
+        val cleaned = DataStoreSettingsRepository.sanitizeApiKey(rawApiKey)
+        if (cleaned.isEmpty()) {
+            return@withContext Result.failure(IllegalArgumentException(MISSING_API_KEY_MESSAGE))
+        }
+        try {
+            withTimeout(DECISION_TIMEOUT_MS) {
+                val custom = requestExecutor
+                if (custom != null) {
+                    custom(cleaned, VERIFY_KEY_REQUEST_JSON)
+                } else {
+                    postDecisionRequest(cleaned, VERIFY_KEY_REQUEST_JSON)
+                }
+            }
+            Result.success(Unit)
+        } catch (e: CancellationException) {
+            if (e is kotlinx.coroutines.TimeoutCancellationException) {
+                Result.failure(IOException("Connection timed out while verifying Gemini API key. Try again.", e))
+            } else {
+                throw e
+            }
+        } catch (e: Exception) {
+            Result.failure(wrapDecisionError(e))
+        }
+    }
+
     private fun loadSnapshotLocked(): VocabularyDecisionRules.DecisionVerificationSnapshot {
         memorySnapshot?.let { return it }
         val file = stateFile
@@ -337,6 +367,8 @@ class GeminiDecisionClient(
         private const val CONNECT_TIMEOUT_MS = 15_000
         private const val READ_TIMEOUT_MS = 25_000
         private const val LOCAL_STATE_FILENAME = "vocabulary_decision_state_v1.json"
+        private const val VERIFY_KEY_REQUEST_JSON =
+            """{"model":"gemini-decision-1","input":"API key check.","questions":{"ping":{"type":"noul","instructions":"Is this a valid key check?"}}}"""
         const val MISSING_API_KEY_MESSAGE =
             "Gemini API key is missing. Open Settings -> Gemini API Key and paste your key to run AI checks."
     }

@@ -32,6 +32,7 @@ enum class VocabularyQuizMode(val code: String) {
 data class VocabularyQuizConfig(
     val modes: Set<VocabularyQuizMode> = VocabularyQuizMode.DEFAULT,
     val wordCount: Int = VocabularyQuizRules.DEFAULT_WORDS,
+    val questionCount: Int = VocabularyQuizRules.DEFAULT_QUESTIONS,
     val timerSeconds: Int = VocabularyQuizRules.DEFAULT_TIMER_SECONDS,
 )
 
@@ -64,19 +65,54 @@ object VocabularyQuizRules {
     const val MIN_WORDS = 1
     const val MAX_WORDS = 25
     const val DEFAULT_WORDS = 10
+    const val MIN_QUESTIONS = 1
+    const val MAX_QUESTIONS = 100
+    const val DEFAULT_QUESTIONS = 25
     const val DEFAULT_TIMER_SECONDS = 15
 
     fun coerceWordCount(count: Int): Int = count.coerceIn(MIN_WORDS, MAX_WORDS)
 
+    fun coerceQuestionCount(count: Int): Int = count.coerceIn(MIN_QUESTIONS, MAX_QUESTIONS)
+
     /** Normalized lowercase key used to persist and match locally saved mistake words. */
     fun mistakeKey(wordOrId: String): String = wordOrId.trim().lowercase()
 
-    /** Returns the normalized keys for a [VocabularyEntry] (both its main word and its entry ID if non-blank). */
+    /**
+     * Returns the canonical unique key(s) for [entry]: its Firestore [VocabularyEntry.id] when present,
+     * otherwise its `word::partOfSpeech` identity key (so homographs like "Present" Noun vs Verb never collide).
+     */
     fun entryMistakeKeys(entry: VocabularyEntry): Set<String> = buildSet {
-        val word = mistakeKey(entry.wordDetails.word)
-        if (word.isNotEmpty()) add(word)
         val id = mistakeKey(entry.id)
-        if (id.isNotEmpty()) add(id)
+        if (id.isNotEmpty()) {
+            add(id)
+        } else {
+            val identity = VocabularyRules.wordIdentityKey(entry.wordDetails)
+            if (identity.isNotEmpty()) add(identity)
+        }
+    }
+
+    /** Counts how many entries in [entries] share each normalized bare main word (to detect homographs). */
+    fun bareWordCounts(entries: List<VocabularyEntry>): Map<String, Int> =
+        entries.groupingBy { mistakeKey(it.wordDetails.word) }
+            .eachCount()
+            .filterKeys { it.isNotEmpty() }
+
+    /**
+     * True when [entry] matches [normalizedMistakes] (already lowercased).
+     * Supports canonical ID/identity keys first, and falls back to legacy bare-word keys only when no other
+     * entry shares the same bare spelling (preventing Noun/Verb homograph collisions).
+     */
+    fun matchesMistakeWords(
+        entry: VocabularyEntry,
+        normalizedMistakes: Set<String>,
+        wordCountsByBareWord: Map<String, Int>,
+    ): Boolean {
+        if (normalizedMistakes.isEmpty()) return false
+        if (entryMistakeKeys(entry).any { it in normalizedMistakes }) return true
+        val bareWord = mistakeKey(entry.wordDetails.word)
+        return bareWord.isNotEmpty() &&
+            (wordCountsByBareWord[bareWord] ?: 0) <= 1 &&
+            bareWord in normalizedMistakes
     }
 
     /**
@@ -139,8 +175,9 @@ object VocabularyQuizRules {
             return eligibleUser.shuffled(random).take(targetCount)
         }
 
+        val bareCounts = bareWordCounts(eligibleUser)
         val (savedPool, remainingPool) = eligibleUser.partition { entry ->
-            entryMistakeKeys(entry).any { it in normalizedMistakes }
+            matchesMistakeWords(entry, normalizedMistakes, bareCounts)
         }
 
         val chosenSaved = savedPool.shuffled(random).take(targetCount)

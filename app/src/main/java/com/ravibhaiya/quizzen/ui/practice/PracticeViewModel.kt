@@ -16,6 +16,7 @@ import com.ravibhaiya.quizzen.domain.Question
 import com.ravibhaiya.quizzen.domain.QuestionGenerator
 import com.ravibhaiya.quizzen.domain.QuestionPool
 import com.ravibhaiya.quizzen.domain.RandomQuestionGenerator
+import com.ravibhaiya.quizzen.domain.StreakRules
 import com.ravibhaiya.quizzen.ui.navigation.PracticeArgs
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
@@ -36,6 +37,12 @@ data class PracticeUiState(
     val isLocked: Boolean = false,
     /** Increments on every incorrect answer so the UI can replay the shake animation. */
     val shakeCount: Int = 0,
+    /** Consecutive correct answers in the current session; resets to 0 on incorrect or timeout. */
+    val currentStreak: Int = 0,
+    /** Milestone streak count (5, 10, 15, ...) for the latest streak celebration. */
+    val streakMilestone: Int = 0,
+    /** Increments only when a new streak milestone is hit so the UI plays a one-shot celebration. */
+    val streakMilestoneEventId: Int = 0,
 ) {
     val isTimerLow: Boolean get() = remainingSeconds <= LOW_TIME_THRESHOLD_SECONDS
 
@@ -141,17 +148,22 @@ class PracticeViewModel(
         )
         tickJob?.cancel()
         feedbackJob?.cancel()
+        val nextStreak = StreakRules.nextStreak(shown.currentStreak, type)
+        val hitMilestone = type == FeedbackType.Correct && StreakRules.isMilestone(nextStreak)
         _state.update {
             it.copy(
                 feedback = Feedback(type, it.question.answerText),
                 isLocked = true,
                 shakeCount = if (type == FeedbackType.Incorrect) it.shakeCount + 1 else it.shakeCount,
+                currentStreak = nextStreak,
+                streakMilestone = if (hitMilestone) nextStreak else it.streakMilestone,
+                streakMilestoneEventId = if (hitMilestone) it.streakMilestoneEventId + 1 else it.streakMilestoneEventId,
             )
         }
         feedbackJob = viewModelScope.launch {
             delay(FEEDBACK_VISIBLE_MS)
             _state.update { it.copy(feedback = null) }
-            delay(SHEET_EXIT_MS)
+            delay(if (hitMilestone) STREAK_CELEBRATION_MS - FEEDBACK_VISIBLE_MS else SHEET_EXIT_MS)
             updateAndPersist {
                 it.copy(
                     question = session.next(),
@@ -173,6 +185,7 @@ class PracticeViewModel(
         const val TICK_MS = 1_000L
         const val FEEDBACK_VISIBLE_MS = 1_700L
         const val SHEET_EXIT_MS = 250L
+        const val STREAK_CELEBRATION_MS = 3_000L
         const val MAX_ANSWER_DIGITS = 12
         const val MAX_FRACTION_LENGTH = 7
         const val MAX_PERCENT_LENGTH = 7

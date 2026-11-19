@@ -174,4 +174,33 @@ object QuizzenIcons {
             "M12 3v12",
         )
     }
+
+    val Eye: ImageVector by lazy {
+        strokeIcon(
+            "Eye", 2f,
+            "M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z",
+            "M9 12a3 3 0 1 0 6 0a3 3 0 1 0-6 0",
+        )
+    }
+
+    val EyeOff: ImageVector by lazy {
+        strokeIcon(
+            "EyeOff", 2f,
+            "M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94",
+            "M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19",
+            "M14.12 14.12a3 3 0 1 1-4.24-4.24",
+            "M1 1l22 22",
+        )
+    }
+
+    val Sparkle: ImageVector by lazy {
+        strokeIcon(
+            "Sparkle", 2.1f,
+            "M12 2l2.4 6.6L21 11l-6.6 2.4L12 20l-2.4-6.6L3 11l6.6-2.4L12 2z",
+            "M19 3v3",
+            "M17.5 4.5h3",
+            "M5 17v2.5",
+            "M3.75 18.25h2.5",
+        )
+    }
 }

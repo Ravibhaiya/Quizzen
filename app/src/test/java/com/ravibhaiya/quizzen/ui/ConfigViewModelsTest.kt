@@ -1,14 +1,18 @@
 package com.ravibhaiya.quizzen.ui
 
 import com.ravibhaiya.quizzen.data.QuizSettingsRepository
+import com.ravibhaiya.quizzen.data.VocabularyRepository
 import com.ravibhaiya.quizzen.domain.AlphabetChallenge
 import com.ravibhaiya.quizzen.domain.FractionChallenge
 import com.ravibhaiya.quizzen.domain.PowerRootType
 import com.ravibhaiya.quizzen.domain.PracticeConfig
+import com.ravibhaiya.quizzen.domain.VocabularyEntry
 import com.ravibhaiya.quizzen.domain.VocabularyQuizConfig
 import com.ravibhaiya.quizzen.domain.VocabularyQuizEngine
 import com.ravibhaiya.quizzen.domain.VocabularyQuizMode
 import com.ravibhaiya.quizzen.domain.VocabularyQuizRules
+import com.ravibhaiya.quizzen.domain.VocabularyRules
+import com.ravibhaiya.quizzen.domain.WordDetails
 import com.ravibhaiya.quizzen.ui.alphabet.AlphabetConfigViewModel
 import com.ravibhaiya.quizzen.ui.fractions.FractionsConfigViewModel
 import com.ravibhaiya.quizzen.ui.multiply.MultiplyConfigViewModel
@@ -21,6 +25,8 @@ import com.ravibhaiya.quizzen.ui.vocabularyquiz.VocabularyQuizUiState
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.test.StandardTestDispatcher
 import kotlinx.coroutines.test.resetMain
 import kotlinx.coroutines.test.runCurrent
@@ -318,6 +324,7 @@ class ConfigViewModelsTest {
         val saved = VocabularyQuizConfig(
             modes = setOf(VocabularyQuizMode.Synonyms),
             wordCount = 18,
+            questionCount = 60,
             timerSeconds = 15,
         )
         val repository = FakeRepository(vocabulary = saved)
@@ -325,17 +332,20 @@ class ConfigViewModelsTest {
         runCurrent()
         assertEquals(setOf(VocabularyQuizMode.Synonyms), vm.state.value.modes)
         assertEquals(18, vm.state.value.wordCount)
+        assertEquals(60, vm.state.value.questionCount)
         assertEquals("15", vm.timer.state.value.text)
         assertTrue(vm.state.value.loaded)
 
         vm.toggleMode(VocabularyQuizMode.Antonyms)
         vm.onWordCountChanged(22)
+        vm.onQuestionCountChanged(85)
         val config = vm.startQuiz()
         runCurrent()
         assertEquals(
             VocabularyQuizConfig(
                 modes = setOf(VocabularyQuizMode.Synonyms, VocabularyQuizMode.Antonyms),
                 wordCount = 22,
+                questionCount = 85,
                 timerSeconds = 15,
             ),
             config,
@@ -344,11 +354,12 @@ class ConfigViewModelsTest {
     }
 
     @Test
-    fun vocabulary_modesAreMultiSelect_andWordCountIsClampedTo1To25() = runTest(dispatcher) {
+    fun vocabulary_modesAreMultiSelect_andSlidersAreClamped() = runTest(dispatcher) {
         val vm = VocabularyConfigViewModel(FakeRepository())
         runCurrent()
         assertEquals(setOf(VocabularyQuizMode.Synonyms, VocabularyQuizMode.Antonyms), vm.state.value.modes)
         assertEquals(10, vm.state.value.wordCount)
+        assertEquals(25, vm.state.value.questionCount)
 
         vm.toggleMode(VocabularyQuizMode.Antonyms)
         assertEquals(setOf(VocabularyQuizMode.Synonyms), vm.state.value.modes)
@@ -361,6 +372,15 @@ class ConfigViewModelsTest {
         assertEquals(1, vm.state.value.wordCount)
         vm.onWordCountChanged(40)
         assertEquals(25, vm.state.value.wordCount)
+
+        vm.onQuestionCountChanged(0)
+        assertEquals(1, vm.state.value.questionCount)
+        vm.onQuestionCountChanged(1)
+        assertEquals(1, vm.state.value.questionCount)
+        vm.onQuestionCountChanged(100)
+        assertEquals(100, vm.state.value.questionCount)
+        vm.onQuestionCountChanged(150)
+        assertEquals(100, vm.state.value.questionCount)
     }
 
     @Test
@@ -408,5 +428,31 @@ class ConfigViewModelsTest {
         assertEquals(null, brokenVm.state.value.resume)
         assertEquals(null, broken.text)
         assertTrue(brokenVm.state.value.loaded)
+    }
+
+    @Test
+    fun vocabulary_exposesDatabaseWordCountAndPrioritizedMistakeCount() = runTest(dispatcher) {
+        val dbEntries = listOf(
+            VocabularyEntry(id = "e1", wordDetails = WordDetails(word = "Bright")),
+            VocabularyEntry(id = "e2", wordDetails = WordDetails(word = "Swift")),
+        )
+        val vocabRepo = object : VocabularyRepository {
+            override val entries: Flow<List<VocabularyEntry>> = MutableStateFlow(dbEntries)
+            override val mistakeWords: Flow<Set<String>> = MutableStateFlow(setOf("swift", "deleted_word"))
+            override val syncError: Flow<String?> = MutableStateFlow(null)
+            override suspend fun saveEntry(entry: VocabularyEntry) = Result.success(entry)
+            override suspend fun saveEntries(entries: List<VocabularyEntry>) = Result.success(entries)
+            override suspend fun mergeIntoExisting(incoming: List<VocabularyEntry>) =
+                Result.success(VocabularyRules.MergeSummary(0, 0, 0, 0, false))
+            override suspend fun deleteEntry(id: String) = Result.success(Unit)
+            override suspend fun recordMistakeWords(wordKeys: Set<String>) = Unit
+            override suspend fun removeMistakeWords(wordKeys: Set<String>) = Unit
+            override fun clearSyncError() = Unit
+        }
+
+        val vm = VocabularyConfigViewModel(FakeRepository(), FakeVocabularySessionStore(), vocabRepo)
+        runCurrent()
+        assertEquals(2, vm.state.value.databaseWordCount)
+        assertEquals(1, vm.state.value.mistakeWordCount)
     }
 }

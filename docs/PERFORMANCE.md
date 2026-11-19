@@ -6,8 +6,8 @@ measure, and what was deliberately *not* done.
 ## Measure the right build
 
 A **debug** build of a Compose app is several times slower than release (no R8, no ahead-of-time compilation, extra checks).
-Judge speed only on the **release** build: every run of the **Build APK** workflow uploads `quizzen-release-apk` (R8-minified, baseline profile, signed
-with the debug key so it installs directly; built with `-PsignReleaseWithDebugKey`). A release build for the Play Store must use
+Judge speed only on the **release** build (R8-minified, baseline profile; pass `-PsignReleaseWithDebugKey` to sign it
+with the debug key so it installs directly for local testing). A release build for the Play Store must use
 the real upload key instead (the flag is off by default, so a plain `assembleRelease` stays unsigned).
 
 ## What the app already does

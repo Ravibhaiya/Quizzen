@@ -22,6 +22,12 @@ opts out of OEM "force dark". There is no dark palette, no `values-night` resour
 | quizzen.success / error / timeout | `#1FAE6A / #E14C4C / #2E9FE0` (timeout = the sky-blue "Time's Up" sheet) |
 | quizzen.synonym / synonymContainer / onSynonymContainer | `#15806A / #D6F3EC / #0B4A3E` (emerald-teal badge, border, and surface tint for Synonyms) |
 | quizzen.antonym / antonymContainer / onAntonymContainer | `#7B3FA0 / #EDE0FA / #421861` (plum-violet badge, border, and surface tint for Antonyms) |
+| quizzen.streakBlue / streakBlueContainer / onStreakBlueContainer | `#2563EB / #DBEAFE / #1E3A8A` (royal blue streak tier 10+ gradient end and badge) |
+| quizzen.streakMagenta | `#C22578` (berry-magenta streak tier 15+ gradient end and confetti accent) |
+| quizzen.streakIndigo / streakViolet / streakIndigoContainer / onStreakIndigoContainer | `#4F46E5 / #7C3AED / #E0E7FF / #312E81` (indigo-violet random >15 streak palette) |
+| quizzen.streakCyan / streakTeal / streakCyanContainer / onStreakCyanContainer | `#0891B2 / #0D9488 / #CFFAFE / #164E63` (cyan-teal random >15 streak palette) |
+| quizzen.streakCrimson / streakRose / streakCrimsonContainer / onStreakCrimsonContainer | `#E11D48 / #BE185D / #FFE4E6 / #881337` (crimson-rose random >15 streak palette) |
+| quizzen.streakEmerald / streakForest / streakEmeraldContainer / onStreakEmeraldContainer | `#059669 / #047857 / #D1FAE5 / #064E3B` (emerald-forest random >15 streak palette) |
 
 Material roles without a dedicated token (secondary, tertiary, inverse*, outline*, extra surface containers) reuse these
 same tokens (see `ui/theme/Color.kt`) so no component can fall back to the baseline purple palette.

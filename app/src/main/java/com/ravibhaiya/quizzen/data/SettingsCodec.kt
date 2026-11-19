@@ -37,7 +37,7 @@ object SettingsCodec {
         "fc=${FractionChallenge.encode(config.challenges)};f=${config.range.first}-${config.range.last};t=${config.timerSeconds}"
 
     fun encode(config: VocabularyQuizConfig): String =
-        "vm=${VocabularyQuizMode.encode(config.modes)};wc=${config.wordCount};t=${config.timerSeconds}"
+        "vm=${VocabularyQuizMode.encode(config.modes)};wc=${config.wordCount};qc=${config.questionCount};t=${config.timerSeconds}"
 
     fun decodeMultiply(text: String?, defaultTimer: Int): PracticeConfig.Multiply? {
         val values = parse(text) ?: return null
@@ -107,9 +107,11 @@ object SettingsCodec {
         val modes = VocabularyQuizMode.decode(values["vm"])
         if (modes.isEmpty()) return null
         val rawWords = values["wc"]?.toIntOrNull() ?: VocabularyQuizRules.DEFAULT_WORDS
+        val rawQuestions = values["qc"]?.toIntOrNull() ?: VocabularyQuizRules.DEFAULT_QUESTIONS
         return VocabularyQuizConfig(
             modes = modes,
             wordCount = VocabularyQuizRules.coerceWordCount(rawWords),
+            questionCount = VocabularyQuizRules.coerceQuestionCount(rawQuestions),
             timerSeconds = timer(values["t"], defaultTimer),
         )
     }

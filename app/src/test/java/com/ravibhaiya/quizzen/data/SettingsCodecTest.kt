@@ -39,23 +39,30 @@ class SettingsCodecTest {
         val vocabulary = VocabularyQuizConfig(
             modes = setOf(VocabularyQuizMode.Synonyms, VocabularyQuizMode.Antonyms),
             wordCount = 15,
+            questionCount = 42,
             timerSeconds = 12,
         )
         assertEquals(vocabulary, SettingsCodec.decodeVocabulary(SettingsCodec.encode(vocabulary), defaultTimer = 10))
     }
 
     @Test
-    fun vocabulary_repairsWordCountAndTimer_andDropsInvalidModes() {
+    fun vocabulary_repairsWordCountQuestionCountAndTimer_andDropsInvalidModes() {
         val both = VocabularyQuizConfig(
             modes = setOf(VocabularyQuizMode.Antonyms, VocabularyQuizMode.Synonyms),
             wordCount = 12,
+            questionCount = 30,
             timerSeconds = 15,
         )
-        assertEquals("vm=syn-ant;wc=12;t=15", SettingsCodec.encode(both))
-        assertEquals(both, SettingsCodec.decodeVocabulary("vm=ant-syn;wc=12;t=15", 10))
+        assertEquals("vm=syn-ant;wc=12;qc=30;t=15", SettingsCodec.encode(both))
+        assertEquals(both, SettingsCodec.decodeVocabulary("vm=ant-syn;wc=12;qc=30;t=15", 10))
         assertEquals(1, SettingsCodec.decodeVocabulary("vm=syn;wc=0;t=10", 10)!!.wordCount)
         assertEquals(1, SettingsCodec.decodeVocabulary("vm=syn;wc=1;t=10", 10)!!.wordCount)
         assertEquals(25, SettingsCodec.decodeVocabulary("vm=ant;wc=99;t=10", 10)!!.wordCount)
+        assertEquals(25, SettingsCodec.decodeVocabulary("vm=syn;wc=10;t=10", 10)!!.questionCount)
+        assertEquals(1, SettingsCodec.decodeVocabulary("vm=syn;wc=10;qc=0;t=10", 10)!!.questionCount)
+        assertEquals(1, SettingsCodec.decodeVocabulary("vm=syn;wc=10;qc=1;t=10", 10)!!.questionCount)
+        assertEquals(100, SettingsCodec.decodeVocabulary("vm=ant;wc=10;qc=100;t=10", 10)!!.questionCount)
+        assertEquals(100, SettingsCodec.decodeVocabulary("vm=ant;wc=10;qc=250;t=10", 10)!!.questionCount)
         assertEquals(10, SettingsCodec.decodeVocabulary("vm=syn;wc=10;t=999", 10)!!.timerSeconds)
         assertNull(SettingsCodec.decodeVocabulary("vm=unknown;wc=10;t=10", 10))
         assertNull(SettingsCodec.decodeVocabulary(null, 10))

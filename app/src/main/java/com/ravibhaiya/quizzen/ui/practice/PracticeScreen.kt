@@ -73,6 +73,7 @@ import com.ravibhaiya.quizzen.ui.components.NeutralShadowColor
 import com.ravibhaiya.quizzen.ui.components.PrimaryButton
 import com.ravibhaiya.quizzen.ui.components.QuizzenScreen
 import com.ravibhaiya.quizzen.ui.components.ScreenHeader
+import com.ravibhaiya.quizzen.ui.components.StreakCelebrationOverlay
 import com.ravibhaiya.quizzen.ui.components.TimerChip
 import com.ravibhaiya.quizzen.ui.components.bouncyClickable
 import com.ravibhaiya.quizzen.ui.components.softShadow
@@ -132,7 +133,15 @@ fun PracticeScreen(
         runCatching { focusRequester.requestFocus() }
     }
 
-    QuizzenScreen {
+    QuizzenScreen(
+        overlay = {
+            StreakCelebrationOverlay(
+                milestoneStreak = state.streakMilestone,
+                eventId = state.streakMilestoneEventId,
+                modifier = Modifier.fillMaxSize(),
+            )
+        },
+    ) {
         Box(Modifier.fillMaxSize().statusBarsPadding().imePadding()) {
             Column(
                 modifier = Modifier

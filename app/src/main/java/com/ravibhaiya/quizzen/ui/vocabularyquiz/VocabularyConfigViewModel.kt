@@ -6,8 +6,10 @@ import androidx.lifecycle.viewmodel.initializer
 import androidx.lifecycle.viewmodel.viewModelFactory
 import com.ravibhaiya.quizzen.data.NoVocabularySessionStore
 import com.ravibhaiya.quizzen.data.QuizSettingsRepository
+import com.ravibhaiya.quizzen.data.VocabularyRepository
 import com.ravibhaiya.quizzen.data.VocabularySessionStore
 import com.ravibhaiya.quizzen.data.quizSettingsRepository
+import com.ravibhaiya.quizzen.data.vocabularyRepository
 import com.ravibhaiya.quizzen.data.vocabularySessionStore
 import com.ravibhaiya.quizzen.domain.VocabularyQuizConfig
 import com.ravibhaiya.quizzen.domain.VocabularyQuizMode
@@ -16,6 +18,7 @@ import com.ravibhaiya.quizzen.ui.components.TimerFieldState
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 
@@ -24,6 +27,12 @@ data class VocabularyConfigUiState(
     val modes: Set<VocabularyQuizMode> = VocabularyQuizMode.DEFAULT,
     /** Number of words to study and attempt (1..25). */
     val wordCount: Int = VocabularyQuizRules.DEFAULT_WORDS,
+    /** Maximum number of questions in the quiz (1..100). */
+    val questionCount: Int = VocabularyQuizRules.DEFAULT_QUESTIONS,
+    /** Total words currently in the user's vocabulary database. */
+    val databaseWordCount: Int = 0,
+    /** Number of database words currently flagged as weak/mistake words to prioritize in quizzes. */
+    val mistakeWordCount: Int = 0,
     /** An unfinished quiz kept on the device (the app was closed or left mid-quiz), or null when there is none. */
     val resume: VocabularyResumeInfo? = null,
     /** False until the last-used setting (and any unfinished quiz) has been read from the device. */
@@ -33,6 +42,7 @@ data class VocabularyConfigUiState(
 class VocabularyConfigViewModel(
     private val repository: QuizSettingsRepository,
     private val sessionStore: VocabularySessionStore = NoVocabularySessionStore,
+    private val vocabularyRepository: VocabularyRepository? = null,
 ) : ViewModel() {
 
     private val _state = MutableStateFlow(VocabularyConfigUiState())
@@ -50,12 +60,42 @@ class VocabularyConfigViewModel(
                     it.copy(
                         modes = saved.modes,
                         wordCount = VocabularyQuizRules.coerceWordCount(saved.wordCount),
+                        questionCount = VocabularyQuizRules.coerceQuestionCount(saved.questionCount),
                     )
                 }
                 timer.set(saved.timerSeconds)
             }
             val resume = readSavedQuiz()
             _state.update { it.copy(resume = resume, loaded = true) }
+        }
+        if (vocabularyRepository != null) {
+            viewModelScope.launch {
+                combine(
+                    vocabularyRepository.entries,
+                    vocabularyRepository.mistakeWords,
+                ) { entries, mistakes ->
+                    val normalizedMistakes = mistakes
+                        .map(VocabularyQuizRules::mistakeKey)
+                        .filter { it.isNotEmpty() }
+                        .toSet()
+                    val bareCounts = VocabularyQuizRules.bareWordCounts(entries)
+                    val matchedMistakes = if (normalizedMistakes.isEmpty()) {
+                        0
+                    } else {
+                        entries.count { entry ->
+                            VocabularyQuizRules.matchesMistakeWords(entry, normalizedMistakes, bareCounts)
+                        }
+                    }
+                    entries.size to matchedMistakes
+                }.collect { (totalCount, mistakeCount) ->
+                    _state.update {
+                        it.copy(
+                            databaseWordCount = totalCount,
+                            mistakeWordCount = mistakeCount,
+                        )
+                    }
+                }
+            }
         }
     }
 
@@ -100,6 +140,12 @@ class VocabularyConfigViewModel(
         _state.update { it.copy(wordCount = VocabularyQuizRules.coerceWordCount(count)) }
     }
 
+    /** Updates the maximum number of questions, clamped to `1..100`. */
+    fun onQuestionCountChanged(count: Int) {
+        edited = true
+        _state.update { it.copy(questionCount = VocabularyQuizRules.coerceQuestionCount(count)) }
+    }
+
     fun onTimerChanged(raw: String) {
         edited = true
         timer.onTextChanged(raw)
@@ -110,6 +156,7 @@ class VocabularyConfigViewModel(
         return VocabularyQuizConfig(
             modes = current.modes,
             wordCount = current.wordCount,
+            questionCount = current.questionCount,
             timerSeconds = timer.resolvedSeconds(),
         )
     }
@@ -124,7 +171,13 @@ class VocabularyConfigViewModel(
         const val DEFAULT_TIMER_SECONDS = VocabularyQuizRules.DEFAULT_TIMER_SECONDS
 
         val Factory = viewModelFactory {
-            initializer { VocabularyConfigViewModel(quizSettingsRepository(), vocabularySessionStore()) }
+            initializer {
+                VocabularyConfigViewModel(
+                    repository = quizSettingsRepository(),
+                    sessionStore = vocabularySessionStore(),
+                    vocabularyRepository = vocabularyRepository(),
+                )
+            }
         }
     }
 }

@@ -21,6 +21,27 @@ data class QuizzenColors(
     val antonym: Color,
     val antonymContainer: Color,
     val onAntonymContainer: Color,
+    /** Non-orange celebration accents for streak milestone tiers (10+ blue, 15+ plum-magenta, and random >15 palettes). */
+    val streakBlue: Color,
+    val streakBlueContainer: Color,
+    val onStreakBlueContainer: Color,
+    val streakMagenta: Color,
+    val streakIndigo: Color,
+    val streakViolet: Color,
+    val streakIndigoContainer: Color,
+    val onStreakIndigoContainer: Color,
+    val streakCyan: Color,
+    val streakTeal: Color,
+    val streakCyanContainer: Color,
+    val onStreakCyanContainer: Color,
+    val streakCrimson: Color,
+    val streakRose: Color,
+    val streakCrimsonContainer: Color,
+    val onStreakCrimsonContainer: Color,
+    val streakEmerald: Color,
+    val streakForest: Color,
+    val streakEmeraldContainer: Color,
+    val onStreakEmeraldContainer: Color,
 )
 
 // Palette of the app. It is light-only by design (no dark palette).
@@ -49,6 +70,28 @@ private val AntonymAccent = Color(0xFF7B3FA0)
 private val AntonymContainer = Color(0xFFEDE0FA)
 private val OnAntonymContainer = Color(0xFF421861)
 
+// Streak milestone celebration accents (kept distinct from the app's primary orange).
+private val StreakBlue = Color(0xFF2563EB)
+private val StreakBlueContainer = Color(0xFFDBEAFE)
+private val OnStreakBlueContainer = Color(0xFF1E3A8A)
+private val StreakMagenta = Color(0xFFC22578)
+private val StreakIndigo = Color(0xFF4F46E5)
+private val StreakViolet = Color(0xFF7C3AED)
+private val StreakIndigoContainer = Color(0xFFE0E7FF)
+private val OnStreakIndigoContainer = Color(0xFF312E81)
+private val StreakCyan = Color(0xFF0891B2)
+private val StreakTeal = Color(0xFF0D9488)
+private val StreakCyanContainer = Color(0xFFCFFAFE)
+private val OnStreakCyanContainer = Color(0xFF164E63)
+private val StreakCrimson = Color(0xFFE11D48)
+private val StreakRose = Color(0xFFBE185D)
+private val StreakCrimsonContainer = Color(0xFFFFE4E6)
+private val OnStreakCrimsonContainer = Color(0xFF881337)
+private val StreakEmerald = Color(0xFF059669)
+private val StreakForest = Color(0xFF047857)
+private val StreakEmeraldContainer = Color(0xFFD1FAE5)
+private val OnStreakEmeraldContainer = Color(0xFF064E3B)
+
 // Only Material's `inversePrimary` slot needs this extra color.
 private val InversePrimary = Color(0xFFF4B178)
 
@@ -63,6 +106,26 @@ internal val QuizzenExtraColors = QuizzenColors(
     antonym = AntonymAccent,
     antonymContainer = AntonymContainer,
     onAntonymContainer = OnAntonymContainer,
+    streakBlue = StreakBlue,
+    streakBlueContainer = StreakBlueContainer,
+    onStreakBlueContainer = OnStreakBlueContainer,
+    streakMagenta = StreakMagenta,
+    streakIndigo = StreakIndigo,
+    streakViolet = StreakViolet,
+    streakIndigoContainer = StreakIndigoContainer,
+    onStreakIndigoContainer = OnStreakIndigoContainer,
+    streakCyan = StreakCyan,
+    streakTeal = StreakTeal,
+    streakCyanContainer = StreakCyanContainer,
+    onStreakCyanContainer = OnStreakCyanContainer,
+    streakCrimson = StreakCrimson,
+    streakRose = StreakRose,
+    streakCrimsonContainer = StreakCrimsonContainer,
+    onStreakCrimsonContainer = OnStreakCrimsonContainer,
+    streakEmerald = StreakEmerald,
+    streakForest = StreakForest,
+    streakEmeraldContainer = StreakEmeraldContainer,
+    onStreakEmeraldContainer = OnStreakEmeraldContainer,
 )
 
 /**

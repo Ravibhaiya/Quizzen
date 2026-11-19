@@ -44,6 +44,8 @@ import java.io.IOException
 interface VocabularyRepository {
     val entries: Flow<List<VocabularyEntry>>
     val mistakeWords: Flow<Set<String>>
+    val mistakeWordsLoaded: Flow<Boolean>
+        get() = kotlinx.coroutines.flow.flowOf(true)
     val syncError: Flow<String?>
     val isLoading: Flow<Boolean>
         get() = kotlinx.coroutines.flow.flowOf(false)
@@ -111,6 +113,8 @@ class FirestoreVocabularyRepository(
     private val knownEntries = MutableStateFlow<List<VocabularyEntry>>(emptyList())
     private val _mistakeWords = MutableStateFlow<Set<String>>(emptySet())
     override val mistakeWords: StateFlow<Set<String>> = _mistakeWords.asStateFlow()
+    private val _mistakeWordsLoaded = MutableStateFlow(false)
+    override val mistakeWordsLoaded: StateFlow<Boolean> = _mistakeWordsLoaded.asStateFlow()
 
     private val _syncError = MutableStateFlow<String?>(null)
     override val syncError: StateFlow<String?> = _syncError.asStateFlow()
@@ -123,7 +127,10 @@ class FirestoreVocabularyRepository(
     }
 
     init {
-        scope.launch { _mistakeWords.value = readLocalMistakes() }
+        scope.launch {
+            _mistakeWords.value = readLocalMistakes()
+            _mistakeWordsLoaded.value = true
+        }
     }
 
     override val entries: StateFlow<List<VocabularyEntry>> = callbackFlow {

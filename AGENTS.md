@@ -15,12 +15,6 @@ python3 tools/check_docs.py                           # docs must not name code 
 Nothing may be committed that fails these. If you cannot run Gradle, say so explicitly and keep changes small and
 conservative; do not claim verification you did not do.
 
-## CI rules
-
-CI is intentionally cheap: `ci.yml` runs on pull requests only (and skips docs-only changes), APKs are built only by the manual
-`apk.yml`, `release-check.yml` runs only when build settings change. Do not add push-to-main triggers, per-run artifact uploads or
-long retention; keep new jobs path-filtered. See the README table.
-
 ## Architecture rules
 
 1. **Layers**: `domain` (pure Kotlin, no Android/Compose imports) <- `data` (DataStore) <- `ui` (Compose + ViewModels).
@@ -68,7 +62,7 @@ long retention; keep new jobs path-filtered. See the README table.
 
 Full rules in `docs/PERFORMANCE.md`. The short version: nothing may animate or redraw while idle (no endless transitions), animated
 values are read inside `graphicsLayer`/`offset`/`drawBehind` lambdas, text is never fitted by relayout loops (`FitText`), no
-`Modifier.blur`, and speed is judged on the release APK (`quizzen-release-apk` from the manual Build APK workflow), never on a debug build.
+`Modifier.blur`, and speed is judged on the release APK, never on a debug build.
 
 ## Fonts
 
@@ -182,7 +176,7 @@ AI assistants edit this repo over many sessions, so docs drift unless every chan
 1. Behavior changed -> `docs/BEHAVIOR_SPEC.md`. Structure, new file, class or data flow -> `docs/ARCHITECTURE.md`. Look/tokens ->
    `docs/DESIGN_SYSTEM.md`. A new rule for future work -> this file. A user-visible feature -> the feature list in `README.md`.
 2. Use the real names from the code in backticks (the checker `python3 tools/check_docs.py` fails on names/files that do not
-   exist, and CI runs it). Rename something -> search the docs for the old name.
+   exist). Rename something -> search the docs for the old name.
 3. Do not describe things that are not implemented (for example timeouts, migrations or files). If you remove a feature, remove its
    text everywhere (docs, README, tests, the `strings.xml` entries) instead of leaving "legacy" notes.
 4. Constants live in one place and are only referred to by name in docs and comments, with the numbers written once in

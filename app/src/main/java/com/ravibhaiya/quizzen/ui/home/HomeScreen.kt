@@ -43,6 +43,7 @@ import com.ravibhaiya.quizzen.ui.components.QuizzenScreen
 import com.ravibhaiya.quizzen.ui.components.SegmentItem
 import com.ravibhaiya.quizzen.ui.components.SegmentedControl
 import com.ravibhaiya.quizzen.ui.components.rememberHaptics
+import com.ravibhaiya.quizzen.ui.settings.ApiKeyTestState
 import com.ravibhaiya.quizzen.ui.theme.QuizzenShapes
 import kotlinx.coroutines.launch
 
@@ -59,6 +60,9 @@ fun HomeScreen(
     onOpenDatabaseManager: () -> Unit = {},
     geminiApiKey: String = "",
     onGeminiApiKeyChange: (String) -> Unit = {},
+    apiKeyTestState: ApiKeyTestState = ApiKeyTestState.Idle,
+    onTestGeminiApiKey: (String) -> Unit = {},
+    onClearApiKeyTest: () -> Unit = {},
 ) {
     var showSettings by rememberSaveable { mutableStateOf(false) }
     val pagerState = rememberPagerState { 2 }
@@ -157,7 +161,16 @@ fun HomeScreen(
                 haptics.click()
                 onGeminiApiKeyChange(key)
             },
-            onDismiss = { showSettings = false },
+            apiKeyTestState = apiKeyTestState,
+            onTestGeminiApiKey = { key ->
+                haptics.click()
+                onTestGeminiApiKey(key)
+            },
+            onClearApiKeyTest = onClearApiKeyTest,
+            onDismiss = {
+                onClearApiKeyTest()
+                showSettings = false
+            },
         )
     }
 }

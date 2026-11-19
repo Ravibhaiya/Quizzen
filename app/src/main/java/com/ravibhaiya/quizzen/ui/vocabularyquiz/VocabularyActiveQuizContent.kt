@@ -28,6 +28,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
@@ -76,6 +77,11 @@ internal fun VocabularyActiveQuizView(
     onNextQuestion: () -> Unit,
 ) {
     val question = state.currentQuestion ?: return
+    val scrollState = rememberScrollState()
+
+    LaunchedEffect(state.currentIndex) {
+        scrollState.scrollTo(0)
+    }
 
     Column(
         modifier = Modifier
@@ -86,7 +92,7 @@ internal fun VocabularyActiveQuizView(
             modifier = Modifier
                 .weight(1f)
                 .fillMaxWidth()
-                .verticalScroll(rememberScrollState())
+                .verticalScroll(scrollState)
                 .padding(start = 18.dp, end = 18.dp, top = 16.dp, bottom = 16.dp),
         ) {
             ScreenHeader(
@@ -154,7 +160,7 @@ internal fun VocabularyActiveQuizView(
                 PrimaryButton(
                     text = stringResource(R.string.vocabulary_next_question),
                     onClick = onNextQuestion,
-                    enabled = state.isLocked,
+                    enabled = state.isLocked && !state.isStreakCelebrating,
                     modifier = Modifier.testTag("vocabulary_next_button"),
                 )
             }
@@ -249,14 +255,6 @@ private fun QuestionPromptCard(
     val modeBadgeContent = if (isSynonym) extra.onSynonymContainer else extra.onAntonymContainer
     val modeBorderColor = (if (isSynonym) extra.synonym else extra.antonym).copy(alpha = 0.42f)
 
-    val mainWord = question.clusterWord.ifBlank { question.promptWord }
-    val mainPartOfSpeech = question.clusterPartOfSpeech.ifBlank {
-        if (question.promptWord.equals(mainWord, ignoreCase = true)) {
-            question.promptDetails.partOfSpeech
-        } else {
-            ""
-        }
-    }.trim()
     val promptPartOfSpeech = question.promptDetails.partOfSpeech.trim()
 
     Column(
@@ -276,62 +274,6 @@ private fun QuestionPromptCard(
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.spacedBy(10.dp),
     ) {
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .background(colors.surface, RoundedCornerShape(16.dp))
-                .padding(horizontal = 14.dp, vertical = 8.dp)
-                .testTag("vocabulary_main_word_header"),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.SpaceBetween,
-        ) {
-            Row(
-                modifier = Modifier.weight(1f),
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(8.dp),
-            ) {
-                Text(
-                    text = stringResource(R.string.vocabulary_main_word_label).uppercase(),
-                    style = MaterialTheme.typography.labelSmall,
-                    color = colors.onSurfaceVariant,
-                    maxLines = 1,
-                    softWrap = false,
-                )
-                FitText(
-                    text = AnnotatedString(mainWord),
-                    style = MaterialTheme.typography.titleMedium.copy(
-                        fontWeight = FontWeight.Bold,
-                        color = colors.onSurface,
-                    ),
-                    maxFontSize = MaterialTheme.typography.titleMedium.fontSize,
-                    minFontSize = 12.sp,
-                    step = 0.5.sp,
-                    textAlign = TextAlign.Start,
-                    modifier = Modifier
-                        .weight(1f)
-                        .testTag("vocabulary_main_word_text"),
-                )
-            }
-
-            if (mainPartOfSpeech.isNotEmpty()) {
-                Box(
-                    modifier = Modifier
-                        .padding(start = 8.dp)
-                        .background(colors.primaryContainer, CircleShape)
-                        .padding(horizontal = 10.dp, vertical = 4.dp)
-                        .testTag("vocabulary_main_word_pos"),
-                ) {
-                    Text(
-                        text = mainPartOfSpeech,
-                        style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.SemiBold),
-                        color = colors.onPrimaryContainer,
-                        maxLines = 1,
-                        softWrap = false,
-                    )
-                }
-            }
-        }
-
         Row(
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(8.dp),
@@ -373,7 +315,7 @@ private fun QuestionPromptCard(
                     .testTag("vocabulary_prompt_word"),
             )
 
-            if (promptPartOfSpeech.isNotEmpty() && !question.promptWord.equals(mainWord, ignoreCase = true)) {
+            if (promptPartOfSpeech.isNotEmpty()) {
                 Box(
                     modifier = Modifier
                         .background(colors.surfaceContainerHigh, CircleShape)

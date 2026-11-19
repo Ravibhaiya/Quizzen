@@ -358,9 +358,15 @@ class PracticeViewModelTest {
     private val manyQuestions: List<Question> = List(500) { ProductQuestion(1_000L + it, 1) }
 
     private fun TestScope.finishQuestion(vm: PracticeViewModel, answer: String) {
+        val beforeEvent = vm.state.value.streakMilestoneEventId
         vm.onAnswerChanged(answer)
         vm.onCheck()
-        advanceTimeBy(PracticeViewModel.FEEDBACK_VISIBLE_MS + PracticeViewModel.SHEET_EXIT_MS + 1)
+        val delayMs = if (vm.state.value.streakMilestoneEventId > beforeEvent) {
+            PracticeViewModel.STREAK_CELEBRATION_MS
+        } else {
+            PracticeViewModel.FEEDBACK_VISIBLE_MS + PracticeViewModel.SHEET_EXIT_MS
+        }
+        advanceTimeBy(delayMs + 1)
         runCurrent()
     }
 
@@ -479,5 +485,47 @@ class PracticeViewModelTest {
         assertEquals(12L, restored.leftOperand)
         assertEquals("13", restored.state.value.answer)
         assertEquals(15, restored.state.value.remainingSeconds)
+    }
+
+    @Test
+    fun streakMilestoneTriggersOnlyEveryFiveConsecutiveCorrectAnswersAndResetsOnMistake() = runTest(dispatcher) {
+        val vm = PracticeViewModel(config, SequenceGenerator())
+        vm.onResume()
+
+        // First 4 consecutive correct answers do NOT trigger a milestone celebration.
+        repeat(4) { i ->
+            answerRight(vm)
+            assertEquals(i + 1, vm.state.value.currentStreak)
+            assertEquals(0, vm.state.value.streakMilestoneEventId)
+        }
+
+        // 5th consecutive correct answer triggers the first milestone celebration and holds for 3 seconds.
+        vm.onAnswerChanged(vm.state.value.question.answer.toString())
+        vm.onCheck()
+        assertEquals(5, vm.state.value.currentStreak)
+        assertEquals(5, vm.state.value.streakMilestone)
+        assertEquals(1, vm.state.value.streakMilestoneEventId)
+        advanceTimeBy(PracticeViewModel.FEEDBACK_VISIBLE_MS + PracticeViewModel.SHEET_EXIT_MS + 1)
+        assertTrue("Expected next question to wait for 3-second celebration", vm.state.value.isLocked)
+        advanceTimeBy(PracticeViewModel.STREAK_CELEBRATION_MS - PracticeViewModel.FEEDBACK_VISIBLE_MS - PracticeViewModel.SHEET_EXIT_MS + 1)
+        runCurrent()
+        assertFalse(vm.state.value.isLocked)
+
+        // 6th correct answer does not re-trigger.
+        answerRight(vm)
+        assertEquals(6, vm.state.value.currentStreak)
+        assertEquals(1, vm.state.value.streakMilestoneEventId)
+
+        // Wrong answer resets streak to 0 without triggering celebration.
+        answerWrong(vm)
+        assertEquals(0, vm.state.value.currentStreak)
+        assertEquals(1, vm.state.value.streakMilestoneEventId)
+
+        // Another 5 consecutive correct answers triggers a fresh milestone event.
+        repeat(5) { answerRight(vm) }
+        assertEquals(5, vm.state.value.currentStreak)
+        assertEquals(5, vm.state.value.streakMilestone)
+        assertEquals(2, vm.state.value.streakMilestoneEventId)
+        vm.onPause()
     }
 }

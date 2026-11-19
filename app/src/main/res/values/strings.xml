@@ -29,6 +29,11 @@
     <string name="gemini_api_key_save">Save Key</string>
     <string name="gemini_api_key_clear">Remove</string>
     <string name="gemini_api_key_paste">Paste</string>
+    <string name="gemini_api_key_test">Test Key</string>
+    <string name="gemini_api_key_testing">Checking key with Gemini…</string>
+    <string name="gemini_api_key_test_valid">API key is valid and ready.</string>
+    <string name="cd_show_api_key">Show API key</string>
+    <string name="cd_hide_api_key">Hide API key</string>
     <string name="cd_clear_api_key_input">Clear API key input</string>
 
     <!-- Config screens -->
@@ -110,6 +115,29 @@
     <string name="feedback_incorrect_sub">The correct answer was %1$s</string>
     <string name="feedback_timeout_title">Time\'s Up</string>
     <string name="feedback_timeout_sub">The answer was %1$s — here\'s a fresh one</string>
+    <string name="streak_milestone_title">%1$d in a row!</string>
+    <string name="streak_tier_momentum">Nice streak!</string>
+    <string name="streak_tier_on_fire">On fire!</string>
+    <string name="streak_tier_unstoppable">Unstoppable!</string>
+    <string name="streak_sub_momentum">Keep the momentum going!</string>
+    <string name="streak_sub_on_fire">You\'re crushing every question!</string>
+    <string name="streak_sub_unstoppable">Absolute mastery — keep going!</string>
+    <string name="streak_ext_badge_1">Legendary run!</string>
+    <string name="streak_ext_sub_1">You\'re in a league of your own!</string>
+    <string name="streak_ext_badge_2">Pure genius!</string>
+    <string name="streak_ext_sub_2">Every single answer is razor sharp!</string>
+    <string name="streak_ext_badge_3">Grandmaster!</string>
+    <string name="streak_ext_sub_3">Making tough questions look effortless!</string>
+    <string name="streak_ext_badge_4">Flawless flow!</string>
+    <string name="streak_ext_sub_4">Nothing can break this rhythm!</string>
+    <string name="streak_ext_badge_5">Elite focus!</string>
+    <string name="streak_ext_sub_5">Your concentration is truly next level!</string>
+    <string name="streak_ext_badge_6">Mind blown!</string>
+    <string name="streak_ext_sub_6">Accuracy straight off the charts!</string>
+    <string name="streak_ext_badge_7">Total mastery!</string>
+    <string name="streak_ext_sub_7">Pure brilliance, question after question!</string>
+    <string name="streak_ext_badge_8">Next level!</string>
+    <string name="streak_ext_sub_8">Unbelievable streak — keep rolling!</string>
 
     <!-- Database Manager -->
     <string name="database_manager_subtitle">Select a category to manage data</string>
@@ -232,6 +260,12 @@
     <string name="vocabulary_word_count_title">Words to Attempt</string>
     <string name="vocabulary_word_count_summary">%1$d words</string>
     <string name="vocabulary_word_count_thumb">Number of words</string>
+    <string name="vocabulary_question_count_title">Number of Questions</string>
+    <plurals name="vocabulary_question_count_summary">
+        <item quantity="one">%1$d question</item>
+        <item quantity="other">%1$d questions</item>
+    </plurals>
+    <string name="vocabulary_question_count_thumb">Number of questions</string>
     <string name="vocabulary_quiz_mode_title">Quiz Mode</string>
     <string name="vocabulary_mode_synonyms">Synonyms</string>
     <string name="vocabulary_mode_antonyms">Antonyms</string>
@@ -254,6 +288,26 @@
     <string name="vocabulary_mode_antonym_badge">ANTONYM</string>
     <string name="vocabulary_quiz_complete_title">Quiz Complete</string>
     <string name="vocabulary_quiz_accuracy_badge">SCORE</string>
+    <string name="vocabulary_score_headline_perfect">Perfect Score!</string>
+    <string name="vocabulary_score_headline_great">Great Job!</string>
+    <string name="vocabulary_score_headline_good">Good Effort!</string>
+    <string name="vocabulary_score_headline_practice">Keep Practicing!</string>
+    <string name="vocabulary_score_percent">%1$d%%</string>
+    <string name="vocabulary_missed_arrow">→</string>
+    <string name="vocabulary_missed_questions_title">Missed Questions (%1$d)</string>
+    <string name="vocabulary_missed_timeout_tag">Timed out</string>
+    <string name="vocabulary_retry_missed_words">Practice Missed Words (%1$d)</string>
+    <string name="cd_expand_missed_questions">Show missed questions</string>
+    <string name="cd_collapse_missed_questions">Hide missed questions</string>
+    <plurals name="vocabulary_db_word_count">
+        <item quantity="one">%1$d word in database</item>
+        <item quantity="other">%1$d words in database</item>
+    </plurals>
+    <string name="vocabulary_db_empty_badge">No words in database yet</string>
+    <plurals name="vocabulary_weak_words_badge">
+        <item quantity="one">%1$d weak word prioritized</item>
+        <item quantity="other">%1$d weak words prioritized</item>
+    </plurals>
     <string name="vocabulary_next_question">Next</string>
     <string name="vocabulary_retry_quiz">Retry Quiz</string>
     <string name="vocabulary_review_words">Review Words</string>

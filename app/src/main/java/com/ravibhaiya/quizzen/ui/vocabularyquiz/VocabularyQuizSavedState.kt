@@ -51,6 +51,7 @@ internal object VocabularyQuizSavedState {
     private const val KEY_FEEDBACK_TYPE = "vocab_quiz_feedback_type"
     private const val KEY_FEEDBACK_ANSWER = "vocab_quiz_feedback_answer"
     private const val KEY_IS_LOCKED = "vocab_quiz_is_locked"
+    private const val KEY_STREAK = "vocab_quiz_streak"
     private const val KEY_OUTCOMES = "vocab_quiz_outcomes"
     private const val SESSION_HEADER = "quizzen-vocabulary-session-v1"
 
@@ -73,6 +74,7 @@ internal object VocabularyQuizSavedState {
         handle[KEY_FEEDBACK_TYPE] = state.feedback?.type?.name
         handle[KEY_FEEDBACK_ANSWER] = state.feedback?.correctAnswer
         handle[KEY_IS_LOCKED] = state.isLocked
+        handle[KEY_STREAK] = state.currentStreak
         handle[KEY_OUTCOMES] = encodeOutcomes(outcomes)
     }
 
@@ -99,6 +101,7 @@ internal object VocabularyQuizSavedState {
             feedbackTypeName = handle.get<String>(KEY_FEEDBACK_TYPE),
             feedbackAnswer = handle.get<String>(KEY_FEEDBACK_ANSWER),
             isLocked = handle.get<Boolean>(KEY_IS_LOCKED),
+            currentStreak = handle.get<Int>(KEY_STREAK),
             outcomes = decodeOutcomes(handle.get<String>(KEY_OUTCOMES).orEmpty()),
         )
     }
@@ -125,6 +128,7 @@ internal object VocabularyQuizSavedState {
                 add("ftype=${it.type.name}")
                 add("fanswer=${b64(it.correctAnswer)}")
             }
+            add("streak=${state.currentStreak}")
             add("outcomes=${encodeOutcomes(outcomes)}")
         }.joinToString("\n")
     }
@@ -172,6 +176,7 @@ internal object VocabularyQuizSavedState {
             feedbackTypeName = values["ftype"],
             feedbackAnswer = values["fanswer"]?.let(::unb64),
             isLocked = isLocked,
+            currentStreak = values["streak"]?.toIntOrNull(),
             outcomes = decodeOutcomes(values["outcomes"].orEmpty()),
         ) ?: return null
         if (isLocked && snapshot.uiState.feedback == null) return null
@@ -204,6 +209,7 @@ internal object VocabularyQuizSavedState {
         feedbackTypeName: String?,
         feedbackAnswer: String?,
         isLocked: Boolean?,
+        currentStreak: Int?,
         outcomes: Map<Int, FeedbackType>,
     ): RestoredVocabularyQuizSnapshot? {
         if (phase != VocabularyQuizPhase.Study && questions.isEmpty()) return null
@@ -229,6 +235,8 @@ internal object VocabularyQuizSavedState {
                 remainingSeconds = (remainingSeconds ?: config.timerSeconds).coerceIn(0, config.timerSeconds),
                 feedback = feedback,
                 isLocked = isLocked ?: false,
+                currentStreak = (currentStreak ?: 0).coerceAtLeast(0),
+                outcomes = outcomes,
             ),
             outcomes = outcomes,
         )

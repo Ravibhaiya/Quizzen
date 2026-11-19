@@ -40,6 +40,7 @@ object Routes {
     const val ARG_FRACTION_TO = "fto"
     const val ARG_VOCAB_MODES = "vmodes"
     const val ARG_WORD_COUNT = "wcount"
+    const val ARG_QUESTION_COUNT = "qcount"
     const val ARG_RESUME = "resume"
 
     const val MODE_MULTIPLY = "multiply"
@@ -56,12 +57,14 @@ object Routes {
         "&$ARG_FRACTION_FROM={$ARG_FRACTION_FROM}&$ARG_FRACTION_TO={$ARG_FRACTION_TO}"
 
     const val VOCABULARY_QUIZ = "vocabulary_quiz?$ARG_VOCAB_MODES={$ARG_VOCAB_MODES}" +
-        "&$ARG_WORD_COUNT={$ARG_WORD_COUNT}&$ARG_SECONDS={$ARG_SECONDS}&$ARG_RESUME={$ARG_RESUME}"
+        "&$ARG_WORD_COUNT={$ARG_WORD_COUNT}&$ARG_QUESTION_COUNT={$ARG_QUESTION_COUNT}" +
+        "&$ARG_SECONDS={$ARG_SECONDS}&$ARG_RESUME={$ARG_RESUME}"
 
     /** [resume] = continue the unfinished quiz kept on the device (Vocabulary only) instead of starting a new one. */
     fun vocabularyQuiz(config: VocabularyQuizConfig, resume: Boolean = false): String =
         "vocabulary_quiz?$ARG_VOCAB_MODES=${VocabularyQuizMode.encode(config.modes)}" +
-            "&$ARG_WORD_COUNT=${config.wordCount}&$ARG_SECONDS=${config.timerSeconds}" +
+            "&$ARG_WORD_COUNT=${config.wordCount}&$ARG_QUESTION_COUNT=${config.questionCount}" +
+            "&$ARG_SECONDS=${config.timerSeconds}" +
             if (resume) "&$ARG_RESUME=1" else ""
 
     fun practice(config: PracticeConfig): String = when (config) {
@@ -94,19 +97,23 @@ object VocabularyQuizArgs {
         modes = handle.get<String>(Routes.ARG_VOCAB_MODES),
         wordCount = handle.get<Int>(Routes.ARG_WORD_COUNT),
         seconds = handle.get<Int>(Routes.ARG_SECONDS),
+        questionCount = handle.get<Int>(Routes.ARG_QUESTION_COUNT),
     )
 
     fun decode(
         modes: String?,
         wordCount: Int?,
         seconds: Int?,
+        questionCount: Int? = null,
     ): VocabularyQuizConfig {
         val timer = (seconds ?: 0).takeIf { it > 0 } ?: VocabularyQuizRules.DEFAULT_TIMER_SECONDS
         val decodedModes = VocabularyQuizMode.decode(modes).ifEmpty { VocabularyQuizMode.DEFAULT }
         val count = VocabularyQuizRules.coerceWordCount(wordCount ?: VocabularyQuizRules.DEFAULT_WORDS)
+        val questions = VocabularyQuizRules.coerceQuestionCount(questionCount ?: VocabularyQuizRules.DEFAULT_QUESTIONS)
         return VocabularyQuizConfig(
             modes = decodedModes,
             wordCount = count,
+            questionCount = questions,
             timerSeconds = timer,
         )
     }

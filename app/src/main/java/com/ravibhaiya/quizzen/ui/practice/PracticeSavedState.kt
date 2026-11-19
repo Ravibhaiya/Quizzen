@@ -22,6 +22,7 @@ internal object PracticeSavedState {
     private const val KEY_QUESTION = "practice_question"
     private const val KEY_ANSWER = "practice_answer"
     private const val KEY_REMAINING_SECONDS = "practice_remaining_seconds"
+    private const val KEY_STREAK = "practice_streak"
 
     fun save(
         handle: SavedStateHandle,
@@ -31,6 +32,7 @@ internal object PracticeSavedState {
         handle[KEY_QUESTION] = encodeQuestion(state.question)
         handle[KEY_ANSWER] = state.answer
         handle[KEY_REMAINING_SECONDS] = state.remainingSeconds
+        handle[KEY_STREAK] = state.currentStreak
     }
 
     fun restore(
@@ -42,10 +44,12 @@ internal object PracticeSavedState {
         val remaining = (handle.get<Int>(KEY_REMAINING_SECONDS) ?: config.timerSeconds)
             .coerceIn(1, config.timerSeconds)
         val answer = handle.get<String>(KEY_ANSWER).orEmpty()
+        val streak = (handle.get<Int>(KEY_STREAK) ?: 0).coerceAtLeast(0)
         return PracticeUiState(
             question = question,
             remainingSeconds = remaining,
             answer = answer,
+            currentStreak = streak,
         )
     }
 

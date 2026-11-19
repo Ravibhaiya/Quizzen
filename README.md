@@ -26,7 +26,7 @@ springy press animations.
   bottom sheet (Correct / Incorrect / Time's Up), shake on wrong answers, auto-advance to a fresh question.
 - **Settings** bottom sheet with a persisted Haptic Feedback switch, the **Database Manager** entry and a **Gemini API Key** field (the key is saved on the device only and is used for the vocabulary checks below).
 - Light theme only (by design, regardless of the system dark-mode setting), edge-to-edge, IME-aware layouts, 440 dp max content width on large screens.
-- **Vocabulary (Language)**: choose **Synonyms**, **Antonyms**, or both simultaneously, select **1 to 25 words** to attempt, review all selected words (with their **Part of Speech** badge on the right side of the main word and distinct emerald-teal **Synonyms** and plum-violet **Antonyms** sections) on a pre-quiz **Study** page, and take a finite **4-option MCQ quiz** where the **Main Word** (and its part of speech) remains shown at the top of the card until all of its synonym and antonym questions have ended, with inline feedback, post-answer meaning reveals, manual **Next** button progression, and local mistake tracking (saving wrong/timed-out words locally, prioritizing them in future quizzes, and automatically deleting a word once all questions for that word are answered right in a session). If the app is closed (or the quiz left) mid-quiz, the Vocabulary setup screen offers **Resume** from the question you stopped at (or **Discard**); only Vocabulary can be resumed.
+- **Vocabulary (Language)**: choose **Synonyms**, **Antonyms**, or both simultaneously, select **1 to 25 words** to attempt, review all selected words (with their **Part of Speech** badge on the right side of the main word and distinct emerald-teal **Synonyms** and plum-violet **Antonyms** sections) on a pre-quiz **Study** page, and take a finite **4-option MCQ quiz** with inline feedback, post-answer meaning reveals, manual **Next** button progression, and local mistake tracking (saving wrong/timed-out words locally, prioritizing them in future quizzes, and automatically deleting a word once enough questions for that word are answered right in a session). If the app is closed (or the quiz left) mid-quiz, the Vocabulary setup screen offers **Resume** from the question you stopped at (or **Discard**); only Vocabulary can be resumed.
 - **Database Manager -> Vocabulary**: add/edit vocabulary words (including optional `partOfSpeech`) via single/bulk JSON format or by importing a `.json` file from device storage, saved to Cloud Firestore (internet is required to add, merge or delete, and a word counts as added only after the server confirmed it; the words can still be read offline), collapsible cards with part-of-speech badges and color-coded synonym/antonym count pills, and header search.
 - **Approval Requests** (bell icon in the Vocabulary manager): duplicate, variant (root form, spelling) and synonym/antonym meaning-conflict checks done by Gemini Decision 1 with your Gemini API key; every finding can be merged, deleted, edited or dismissed, and only new or edited words are checked again.
 - Other tiles (Fixed Preposition, Phrasal Verb) are placeholders (they show "Coming soon").
@@ -39,35 +39,17 @@ Plus Jakarta Sans (five static weights, SIL OFL) is bundled in `res/font`.
 
 ## Build & run
 
-APKs come from the **Build APK** workflow (Actions tab, started by hand or by a `v*` tag): it uploads `quizzen-release-apk`, plus `quizzen-debug-apk` when you tick the debug option. **Use the release one to judge speed**
-(see [docs/PERFORMANCE.md](docs/PERFORMANCE.md)); debug builds of Compose apps are much slower.
+**Use a release build to judge speed** (see [docs/PERFORMANCE.md](docs/PERFORMANCE.md)); debug builds of Compose apps are much slower.
+For Cloud Firestore access, place your private Firebase config at `app/google-services.json` (git-ignored).
 
 Requirements: Android Studio Ladybug (2024.2) or newer, or JDK 17 + Android SDK 35 on the command line.
 
 ```bash
-./gradlew assembleDebug        # build a debug APK  -> app/build/outputs/apk/debug
-./gradlew installDebug         # install on a connected device / emulator
-./gradlew testDebugUnitTest    # run unit tests
-./gradlew lintDebug            # Android lint
+gradle assembleDebug           # build a debug APK  -> app/build/outputs/apk/debug
+gradle assembleRelease         # build a release APK -> app/build/outputs/apk/release
+gradle testDebugUnitTest       # run unit tests
+gradle lintDebug               # Android lint
 ```
-
-## Continuous integration (GitHub Actions)
-
-Kept deliberately light so the free plan is never a concern (a public repository has no minutes limit; a private one on the free
-plan gets 2,000 minutes and 500 MB of storage a month, and this setup uses roughly 4 minutes per pull request).
-
-| Workflow | When it runs | What it does |
-|---|---|---|
-| `ci.yml` | pull requests (not for docs-only changes) | docs check, unit tests, lint, debug build, logo-sync check; uploads nothing |
-| `release-check.yml` | pull requests that change build settings, dependencies or shrinker rules | optimized (R8) release build |
-| `apk.yml` | only when you press **Run workflow** in the Actions tab, or push a `v*` tag | optimized APK, kept 14 days (debug APK optional) |
-
-Firebase: the Google Services plugin needs `app/google-services.json`, which is not stored in the repository. Add its full content as the
-repository secret `GOOGLE_SERVICES_JSON` (Settings, Secrets and variables, Actions). `ci.yml` and `release-check.yml` fall back to a placeholder
-file when the secret is missing (enough for tests, lint and compiling); `apk.yml` refuses to build without the real one so a broken APK is never
-published. Local builds need the real file in `app/`.
-
-To get an APK to install: Actions tab, **Build APK**, **Run workflow**, then download `quizzen-release-apk` from the finished run.
 
 ## Project layout
 
@@ -82,7 +64,7 @@ app/src/main/java/com/ravibhaiya/quizzen/
                            one package per feature (Screen + ViewModel)
   ui/navigation/           routes, argument codec, NavHost + transitions
 design/                    quizzen-logo.svg (logo source of truth)
-tools/                     generate_logo_drawables.py (SVG -> Android vector drawables), check_docs.py (docs vs code), ci_google_services.py (CI Firebase config)
+tools/                     generate_logo_drawables.py (SVG -> Android vector drawables), check_docs.py (docs vs code)
 firestore.rules            Cloud Firestore security rules
 docs/                      ARCHITECTURE, DESIGN_SYSTEM, BEHAVIOR_SPEC, PERFORMANCE, THIRD_PARTY_NOTICES
 AGENTS.md                  rules for AI coding assistants (start here when changing code)

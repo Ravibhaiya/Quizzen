@@ -17,6 +17,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.ravibhaiya.quizzen.domain.FeedbackType
 import com.ravibhaiya.quizzen.ui.components.QuizzenScreen
+import com.ravibhaiya.quizzen.ui.components.StreakCelebrationOverlay
 import com.ravibhaiya.quizzen.ui.components.rememberHaptics
 
 @Composable
@@ -81,7 +82,24 @@ fun VocabularyQuizScreen(
         }
     }
 
-    QuizzenScreen(modifier = modifier) {
+    LaunchedEffect(state.phase) {
+        if (state.phase == VocabularyQuizPhase.Finished) {
+            if (state.accuracyPercent >= 80) haptics.success() else haptics.click()
+        }
+    }
+
+    QuizzenScreen(
+        modifier = modifier,
+        overlay = {
+            if (state.phase == VocabularyQuizPhase.Quiz) {
+                StreakCelebrationOverlay(
+                    milestoneStreak = state.streakMilestone,
+                    eventId = state.streakMilestoneEventId,
+                    modifier = Modifier.fillMaxSize(),
+                )
+            }
+        },
+    ) {
         Box(modifier = Modifier.fillMaxSize()) {
             // A saved quiz is being read from the device (a few milliseconds): show nothing rather than a flash of Study.
             if (state.isRestoring) return@Box
@@ -124,6 +142,10 @@ fun VocabularyQuizScreen(
                     onBack = {
                         haptics.click()
                         onBack()
+                    },
+                    onRetryMissedWords = {
+                        haptics.heavyClick()
+                        viewModel.retryMissedWords()
                     },
                     onRetrySameWords = {
                         haptics.heavyClick()

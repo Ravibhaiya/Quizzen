@@ -46,9 +46,10 @@ class VocabularyQuizSavedStateTest {
         remainingSeconds = remaining,
         feedback = if (locked) Feedback(FeedbackType.Incorrect, questions[index].correctAnswer) else null,
         isLocked = locked,
+        currentStreak = 3,
     )
 
-    private val outcomes = mapOf(0 to FeedbackType.Correct, 1 to FeedbackType.Correct)
+    private val outcomes = mapOf(0 to FeedbackType.Correct, 1 to FeedbackType.Incorrect)
 
     @Test
     fun `encodeSession and decodeSession round-trip questions, partOfSpeech details, and full timer`() {
@@ -63,7 +64,11 @@ class VocabularyQuizSavedStateTest {
         assertEquals(2, ui.currentIndex)
         assertEquals(config.timerSeconds, ui.remainingSeconds)
         assertFalse(ui.isLocked)
+        assertEquals(3, ui.currentStreak)
+        assertEquals(0, ui.streakMilestoneEventId)
         assertEquals(outcomes, restored.outcomes)
+        assertEquals(outcomes, ui.outcomes)
+        assertEquals(1, ui.missedQuestions.size)
         assertTrue(ui.questions.all { it.clusterPartOfSpeech.isNotBlank() })
     }
 

@@ -26,6 +26,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
@@ -49,8 +50,13 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalClipboardManager
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.LiveRegionMode
 import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.liveRegion
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.PasswordVisualTransformation
+import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.ravibhaiya.quizzen.R
@@ -58,6 +64,7 @@ import com.ravibhaiya.quizzen.data.DataStoreSettingsRepository
 import com.ravibhaiya.quizzen.ui.components.ContentMaxWidth
 import com.ravibhaiya.quizzen.ui.components.QuizzenIcons
 import com.ravibhaiya.quizzen.ui.components.QuizzenSwitch
+import com.ravibhaiya.quizzen.ui.settings.ApiKeyTestState
 import com.ravibhaiya.quizzen.ui.theme.quizzen
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
@@ -69,12 +76,17 @@ fun SettingsSheet(
     onDismiss: () -> Unit,
     geminiApiKey: String = "",
     onGeminiApiKeyChange: (String) -> Unit = {},
+    apiKeyTestState: ApiKeyTestState = ApiKeyTestState.Idle,
+    onTestGeminiApiKey: (String) -> Unit = {},
+    onClearApiKeyTest: () -> Unit = {},
 ) {
     var showApiKeyEditor by rememberSaveable { mutableStateOf(false) }
+    var isApiKeyVisible by rememberSaveable { mutableStateOf(false) }
     val effectiveKey = DataStoreSettingsRepository.effectiveGeminiApiKey(geminiApiKey)
     var draftApiKey by rememberSaveable(geminiApiKey) { mutableStateOf(effectiveKey) }
     val clipboardManager = LocalClipboardManager.current
     val isKeyConfigured = effectiveKey.isNotEmpty()
+    val sanitizedDraft = DataStoreSettingsRepository.sanitizeApiKey(draftApiKey)
 
     val commitDraftKeyIfChanged = {
         val cleaned = DataStoreSettingsRepository.sanitizeApiKey(draftApiKey)
@@ -86,6 +98,7 @@ fun SettingsSheet(
     ModalBottomSheet(
         onDismissRequest = {
             commitDraftKeyIfChanged()
+            onClearApiKeyTest()
             onDismiss()
         },
         sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true),
@@ -137,6 +150,7 @@ fun SettingsSheet(
                     role = Role.Button,
                     onClick = {
                         commitDraftKeyIfChanged()
+                        onClearApiKeyTest()
                         onDatabaseManager()
                     },
                 ),
@@ -228,30 +242,54 @@ fun SettingsSheet(
 
                     OutlinedTextField(
                         value = draftApiKey,
-                        onValueChange = { draftApiKey = it },
+                        onValueChange = {
+                            draftApiKey = it
+                            onClearApiKeyTest()
+                        },
                         singleLine = true,
+                        visualTransformation = if (isApiKeyVisible) {
+                            VisualTransformation.None
+                        } else {
+                            PasswordVisualTransformation()
+                        },
                         placeholder = {
                             Text(
                                 text = stringResource(R.string.gemini_api_key_placeholder),
                                 style = MaterialTheme.typography.bodyLarge.copy(fontSize = 14.sp),
                             )
                         },
-                        trailingIcon = if (draftApiKey.isNotEmpty()) {
-                            {
+                        trailingIcon = {
+                            Row(verticalAlignment = Alignment.CenterVertically) {
                                 IconButton(
-                                    onClick = { draftApiKey = "" },
-                                    modifier = Modifier.testTag("clear_draft_api_key_button"),
+                                    onClick = { isApiKeyVisible = !isApiKeyVisible },
+                                    modifier = Modifier.testTag("toggle_api_key_visibility_button"),
                                 ) {
                                     Icon(
-                                        imageVector = QuizzenIcons.CloseBold,
-                                        contentDescription = stringResource(R.string.cd_clear_api_key_input),
+                                        imageVector = if (isApiKeyVisible) QuizzenIcons.EyeOff else QuizzenIcons.Eye,
+                                        contentDescription = stringResource(
+                                            if (isApiKeyVisible) R.string.cd_hide_api_key else R.string.cd_show_api_key,
+                                        ),
                                         tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                                        modifier = Modifier.size(16.dp),
+                                        modifier = Modifier.size(18.dp),
                                     )
                                 }
+                                if (draftApiKey.isNotEmpty()) {
+                                    IconButton(
+                                        onClick = {
+                                            draftApiKey = ""
+                                            onClearApiKeyTest()
+                                        },
+                                        modifier = Modifier.testTag("clear_draft_api_key_button"),
+                                    ) {
+                                        Icon(
+                                            imageVector = QuizzenIcons.CloseBold,
+                                            contentDescription = stringResource(R.string.cd_clear_api_key_input),
+                                            tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                                            modifier = Modifier.size(16.dp),
+                                        )
+                                    }
+                                }
                             }
-                        } else {
-                            null
                         },
                         shape = RoundedCornerShape(14.dp),
                         colors = OutlinedTextFieldDefaults.colors(
@@ -265,6 +303,10 @@ fun SettingsSheet(
                             .testTag("gemini_api_key_input"),
                     )
 
+                    AnimatedVisibility(visible = apiKeyTestState !is ApiKeyTestState.Idle) {
+                        ApiKeyTestStatusBanner(state = apiKeyTestState)
+                    }
+
                     FlowRow(
                         modifier = Modifier.fillMaxWidth(),
                         horizontalArrangement = Arrangement.spacedBy(10.dp),
@@ -277,6 +319,7 @@ fun SettingsSheet(
                                 )
                                 if (clip.isNotEmpty()) {
                                     draftApiKey = clip
+                                    onClearApiKeyTest()
                                     onGeminiApiKeyChange(clip)
                                 }
                             },
@@ -291,10 +334,25 @@ fun SettingsSheet(
                             )
                         }
 
+                        OutlinedButton(
+                            onClick = { onTestGeminiApiKey(draftApiKey) },
+                            enabled = sanitizedDraft.isNotEmpty() && apiKeyTestState !is ApiKeyTestState.Testing,
+                            shape = RoundedCornerShape(14.dp),
+                            contentPadding = PaddingValues(horizontal = 14.dp, vertical = 10.dp),
+                            modifier = Modifier.testTag("test_gemini_api_key_button"),
+                        ) {
+                            Text(
+                                text = stringResource(R.string.gemini_api_key_test),
+                                style = MaterialTheme.typography.labelLarge.copy(fontSize = 13.5.sp),
+                                color = MaterialTheme.colorScheme.primary,
+                            )
+                        }
+
                         if (geminiApiKey.isNotBlank()) {
                             OutlinedButton(
                                 onClick = {
                                     draftApiKey = ""
+                                    onClearApiKeyTest()
                                     onGeminiApiKeyChange("")
                                     showApiKeyEditor = false
                                 },
@@ -314,10 +372,10 @@ fun SettingsSheet(
 
                         Button(
                             onClick = {
-                                onGeminiApiKeyChange(DataStoreSettingsRepository.sanitizeApiKey(draftApiKey))
+                                onGeminiApiKeyChange(sanitizedDraft)
                                 showApiKeyEditor = false
                             },
-                            enabled = DataStoreSettingsRepository.sanitizeApiKey(draftApiKey).isNotEmpty(),
+                            enabled = sanitizedDraft.isNotEmpty(),
                             shape = RoundedCornerShape(14.dp),
                             colors = ButtonDefaults.buttonColors(
                                 containerColor = MaterialTheme.colorScheme.primary,
@@ -335,6 +393,72 @@ fun SettingsSheet(
                 }
             }
         }
+    }
+}
+
+@Composable
+private fun ApiKeyTestStatusBanner(
+    state: ApiKeyTestState,
+    modifier: Modifier = Modifier,
+) {
+    val colors = MaterialTheme.colorScheme
+    val extra = MaterialTheme.quizzen
+    val bgColor = when (state) {
+        ApiKeyTestState.Valid -> extra.success.copy(alpha = 0.14f)
+        is ApiKeyTestState.Invalid -> extra.error.copy(alpha = 0.14f)
+        else -> colors.surface
+    }
+    val fgColor = when (state) {
+        ApiKeyTestState.Valid -> extra.success
+        is ApiKeyTestState.Invalid -> extra.error
+        else -> colors.onSurfaceVariant
+    }
+    val text = when (state) {
+        ApiKeyTestState.Testing -> stringResource(R.string.gemini_api_key_testing)
+        ApiKeyTestState.Valid -> stringResource(R.string.gemini_api_key_test_valid)
+        is ApiKeyTestState.Invalid -> state.message
+        ApiKeyTestState.Idle -> ""
+    }
+    if (text.isEmpty()) return
+
+    Row(
+        modifier = modifier
+            .fillMaxWidth()
+            .background(bgColor, RoundedCornerShape(12.dp))
+            .padding(horizontal = 12.dp, vertical = 9.dp)
+            .semantics { liveRegion = LiveRegionMode.Polite }
+            .testTag("api_key_test_status"),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
+    ) {
+        when (state) {
+            ApiKeyTestState.Testing -> CircularProgressIndicator(
+                modifier = Modifier.size(14.dp),
+                strokeWidth = 2.dp,
+                color = colors.primary,
+            )
+            ApiKeyTestState.Valid -> Icon(
+                imageVector = QuizzenIcons.CheckBold,
+                contentDescription = null,
+                tint = fgColor,
+                modifier = Modifier.size(14.dp),
+            )
+            is ApiKeyTestState.Invalid -> Icon(
+                imageVector = QuizzenIcons.CloseBold,
+                contentDescription = null,
+                tint = fgColor,
+                modifier = Modifier.size(14.dp),
+            )
+            ApiKeyTestState.Idle -> Unit
+        }
+        Text(
+            text = text,
+            style = MaterialTheme.typography.labelLarge.copy(
+                fontSize = 12.5.sp,
+                fontWeight = FontWeight.SemiBold,
+            ),
+            color = fgColor,
+        )
     }
 }
 

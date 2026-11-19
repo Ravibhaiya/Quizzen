@@ -28,6 +28,7 @@ import com.ravibhaiya.quizzen.ui.home.HomeScreen
 import com.ravibhaiya.quizzen.ui.multiply.MultiplyConfigScreen
 import com.ravibhaiya.quizzen.ui.powers.PowersRootsConfigScreen
 import com.ravibhaiya.quizzen.ui.practice.PracticeScreen
+import com.ravibhaiya.quizzen.ui.settings.ApiKeyTestState
 import com.ravibhaiya.quizzen.ui.tables.TablesConfigScreen
 import com.ravibhaiya.quizzen.ui.vocabulary.VocabularyManagerScreen
 import com.ravibhaiya.quizzen.ui.vocabularyquiz.VocabularyConfigScreen
@@ -42,6 +43,9 @@ fun QuizzenNavHost(
     modifier: Modifier = Modifier,
     geminiApiKey: String = "",
     onGeminiApiKeyChange: (String) -> Unit = {},
+    apiKeyTestState: ApiKeyTestState = ApiKeyTestState.Idle,
+    onTestGeminiApiKey: (String) -> Unit = {},
+    onClearApiKeyTest: () -> Unit = {},
 ) {
     val navController = rememberNavController()
     val slidePx = with(LocalDensity.current) { 16.dp.roundToPx() }
@@ -77,6 +81,9 @@ fun QuizzenNavHost(
                 onOpenDatabaseManager = { navController.navigate(Routes.DATABASE_MANAGER) },
                 geminiApiKey = geminiApiKey,
                 onGeminiApiKeyChange = onGeminiApiKeyChange,
+                apiKeyTestState = apiKeyTestState,
+                onTestGeminiApiKey = onTestGeminiApiKey,
+                onClearApiKeyTest = onClearApiKeyTest,
             )
         }
         composable(Routes.DATABASE_MANAGER) {
@@ -107,6 +114,10 @@ fun QuizzenNavHost(
                 navArgument(Routes.ARG_WORD_COUNT) {
                     type = NavType.IntType
                     defaultValue = VocabularyQuizRules.DEFAULT_WORDS
+                },
+                navArgument(Routes.ARG_QUESTION_COUNT) {
+                    type = NavType.IntType
+                    defaultValue = VocabularyQuizRules.DEFAULT_QUESTIONS
                 },
                 navArgument(Routes.ARG_SECONDS) {
                     type = NavType.IntType

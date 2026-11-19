@@ -45,6 +45,7 @@ class MainActivity : ComponentActivity() {
                 val settings: SettingsViewModel = viewModel()
                 val hapticEnabled by settings.hapticEnabled.collectAsStateWithLifecycle()
                 val geminiApiKey by settings.geminiApiKey.collectAsStateWithLifecycle()
+                val apiKeyTestState by settings.apiKeyTestState.collectAsStateWithLifecycle()
 
                 // Survives rotation; a fresh process start shows the logo again.
                 var showSplash by rememberSaveable { mutableStateOf(true) }
@@ -63,6 +64,9 @@ class MainActivity : ComponentActivity() {
                         onHapticChange = settings::setHapticEnabled,
                         geminiApiKey = geminiApiKey,
                         onGeminiApiKeyChange = settings::setGeminiApiKey,
+                        apiKeyTestState = apiKeyTestState,
+                        onTestGeminiApiKey = settings::testGeminiApiKey,
+                        onClearApiKeyTest = settings::clearApiKeyTestState,
                     )
                     AnimatedVisibility(
                         visible = showSplash,
