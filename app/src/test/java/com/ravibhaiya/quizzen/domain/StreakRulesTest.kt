@@ -2,10 +2,8 @@ package com.ravibhaiya.quizzen.domain
 
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
-import org.junit.Assert.assertNotEquals
 import org.junit.Assert.assertTrue
 import org.junit.Test
-import kotlin.random.Random
 
 class StreakRulesTest {
 
@@ -25,39 +23,40 @@ class StreakRulesTest {
         }
         assertTrue(StreakRules.isMilestone(StreakRules.MILESTONE_STEP))
         assertFalse(StreakRules.isMilestone(StreakRules.MILESTONE_STEP + 1))
-        assertTrue(StreakRules.isMilestone(StreakRules.MILESTONE_STEP * 2))
-        assertTrue(StreakRules.isMilestone(StreakRules.MILESTONE_STEP * 3))
+        assertTrue(StreakRules.isMilestone(StreakRules.MILESTONE_STEP * 10))
+        assertTrue(StreakRules.isMilestone(StreakRules.MILESTONE_STEP * 11))
     }
 
     @Test
-    fun tierFor_escalatesAcrossMilestones() {
-        assertEquals(StreakRules.Tier.Momentum, StreakRules.tierFor(StreakRules.MILESTONE_STEP))
-        assertEquals(StreakRules.Tier.OnFire, StreakRules.tierFor(StreakRules.MILESTONE_STEP * 2))
-        assertEquals(StreakRules.Tier.Unstoppable, StreakRules.tierFor(StreakRules.MILESTONE_STEP * 3))
-        assertEquals(StreakRules.Tier.Unstoppable, StreakRules.tierFor(StreakRules.MILESTONE_STEP * 5))
-    }
-
-    @Test
-    fun isExtendedStreak_trueOnlyStrictlyAboveFifteen() {
-        assertFalse(StreakRules.isExtendedStreak(5))
-        assertFalse(StreakRules.isExtendedStreak(10))
-        assertFalse(StreakRules.isExtendedStreak(StreakRules.EXTENDED_STREAK_THRESHOLD))
-        assertTrue(StreakRules.isExtendedStreak(StreakRules.EXTENDED_STREAK_THRESHOLD + StreakRules.MILESTONE_STEP))
-        assertTrue(StreakRules.isExtendedStreak(StreakRules.EXTENDED_STREAK_THRESHOLD + StreakRules.MILESTONE_STEP * 3))
-    }
-
-    @Test
-    fun pickRandomIndex_staysInRangeAndNeverRepeatsPreviousWhenMultipleChoicesExist() {
-        val rng = Random(42)
-        var prev = -1
-        repeat(40) {
-            val next = StreakRules.pickRandomIndex(StreakRules.EXTENDED_PHRASE_COUNT, previousIndex = prev, random = rng)
-            assertTrue(next in 0 until StreakRules.EXTENDED_PHRASE_COUNT)
-            if (prev >= 0) {
-                assertNotEquals(prev, next)
-            }
-            prev = next
+    fun badgeFor_unlocksTenDistinctBadgesInOrderFromFiveToFifty() {
+        assertEquals(StreakRules.BADGE_COUNT, StreakRules.Badge.entries.size)
+        val expectedOrder = listOf(
+            StreakRules.Badge.Bronze,
+            StreakRules.Badge.Silver,
+            StreakRules.Badge.Gold,
+            StreakRules.Badge.Platinum,
+            StreakRules.Badge.Emerald,
+            StreakRules.Badge.Sapphire,
+            StreakRules.Badge.Ruby,
+            StreakRules.Badge.Amethyst,
+            StreakRules.Badge.Diamond,
+            StreakRules.Badge.Legend,
+        )
+        expectedOrder.forEachIndexed { index, expectedBadge ->
+            val milestone = (index + 1) * StreakRules.MILESTONE_STEP
+            assertEquals(index + 1, expectedBadge.rank)
+            assertEquals(expectedBadge, StreakRules.badgeFor(milestone))
         }
-        assertEquals(0, StreakRules.pickRandomIndex(1, previousIndex = 0, random = rng))
+    }
+
+    @Test
+    fun badgeFor_keepsFinalLegendBadgeBeyondFiftyWhileMilestonesContinue() {
+        assertEquals(StreakRules.Badge.Legend, StreakRules.badgeFor(50))
+        assertEquals(StreakRules.Badge.Legend, StreakRules.badgeFor(55))
+        assertEquals(StreakRules.Badge.Legend, StreakRules.badgeFor(60))
+        assertEquals(StreakRules.Badge.Legend, StreakRules.badgeFor(100))
+        assertEquals(StreakRules.Badge.Legend, StreakRules.badgeFor(250))
+        assertTrue(StreakRules.isMilestone(55))
+        assertTrue(StreakRules.isMilestone(60))
     }
 }

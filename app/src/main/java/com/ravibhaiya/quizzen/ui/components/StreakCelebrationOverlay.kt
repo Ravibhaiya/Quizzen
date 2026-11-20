@@ -11,21 +11,17 @@ import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -45,12 +41,12 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.LiveRegionMode
 import androidx.compose.ui.semantics.liveRegion
 import androidx.compose.ui.semantics.semantics
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import com.ravibhaiya.quizzen.R
 import com.ravibhaiya.quizzen.domain.StreakRules
-import com.ravibhaiya.quizzen.ui.theme.QuizzenShapes
+import com.ravibhaiya.quizzen.ui.theme.QuizzenColors
+import com.ravibhaiya.quizzen.ui.theme.StreakBadgePalette
 import com.ravibhaiya.quizzen.ui.theme.quizzen
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
@@ -117,39 +113,38 @@ private val SHOWER_PIECES: List<ShowerPiece> = List(34) { i ->
 
 private const val SUNBURST_RAY_COUNT = 12
 
-private data class StreakPhrase(
-    val badgeRes: Int,
-    val sublineRes: Int,
-)
+private fun StreakRules.Badge.palette(extra: QuizzenColors): StreakBadgePalette = when (this) {
+    StreakRules.Badge.Bronze -> extra.badgeBronze
+    StreakRules.Badge.Silver -> extra.badgeSilver
+    StreakRules.Badge.Gold -> extra.badgeGold
+    StreakRules.Badge.Platinum -> extra.badgePlatinum
+    StreakRules.Badge.Emerald -> extra.badgeEmerald
+    StreakRules.Badge.Sapphire -> extra.badgeSapphire
+    StreakRules.Badge.Ruby -> extra.badgeRuby
+    StreakRules.Badge.Amethyst -> extra.badgeAmethyst
+    StreakRules.Badge.Diamond -> extra.badgeDiamond
+    StreakRules.Badge.Legend -> extra.badgeLegend
+}
 
-private data class StreakPalette(
-    val gradientStart: Color,
-    val gradientEnd: Color,
-    val badgeBg: Color,
-    val badgeFg: Color,
-)
-
-private val EXTENDED_PHRASES: List<StreakPhrase> = listOf(
-    StreakPhrase(R.string.streak_ext_badge_1, R.string.streak_ext_sub_1),
-    StreakPhrase(R.string.streak_ext_badge_2, R.string.streak_ext_sub_2),
-    StreakPhrase(R.string.streak_ext_badge_3, R.string.streak_ext_sub_3),
-    StreakPhrase(R.string.streak_ext_badge_4, R.string.streak_ext_sub_4),
-    StreakPhrase(R.string.streak_ext_badge_5, R.string.streak_ext_sub_5),
-    StreakPhrase(R.string.streak_ext_badge_6, R.string.streak_ext_sub_6),
-    StreakPhrase(R.string.streak_ext_badge_7, R.string.streak_ext_sub_7),
-    StreakPhrase(R.string.streak_ext_badge_8, R.string.streak_ext_sub_8),
-)
+private fun StreakRules.Badge.nameRes(): Int = when (this) {
+    StreakRules.Badge.Bronze -> R.string.streak_badge_bronze
+    StreakRules.Badge.Silver -> R.string.streak_badge_silver
+    StreakRules.Badge.Gold -> R.string.streak_badge_gold
+    StreakRules.Badge.Platinum -> R.string.streak_badge_platinum
+    StreakRules.Badge.Emerald -> R.string.streak_badge_emerald
+    StreakRules.Badge.Sapphire -> R.string.streak_badge_sapphire
+    StreakRules.Badge.Ruby -> R.string.streak_badge_ruby
+    StreakRules.Badge.Amethyst -> R.string.streak_badge_amethyst
+    StreakRules.Badge.Diamond -> R.string.streak_badge_diamond
+    StreakRules.Badge.Legend -> R.string.streak_badge_legend
+}
 
 /**
  * Full-screen, 3-second celebratory animation shown when a user reaches a consecutive correct streak
  * milestone (`5`, `10`, `15`, ...) during Math Practice or Language Vocabulary quizzes.
  *
- * Visual layers (all driven by finite one-shot [Animatable]s read inside [Canvas] and [graphicsLayer]
- * lambdas, unmounting cleanly at 3,000 ms with zero idle frames):
- * 1. Warm atmospheric radial backdrop wash.
- * 2. Rotating sunburst light rays + triple staggered expanding shockwave rings.
- * 3. Two-wave 68-piece confetti, star, and sparkle cascade (explosive radial fireworks + full-screen shower).
- * 4. Spring-popped sculpted streak medallion, tier pill badge, bold headline, and encouraging subline.
+ * Unlocks 10 progressive rank badges from Bronze (`5`) to Legend (`50`). Milestones beyond `50`
+ * (`55`, `60`, ...) keep displaying the final Legend badge while updating the streak number.
  */
 @Composable
 fun StreakCelebrationOverlay(
@@ -160,8 +155,6 @@ fun StreakCelebrationOverlay(
     if (eventId <= 0 || milestoneStreak <= 0) return
 
     var isVisible by remember { mutableStateOf(false) }
-    var extendedPhraseIndex by remember { mutableIntStateOf(-1) }
-    var extendedPaletteIndex by remember { mutableIntStateOf(-1) }
     val overlayAlpha = remember { Animatable(0f) }
     val timeline = remember { Animatable(0f) }
     val burstProgress = remember { Animatable(0f) }
@@ -172,16 +165,6 @@ fun StreakCelebrationOverlay(
     val exitScale = remember { Animatable(1f) }
 
     LaunchedEffect(eventId) {
-        if (StreakRules.isExtendedStreak(milestoneStreak)) {
-            extendedPhraseIndex = StreakRules.pickRandomIndex(
-                count = EXTENDED_PHRASES.size,
-                previousIndex = extendedPhraseIndex,
-            )
-            extendedPaletteIndex = StreakRules.pickRandomIndex(
-                count = StreakRules.EXTENDED_PALETTE_COUNT,
-                previousIndex = extendedPaletteIndex,
-            )
-        }
         isVisible = true
         overlayAlpha.snapTo(0f)
         timeline.snapTo(0f)
@@ -255,64 +238,15 @@ fun StreakCelebrationOverlay(
 
     val colors = MaterialTheme.colorScheme
     val extra = MaterialTheme.quizzen
-    val isExtended = StreakRules.isExtendedStreak(milestoneStreak)
-    val tier = StreakRules.tierFor(milestoneStreak)
-
-    val phrase = if (isExtended) {
-        EXTENDED_PHRASES[extendedPhraseIndex.coerceIn(EXTENDED_PHRASES.indices)]
-    } else {
-        when (tier) {
-            StreakRules.Tier.Momentum -> StreakPhrase(R.string.streak_tier_momentum, R.string.streak_sub_momentum)
-            StreakRules.Tier.OnFire -> StreakPhrase(R.string.streak_tier_on_fire, R.string.streak_sub_on_fire)
-            StreakRules.Tier.Unstoppable -> StreakPhrase(R.string.streak_tier_unstoppable, R.string.streak_sub_unstoppable)
-        }
-    }
-    val tierLabelRes = phrase.badgeRes
-    val sublineRes = phrase.sublineRes
-
-    val palette = if (isExtended) {
-        val extendedPalettes = listOf(
-            StreakPalette(extra.streakIndigo, extra.streakViolet, extra.streakIndigoContainer, extra.onStreakIndigoContainer),
-            StreakPalette(extra.streakCyan, extra.streakTeal, extra.streakCyanContainer, extra.onStreakCyanContainer),
-            StreakPalette(extra.streakCrimson, extra.streakRose, extra.streakCrimsonContainer, extra.onStreakCrimsonContainer),
-            StreakPalette(extra.streakEmerald, extra.streakForest, extra.streakEmeraldContainer, extra.onStreakEmeraldContainer),
-            StreakPalette(extra.streakBlue, extra.antonym, extra.streakBlueContainer, extra.onStreakBlueContainer),
-            StreakPalette(extra.antonym, extra.streakMagenta, extra.antonymContainer, extra.onAntonymContainer),
-        )
-        extendedPalettes[extendedPaletteIndex.coerceIn(extendedPalettes.indices)]
-    } else {
-        when (tier) {
-            StreakRules.Tier.Momentum -> StreakPalette(
-                extra.success,
-                extra.synonym,
-                extra.synonymContainer,
-                extra.onSynonymContainer,
-            )
-            StreakRules.Tier.OnFire -> StreakPalette(
-                extra.timeout,
-                extra.streakBlue,
-                extra.streakBlueContainer,
-                extra.onStreakBlueContainer,
-            )
-            StreakRules.Tier.Unstoppable -> StreakPalette(
-                extra.antonym,
-                extra.streakMagenta,
-                extra.antonymContainer,
-                extra.onAntonymContainer,
-            )
-        }
-    }
-    val gradientStart = palette.gradientStart
-    val gradientEnd = palette.gradientEnd
-    val badgeBg = palette.badgeBg
-    val badgeFg = palette.badgeFg
+    val badge = StreakRules.badgeFor(milestoneStreak)
+    val palette = badge.palette(extra)
     val confettiPalette = listOf(
-        gradientStart,
-        gradientEnd,
-        extra.streakCyan,
-        extra.streakIndigo,
-        extra.streakCrimson,
-        extra.streakEmerald,
+        palette.highlight,
+        palette.primary,
+        palette.trim,
+        palette.deep,
+        extra.badgeGold.highlight,
+        extra.badgeDiamond.highlight,
     )
 
     Box(
@@ -327,15 +261,15 @@ fun StreakCelebrationOverlay(
         Canvas(modifier = Modifier.fillMaxSize()) {
             val t = timeline.value.coerceIn(0f, 1f)
             val b = burstProgress.value.coerceIn(0f, 1f)
-            val focusCenter = Offset(size.width / 2f, size.height * 0.44f)
+            val focusCenter = Offset(size.width / 2f, size.height * 0.43f)
             val maxRadius = hypot(size.width, size.height) * 0.65f
             val transparentSurface = colors.surface.copy(alpha = 0f)
 
-            // 1. Warm radial full-screen wash.
+            // 1. Atmospheric radial full-screen wash tinted to the unlocked badge.
             drawRect(
                 brush = Brush.radialGradient(
                     colorStops = arrayOf(
-                        0f to gradientStart.copy(alpha = 0.24f),
+                        0f to palette.highlight.copy(alpha = 0.28f),
                         0.45f to colors.surface.copy(alpha = 0.92f),
                         1f to colors.surface.copy(alpha = 0.96f),
                     ),
@@ -344,15 +278,15 @@ fun StreakCelebrationOverlay(
                 ),
             )
 
-            // 2. Soft rotating sunburst rays radiating from behind the medallion.
+            // 2. Soft rotating sunburst rays radiating from behind the badge.
             val rayAlpha = (sin(t * PI).toFloat().coerceIn(0f, 1f)) * 0.14f
             if (rayAlpha > 0.005f) {
                 val rayLength = maxRadius * 1.1f
                 val halfSpreadRad = (PI / SUNBURST_RAY_COUNT) * 0.42
                 val rayBrush = Brush.radialGradient(
                     colors = listOf(
-                        gradientStart.copy(alpha = rayAlpha),
-                        gradientEnd.copy(alpha = rayAlpha * 0.35f),
+                        palette.primary.copy(alpha = rayAlpha),
+                        palette.highlight.copy(alpha = rayAlpha * 0.4f),
                         transparentSurface,
                     ),
                     center = focusCenter,
@@ -385,10 +319,10 @@ fun StreakCelebrationOverlay(
                 val local = ((t - delayFrac) / 0.45f).coerceIn(0f, 1f)
                 if (local > 0.01f && local < 0.99f) {
                     val eased = 1f - (1f - local) * (1f - local)
-                    val radius = 44.dp.toPx() + (size.minDimension * 0.56f) * eased
+                    val radius = 48.dp.toPx() + (size.minDimension * 0.56f) * eased
                     val alpha = (1f - local) * 0.36f
                     drawCircle(
-                        color = gradientStart.copy(alpha = alpha),
+                        color = palette.primary.copy(alpha = alpha),
                         radius = radius,
                         center = focusCenter,
                         style = Stroke(width = (6.dp.toPx() * (1f - local * 0.65f)).coerceAtLeast(1.dp.toPx())),
@@ -434,7 +368,7 @@ fun StreakCelebrationOverlay(
             }
         }
 
-        // Centerpiece medallion + bold milestone headline (stays clear of keyboard & system bars).
+        // Centerpiece rank badge + badge name + streak count (stays clear of keyboard & system bars).
         Column(
             modifier = Modifier
                 .statusBarsPadding()
@@ -449,65 +383,22 @@ fun StreakCelebrationOverlay(
                 .semantics { liveRegion = LiveRegionMode.Polite }
                 .testTag("streak_milestone_banner"),
             horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.spacedBy(16.dp),
+            verticalArrangement = Arrangement.spacedBy(14.dp),
         ) {
-            // Sculpted Hero Streak Medallion.
-            Box(
-                modifier = Modifier
-                    .graphicsLayer {
-                        val s = medallionScale.value
-                        scaleX = s
-                        scaleY = s
-                        rotationZ = medallionRotation.value
-                        val gentleFloat = sin(timeline.value * 2f * PI.toFloat()) * 4.dp.toPx()
-                        translationY = gentleFloat
-                    },
-                contentAlignment = Alignment.Center,
-            ) {
-                // Soft outer glowing halo disc.
-                Box(
-                    modifier = Modifier
-                        .size(164.dp)
-                        .background(gradientStart.copy(alpha = 0.16f), CircleShape),
-                )
-                Box(
-                    modifier = Modifier
-                        .size(136.dp)
-                        .softShadow(
-                            color = gradientStart.copy(alpha = 0.34f),
-                            offsetY = 12.dp,
-                            blur = 26.dp,
-                            spread = (-6).dp,
-                            shape = QuizzenShapes.BlobA,
-                        )
-                        .background(
-                            brush = Brush.linearGradient(listOf(gradientStart, gradientEnd)),
-                            shape = QuizzenShapes.BlobA,
-                        )
-                        .border(3.dp, colors.surface.copy(alpha = 0.65f), QuizzenShapes.BlobA),
-                    contentAlignment = Alignment.Center,
-                ) {
-                    Column(
-                        horizontalAlignment = Alignment.CenterHorizontally,
-                        verticalArrangement = Arrangement.spacedBy((-4).dp),
-                    ) {
-                        Icon(
-                            imageVector = QuizzenIcons.Sparkle,
-                            contentDescription = null,
-                            tint = colors.onPrimary.copy(alpha = 0.92f),
-                            modifier = Modifier.size(22.dp),
-                        )
-                        Text(
-                            text = milestoneStreak.toString(),
-                            style = MaterialTheme.typography.displayLarge,
-                            color = colors.onPrimary,
-                            textAlign = TextAlign.Center,
-                        )
-                    }
-                }
-            }
+            StreakBadgeEmblem(
+                badge = badge,
+                milestoneStreak = milestoneStreak,
+                palette = palette,
+                shimmerProgress = { timeline.value },
+                modifier = Modifier.graphicsLayer {
+                    val s = medallionScale.value
+                    scaleX = s
+                    scaleY = s
+                    rotationZ = medallionRotation.value
+                    translationY = sin(timeline.value * 2f * PI.toFloat()) * 4.dp.toPx()
+                },
+            )
 
-            // Tier pill + bold headline + encouraging subline.
             Column(
                 modifier = Modifier.graphicsLayer {
                     alpha = copyAlpha.value
@@ -516,38 +407,34 @@ fun StreakCelebrationOverlay(
                 horizontalAlignment = Alignment.CenterHorizontally,
                 verticalArrangement = Arrangement.spacedBy(8.dp),
             ) {
-                Row(
+                Box(
                     modifier = Modifier
-                        .background(badgeBg, CircleShape)
-                        .border(1.dp, gradientStart.copy(alpha = 0.35f), CircleShape)
+                        .background(palette.container, CircleShape)
+                        .border(1.dp, palette.primary.copy(alpha = 0.35f), CircleShape)
                         .padding(horizontal = 16.dp, vertical = 6.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(6.dp),
                 ) {
-                    Icon(
-                        imageVector = QuizzenIcons.Sparkle,
-                        contentDescription = null,
-                        tint = badgeFg,
-                        modifier = Modifier.size(14.dp),
-                    )
                     Text(
-                        text = stringResource(tierLabelRes).uppercase(),
+                        text = stringResource(
+                            R.string.streak_badge_progress,
+                            badge.rank,
+                            StreakRules.BADGE_COUNT,
+                        ).uppercase(),
                         style = MaterialTheme.typography.labelLarge,
-                        color = badgeFg,
+                        color = palette.onContainer,
                     )
                 }
 
                 Text(
-                    text = stringResource(R.string.streak_milestone_title, milestoneStreak),
+                    text = stringResource(badge.nameRes()),
                     style = MaterialTheme.typography.headlineLarge,
                     color = colors.onSurface,
                     textAlign = TextAlign.Center,
                 )
 
                 Text(
-                    text = stringResource(sublineRes),
-                    style = MaterialTheme.typography.bodyLarge.copy(fontWeight = FontWeight.Medium),
-                    color = colors.onSurfaceVariant,
+                    text = stringResource(R.string.streak_milestone_title, milestoneStreak),
+                    style = MaterialTheme.typography.titleLarge,
+                    color = palette.primary,
                     textAlign = TextAlign.Center,
                 )
             }
@@ -573,7 +460,6 @@ private fun androidx.compose.ui.graphics.drawscope.DrawScope.drawConfettiShape(
             )
         }
         ConfettiKind.Ribbon -> {
-            // Subtle tumble-width modulation gives a lively fluttering confetti feel.
             val flutter = (0.45f + 0.55f * abs(cos(angleDeg * PI / 180.0))).toFloat()
             rotate(degrees = angleDeg, pivot = Offset(x, y)) {
                 drawRoundRect(

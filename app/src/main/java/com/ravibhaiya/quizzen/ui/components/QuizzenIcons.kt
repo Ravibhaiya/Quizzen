@@ -192,15 +192,4 @@ object QuizzenIcons {
             "M1 1l22 22",
         )
     }
-
-    val Sparkle: ImageVector by lazy {
-        strokeIcon(
-            "Sparkle", 2.1f,
-            "M12 2l2.4 6.6L21 11l-6.6 2.4L12 20l-2.4-6.6L3 11l6.6-2.4L12 2z",
-            "M19 3v3",
-            "M17.5 4.5h3",
-            "M5 17v2.5",
-            "M3.75 18.25h2.5",
-        )
-    }
 }

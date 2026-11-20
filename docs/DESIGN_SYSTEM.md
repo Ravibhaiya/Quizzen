@@ -22,12 +22,16 @@ opts out of OEM "force dark". There is no dark palette, no `values-night` resour
 | quizzen.success / error / timeout | `#1FAE6A / #E14C4C / #2E9FE0` (timeout = the sky-blue "Time's Up" sheet) |
 | quizzen.synonym / synonymContainer / onSynonymContainer | `#15806A / #D6F3EC / #0B4A3E` (emerald-teal badge, border, and surface tint for Synonyms) |
 | quizzen.antonym / antonymContainer / onAntonymContainer | `#7B3FA0 / #EDE0FA / #421861` (plum-violet badge, border, and surface tint for Antonyms) |
-| quizzen.streakBlue / streakBlueContainer / onStreakBlueContainer | `#2563EB / #DBEAFE / #1E3A8A` (royal blue streak tier 10+ gradient end and badge) |
-| quizzen.streakMagenta | `#C22578` (berry-magenta streak tier 15+ gradient end and confetti accent) |
-| quizzen.streakIndigo / streakViolet / streakIndigoContainer / onStreakIndigoContainer | `#4F46E5 / #7C3AED / #E0E7FF / #312E81` (indigo-violet random >15 streak palette) |
-| quizzen.streakCyan / streakTeal / streakCyanContainer / onStreakCyanContainer | `#0891B2 / #0D9488 / #CFFAFE / #164E63` (cyan-teal random >15 streak palette) |
-| quizzen.streakCrimson / streakRose / streakCrimsonContainer / onStreakCrimsonContainer | `#E11D48 / #BE185D / #FFE4E6 / #881337` (crimson-rose random >15 streak palette) |
-| quizzen.streakEmerald / streakForest / streakEmeraldContainer / onStreakEmeraldContainer | `#059669 / #047857 / #D1FAE5 / #064E3B` (emerald-forest random >15 streak palette) |
+| quizzen.badgeBronze (`StreakBadgePalette`) | `#C68B59 / #9A5B32 / #68381A`, container `#F2E4D8 / #4E2912`, trim `#E8C5A5` (Badge 1 — Bronze, streak 5) |
+| quizzen.badgeSilver (`StreakBadgePalette`) | `#CBD5E1 / #7C8EA6 / #475569`, container `#E7EDF5 / #243244`, trim `#F1F5F9` (Badge 2 — Silver, streak 10) |
+| quizzen.badgeGold (`StreakBadgePalette`) | `#F3C948 / #C88E0B / #8A5A04`, container `#FEF3C7 / #5C3B02`, trim `#FDE68A` (Badge 3 — Gold, streak 15) |
+| quizzen.badgePlatinum (`StreakBadgePalette`) | `#9CD4EC / #4A8DB0 / #285A78`, container `#E0F2FA / #163A50`, trim `#D8F1FC` (Badge 4 — Platinum, streak 20) |
+| quizzen.badgeEmerald (`StreakBadgePalette`) | `#34D399 / #059669 / #046C4E`, container `#D1FAE5 / #064E3B`, trim `#A7F3D0` (Badge 5 — Emerald, streak 25) |
+| quizzen.badgeSapphire (`StreakBadgePalette`) | `#60A5FA / #2563EB / #1E40AF`, container `#DBEAFE / #1E3A8A`, trim `#BFDBFE` (Badge 6 — Sapphire, streak 30) |
+| quizzen.badgeRuby (`StreakBadgePalette`) | `#FB7185 / #E11D48 / #9F1239`, container `#FFE4E6 / #881337`, trim `#FECDD3` (Badge 7 — Ruby, streak 35) |
+| quizzen.badgeAmethyst (`StreakBadgePalette`) | `#A78BFA / #7C3AED / #5B21B6`, container `#EDE9FE / #3B0764`, trim `#DDD6FE` (Badge 8 — Amethyst, streak 40) |
+| quizzen.badgeDiamond (`StreakBadgePalette`) | `#67E8F9 / #0891B2 / #155E75`, container `#CFFAFE / #164E63`, trim `#E0F9FF` (Badge 9 — Diamond, streak 45) |
+| quizzen.badgeLegend (`StreakBadgePalette`) | `#C026D3 / #4F46E5 / #312E81`, container `#E0E7FF / #2E1065`, trim `#F3C948` (Badge 10 — Legend, streak 50+) |
 
 Material roles without a dedicated token (secondary, tertiary, inverse*, outline*, extra surface containers) reuse these
 same tokens (see `ui/theme/Color.kt`) so no component can fall back to the baseline purple palette.
